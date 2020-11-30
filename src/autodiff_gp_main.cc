@@ -6,57 +6,17 @@
 #include "glog/logging.h"
 #include "eigen3/Eigen/Dense"
 
+#include "gaussian_process/gp_regression.h"
+#include "gaussian_process/kernel/periodic_gaussian_kernel.h"
+#include "gaussian_process/kernel/pose_2d_kernel.h"
+
+#include "pose_optimization/movable_observation_gp_cost_functor.h"
+
 using math_util::Sq;
+using gp_regression::GaussianProcessRegression;
+using namespace gp_kernel;
 
-// Implement a Gaussian Process Regressor for N input dimensions, and M output
-// dimensions, with the kernel type Kernel
-// That is, the GP approximates f: R^N -> R^M
-template <int N, int M, typename Kernel> class GaussianProcessRegression {
-  typedef Eigen::Matrix<float, M> kOutputType;
-  typedef Eigen::Matrix<float, N> kInputType;
 
-  // Constructor to initialize the regressor with the provided input / output
-  // pairs. 
-  // inputs must be N x D, outputs M x D, for a total of D input / output pairs.
-  explicit GaussianProcessRegression(
-      const Eigen::MatrixXf<float>& inputs,
-      const Eigen::MatrixXf<float>& outputs,
-      Kernel* kernel),
-      num_datapoints_(inputs.cols()) : 
-        inputs_(inputs), 
-        outputs_(outputs), 
-        kernel_(kernel),
-         {
-    CHECK_EQ(inputs.rows(), N);
-    CHECK_EQ(outputs.rows(), M);
-    CHECK_EQ(inputs.cols(), outputs.cols());
-    // Create the K matrix.
-    // Invert it once for fast reuse later.
-  }
-
-  // Templated inference.
-  template<typename T> 
-  Eigen::Matrix<float, M, 1> Inference(const Eigen::Matrix<float, N, 1>& x) {
-    Eigen::Matrix<float, M, 1> y = Eigen::Matrix<float, M, 1>::Zero();
-    return y;
-  }
-
-  Eigen::MatrixXf<float> inputs_;
-  Eigen::MatrixXf<float> outputs_;
-  Kernel* kernel_;
-  int num_datapoints_;
-};
-
-template <int N>
-struct GaussianKernel {
-  typedef Eigen::Matrix<float, N> kInputType;
-  explicit GaussianKernel(float length) : length_(length) {}
-
-  template<typename T> T operator(const kInputType& x1, const kInputType& x2) {
-    return ((x1 - x2).squaredNorm() / Sq(static_cast<T>(length_)));
-  }
-  float length_;
-};
 
 // An observation residual. At construction, it takes in a GP regressor (the
 // map), and an actual observation.
@@ -85,7 +45,8 @@ struct GPObservationResidual {
 };
 
 
-int main(int argc, char* argv) {
+
+int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
   return 0;
 }

@@ -1,0 +1,21 @@
+
+<package>
+  <description brief="autodiff_gp">
+
+  Implementation of Gaussian process regression inference that can be 
+  used with a Ceres optimizer
+
+  </description>
+  <name>autodiff_gp</name>
+  <author>Joydeep Biswas</author>
+  <author>Amanda Adkins</author>
+  <license>MIT</license>
+  <review status="unreviewed" notes=""/>
+  <url></url>
+  <depend package="std_msgs"/>
+  <depend package="sensor_msgs"/>
+  <depend package="roscpp"/>
+  <depend package="tf"/>
+
+</package>
+

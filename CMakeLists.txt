@@ -27,12 +27,14 @@ MESSAGE(STATUS "CXX Flags: ${CMAKE_CXX_FLAGS}")
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 SET(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-SET(libs roslib roscpp rosbag glog gflags amrl-shared-lib lua5.1
+
+SET(libs roslib roscpp rosbag glog gflags amrl_shared_lib lua5.1
     pthread)
 
-ADD_SUBDIRECTORY(src/shared)
 INCLUDE_DIRECTORIES(src/shared)
+ADD_SUBDIRECTORY(src/shared)
 INCLUDE_DIRECTORIES(src)
+
 
 ROSBUILD_ADD_EXECUTABLE(autodiff_gp
                         src/autodiff_gp_main.cc)
