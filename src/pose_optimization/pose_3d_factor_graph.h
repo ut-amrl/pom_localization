@@ -20,6 +20,11 @@ namespace pose_graph {
 
     struct GaussianBinaryFactor {
 
+//        GaussianBinaryFactor(const NodeId &from_node, const NodeId &to_node, const Eigen::Vector3d &translation,
+//                             const Eigen::Quaterniond &orientation) : from_node_(from_node), to_node_(d){
+//
+//        }
+
         /**
          * Node that serves as the coordinate frame for the measurement.
          */
@@ -33,12 +38,12 @@ namespace pose_graph {
         /**
          * Measured location of the to_node_ in the from_node_ frame.
          */
-        Eigen::Vector3d &translation_change_;
+        Eigen::Vector3d translation_change_;
 
         /**
          * Provides measured orientation of the to_node in the from node's frame.
          */
-        Eigen::Quaterniond &orientation_change_;
+        Eigen::Quaterniond orientation_change_;
 
         /**
          * Square root information matrix providing uncertainty of the measurement.
@@ -276,6 +281,13 @@ namespace pose_graph {
                 return true;
             }
             return false;
+        }
+
+        void getNodePoses(std::unordered_map<NodeId, std::pair<Eigen::Vector3d, Eigen::Quaterniond>> node_positions) {
+            for (const auto &node : nodes_) {
+                node_positions[node.first] = std::make_pair(Eigen::Vector3d(*(node.second.est_position_)),
+                                                            Eigen::Quaterniond(*(node.second.est_orientation_)));
+            }
         }
 
     private:

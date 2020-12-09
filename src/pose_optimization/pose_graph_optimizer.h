@@ -22,32 +22,32 @@ namespace pose_optimization {
             ceres::LocalParameterization* quaternion_local_parameterization =
                     new ceres::EigenQuaternionParameterization;
 
-            // Add residuals from movable object observations
-            for (pose_graph::MovableObservationFactor &factor : pose_graph.getMovableObservationFactors()) {
-                std::pair<std::shared_ptr<Eigen::Vector3d>, std::shared_ptr<Eigen::Quaterniond>> pose_vars_;
-                if (!pose_graph.getNodePosePointers(factor.observed_at_node_, pose_vars_)) {
-                    LOG(ERROR) << "Node " << factor.observed_at_node_ << " did not exist in the pose graph. Skipping movable object observation";
-                    continue;
-                }
-
-                std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> movable_object_regressor = pose_graph.getMovableObjGpRegressor(factor.observation_.semantic_class_);
-                if (movable_object_regressor) {
-
-                    ceres::CostFunction *cost_function = new ceres::AutoDiffCostFunction<pose_optimization::MovableObservationCostFunctor, 1, 3, 4>(
-                            new pose_optimization::MovableObservationCostFunctor(
-                                    pose_graph.getMovableObjGpRegressor(factor.observation_.semantic_class_),
-                                    factor.observation_.observation_transl_,
-                                    factor.observation_.observation_orientation_));
-
-                    problem->AddResidualBlock(cost_function, nullptr, pose_vars_.first->data(),
-                                              pose_vars_.second->coeffs().data());
-
-                    problem->SetParameterization(pose_vars_.second->coeffs().data(),
-                                                 quaternion_local_parameterization);
-                } else {
-                    LOG(WARNING) << "No gp regressor for semantic class " << factor.observation_.semantic_class_;
-                }
-            }
+//            // Add residuals from movable object observations
+//            for (pose_graph::MovableObservationFactor &factor : pose_graph.getMovableObservationFactors()) {
+//                std::pair<std::shared_ptr<Eigen::Vector3d>, std::shared_ptr<Eigen::Quaterniond>> pose_vars_;
+//                if (!pose_graph.getNodePosePointers(factor.observed_at_node_, pose_vars_)) {
+//                    LOG(ERROR) << "Node " << factor.observed_at_node_ << " did not exist in the pose graph. Skipping movable object observation";
+//                    continue;
+//                }
+//
+//                std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> movable_object_regressor = pose_graph.getMovableObjGpRegressor(factor.observation_.semantic_class_);
+//                if (movable_object_regressor) {
+//
+//                    ceres::CostFunction *cost_function = new ceres::AutoDiffCostFunction<pose_optimization::MovableObservationCostFunctor, 1, 3, 4>(
+//                            new pose_optimization::MovableObservationCostFunctor(
+//                                    pose_graph.getMovableObjGpRegressor(factor.observation_.semantic_class_),
+//                                    factor.observation_.observation_transl_,
+//                                    factor.observation_.observation_orientation_));
+//
+//                    problem->AddResidualBlock(cost_function, nullptr, pose_vars_.first->data(),
+//                                              pose_vars_.second->coeffs().data());
+//
+//                    problem->SetParameterization(pose_vars_.second->coeffs().data(),
+//                                                 quaternion_local_parameterization);
+//                } else {
+//                    LOG(WARNING) << "No gp regressor for semantic class " << factor.observation_.semantic_class_;
+//                }
+//            }
 
 
             // Add residuals from odometry (visual, lidar, or wheel) factors
