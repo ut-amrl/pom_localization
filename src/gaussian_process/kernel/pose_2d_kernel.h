@@ -51,13 +51,13 @@ namespace gp_kernel {
 
         template<typename T>
         T evaluateKernel(const InputType<T>& x1, const InputType<T>& x2) {
-            Eigen::Matrix<T, pose_2d::kPositionDims, Eigen::Dynamic> position_data_1 =
+            Eigen::Matrix<T, pose_2d::kPositionDims, 1> position_data_1 =
                     x1.topRows(pose_2d::kPositionDims);
-            Eigen::Matrix<T, pose_2d::kPositionDims, Eigen::Dynamic> position_data_2 =
+            Eigen::Matrix<T, pose_2d::kPositionDims, 1> position_data_2 =
                     x2.topRows(pose_2d::kPositionDims);
-            Eigen::Matrix<T, pose_2d::kOrientation2dDims, Eigen::Dynamic> orientation_data_1 =
+            Eigen::Matrix<T, pose_2d::kOrientation2dDims, 1> orientation_data_1 =
                     x1.bottomRows(pose_2d::kOrientation2dDims);
-            Eigen::Matrix<T, pose_2d::kOrientation2dDims, Eigen::Dynamic> orientation_data_2 =
+            Eigen::Matrix<T, pose_2d::kOrientation2dDims, 1> orientation_data_2 =
                     x2.bottomRows(pose_2d::kOrientation2dDims);
             return position_kernel_.evaluateKernel<T>(position_data_1, position_data_2)
                     * orientation_kernel_.evaluateKernel<T>(orientation_data_1, orientation_data_2);

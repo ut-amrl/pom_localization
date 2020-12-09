@@ -8,6 +8,7 @@
 
 #include <eigen3/Eigen/Dense>
 #include <gaussian_process/kernel/kernel.h>
+#include <math/math_util.h>
 
 namespace gp_kernel {
 
@@ -37,7 +38,7 @@ namespace gp_kernel {
         template<typename T>
         T evaluateKernel(const InputType<T>& x1, const InputType<T>& x2) {
             T scaled_distance = ((x1 - x2).squaredNorm() / math_util::Sq(static_cast<T>(length_)));
-            return variance_ * exp(-0.5 * scaled_distance);
+            return static_cast<T>(variance_) * exp(-0.5 * scaled_distance);
         }
 
     private:

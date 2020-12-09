@@ -40,9 +40,9 @@ namespace gp_kernel {
         T evaluateKernel(const InputType<T>& x1, const InputType<T>& x2) {
 
             T intermediate_dist = (x1 - x2).norm();
-            T period_invariant_dist = M_PI * intermediate_dist / period_;
+            T period_invariant_dist = M_PI * intermediate_dist / static_cast<T>(period_);
 
-            return variance_ * std::exp(-0.5 * math_util::Sq(sin(period_invariant_dist)) / Sq(static_cast<T>(length_)));
+            return static_cast<T>(variance_) * exp(-0.5 * math_util::Sq(sin(period_invariant_dist)) / math_util::Sq(static_cast<T>(length_)));
         }
 
     private:

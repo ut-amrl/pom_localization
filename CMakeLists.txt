@@ -27,8 +27,14 @@ MESSAGE(STATUS "CXX Flags: ${CMAKE_CXX_FLAGS}")
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 SET(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
+find_package(PkgConfig REQUIRED)
+pkg_search_module(EIGEN REQUIRED eigen3)
 
-SET(libs roslib roscpp rosbag glog gflags amrl_shared_lib lua5.1
+include_directories(${EIGEN_INCLUDE_DIRS})
+link_directories(${EIGEN_LIBRARY_DIRS})
+find_package(Ceres REQUIRED)
+
+SET(libs roslib roscpp rosbag glog gflags amrl_shared_lib lua5.1 ceres
     pthread)
 
 INCLUDE_DIRECTORIES(src/shared)
@@ -39,3 +45,6 @@ INCLUDE_DIRECTORIES(src)
 ROSBUILD_ADD_EXECUTABLE(autodiff_gp
                         src/autodiff_gp_main.cc)
 TARGET_LINK_LIBRARIES(autodiff_gp ${libs})
+
+ROSBUILD_ADD_EXECUTABLE(momo_pose_optimization src/pose_optimization/pose_optimization_main.cc)
+TARGET_LINK_LIBRARIES(momo_pose_optimization ${libs})

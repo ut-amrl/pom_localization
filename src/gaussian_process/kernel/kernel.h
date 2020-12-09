@@ -14,7 +14,7 @@ namespace gp_kernel {
     public:
 
         template<typename T>
-        using KernelInputType = Eigen::Matrix<T, N, Eigen::Dynamic>;
+        using KernelInputType = Eigen::Matrix<T, N, 1>;
 
         /**
          * Constructor.
