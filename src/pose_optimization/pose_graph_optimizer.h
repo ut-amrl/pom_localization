@@ -75,14 +75,18 @@ namespace pose_optimization {
                 problem->SetParameterization(to_pose_vars_.second->coeffs().data(),
                                              quaternion_local_parameterization);
             }
+            std::pair<std::shared_ptr<Eigen::Vector3d>, std::shared_ptr<Eigen::Quaterniond>> start_pose_vars_;
+            pose_graph.getNodePosePointers(0, start_pose_vars_);
+            problem->SetParameterBlockConstant(start_pose_vars_.first->data());
 
-
+            problem->SetParameterBlockConstant(start_pose_vars_.second->coeffs().data());
         }
 
         bool SolveOptimizationProblem(ceres::Problem* problem) {
             CHECK(problem != NULL);
             ceres::Solver::Options options;
             options.max_num_iterations = 200;
+            options.minimizer_progress_to_stdout = true;
             options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
             ceres::Solver::Summary summary;
             ceres::Solve(options, problem, &summary);

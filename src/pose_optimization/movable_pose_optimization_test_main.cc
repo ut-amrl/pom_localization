@@ -74,7 +74,7 @@ Pose3d combinePoses(Pose3d pose_1, Pose3d pose_2) {
 std::vector<Pose2d> createGroundTruthPoses() {
     std::vector<Pose2d> poses;
     poses.emplace_back(createPose2d(0, 0, 0)); // Should test how this deals with non-zero-origins?
-    poses.emplace_back(createPose2d(1, 1, M_PI_4));
+    poses.emplace_back(createPose2d(0.1, 1, M_PI_4));
     poses.emplace_back(createPose2d(0, 4, M_PI_2));
     poses.emplace_back(createPose2d(-.04, 7, M_PI_2));
     poses.emplace_back(createPose2d(0, 10, M_PI_2));
@@ -166,10 +166,15 @@ int main(int argc, char** argv) {
     float movable_observation_z_std_dev = 0.6;
     float movable_observation_yaw_std_dev = 0.3;
 
-    float odometry_x_std_dev = 0.4;
-    float odometry_y_std_dev = 0.4;
-    float odometry_z_std_dev = 0.4;
-    float odometry_yaw_std_dev = 0.3;
+//    float odometry_x_std_dev = 0.4;
+//    float odometry_y_std_dev = 0.4;
+//    float odometry_z_std_dev = 0.4;
+//    float odometry_yaw_std_dev = 0.3;
+
+    float odometry_x_std_dev = 0.1;
+    float odometry_y_std_dev = 0.1;
+    float odometry_z_std_dev = 0.1;
+    float odometry_yaw_std_dev = 0.1;
 
     std::vector<Pose2d> robot_gt_poses_2d = createGroundTruthPoses();
     std::vector<Pose2d> filled_parking_spots = createParkedCarPoses();
@@ -248,6 +253,9 @@ int main(int argc, char** argv) {
         initial_node_positions.emplace_back(new_pose);
         prev_pose = new_pose;
     }
+//    for (Pose3d &pose_3d : robot_gt_poses_3d) {
+//        initial_node_positions.emplace_back(pose_3d);
+//    }
 
     // Create nodes with initial positions based on odometry
     for (size_t i = 0; i < initial_node_positions.size(); i++) {
@@ -296,6 +304,33 @@ int main(int argc, char** argv) {
         pose_graph.addGaussianBinaryFactor(factor);
     }
 
+    // Add loop closure (last pose to first pose)
+    {
+        pose_graph::NodeId prev_node = initial_node_positions.size() - 1;
+        pose_graph::NodeId to_node = 0;
+        pose_graph::GaussianBinaryFactor factor;
+        factor.to_node_ = to_node;
+        factor.from_node_ = prev_node;
+        Pose3d to_node_in_from_node = getPoseOfObj1RelToObj2(robot_gt_poses_3d.front(), robot_gt_poses_3d.back());
+        factor.translation_change_ = to_node_in_from_node.first;
+        factor.orientation_change_ = to_node_in_from_node.second;
+        Eigen::Matrix<double, 6, 6> cov_mat = Eigen::Matrix<double, 6, 6>::Zero();
+        cov_mat(0, 0) = pow(odometry_x_std_dev, 2);
+        cov_mat(1, 1) = pow(odometry_y_std_dev, 2);
+        cov_mat(2, 2) = pow(odometry_z_std_dev, 2);
+
+        // Fix these - probably not right...
+        cov_mat(3, 3) = pow(odometry_yaw_std_dev, 2);
+        cov_mat(4, 4) = pow(odometry_yaw_std_dev, 2);
+        cov_mat(5, 5) = pow(odometry_yaw_std_dev, 2);
+
+        Eigen::Matrix<double, 6, 6> information_mat = cov_mat.inverse();
+        factor.sqrt_information_ = information_mat.sqrt();
+
+        pose_graph.addGaussianBinaryFactor(factor);
+
+    }
+
 
     std::unordered_map<std::string, std::pair<std::vector<pose_graph::NegativeMovableObservation2D>, std::vector<pose_graph::MapObservation2D>>> obs_by_class;
     std::vector<pose_graph::NegativeMovableObservation2D> neg_obs;
@@ -316,7 +351,7 @@ int main(int argc, char** argv) {
     }
     obs_by_class[car_class] = std::make_pair(neg_obs, pos_observations);
     LOG(INFO) << "Adding map frame observations to regressor";
-    pose_graph.addMapFrameObservations(obs_by_class);
+//    pose_graph.addMapFrameObservations(obs_by_class);
     LOG(INFO) << "Done adding map frame observations to regressor";
 
     pose_optimization::PoseGraphOptimizer optimizer;

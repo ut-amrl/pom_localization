@@ -71,12 +71,12 @@ namespace pose_optimization {
         /**
          * Observed translation change.
          */
-        Eigen::Vector3d &translation_change_;
+        Eigen::Vector3d translation_change_;
 
         /**
          * Observed orientation change.
          */
-        Eigen::Quaterniond &orientation_change_;
+        Eigen::Quaterniond orientation_change_;
 
         /**
          * Information matrix (inverse of covariance matrix).
