@@ -47,23 +47,48 @@ namespace pose_optimization {
         bool operator()(const T* const robot_position_ptr, const T* const robot_orientation_ptr, T* residuals) const {
 
             // Assuming robot_position_ptr is
+//            LOG(INFO) << "Observation transform transl " << observation_transform_.translation();
+//            LOG(INFO) << "Observation transform rot " << observation_transform_.linear();
             Eigen::Map<const Eigen::Matrix<T, 3, 1>> robot_position(robot_position_ptr);
             Eigen::Map<const Eigen::Quaternion<T>> robot_orientation(robot_orientation_ptr);
+            T entry_1 = *robot_orientation_ptr;
+            LOG(INFO) << "robot orientation quat " << entry_1;
+            Eigen::Quaternion<T> robot_quat_copy;
+            robot_quat_copy = robot_orientation;
+            LOG(INFO) << robot_quat_copy.x() << ", " << robot_quat_copy.y() << ", " << robot_quat_copy.z() << ", " << robot_quat_copy.w();
+//            LOG(INFO) << " Rot mat: " << robot_quat_copy.toRotationMatrix();
+//            LOG(INFO) << "Orig rot mat " << robot_orientation.toRotationMatrix();
 
             Eigen::Transform<T,3,Eigen::Affine> robot_tf = Eigen::Transform<T, 3, Eigen::Affine>::Identity();
             robot_tf.translation() = robot_position;
+            Eigen::Matrix<T, 3, 3> rotation = robot_orientation.toRotationMatrix();
+//            LOG(INFO) << " robot tf rot " << robot_tf.linear();
+            robot_tf.linear() = rotation;
             robot_tf.linear() = robot_orientation.toRotationMatrix();
+//            LOG(INFO) << " Robot tf " << robot_tf.translation();
+//            LOG(INFO) << " robot tf rot " << robot_tf.linear();
 
             Eigen::Transform<T, 3, Eigen::Affine> observation_3d = robot_tf * observation_transform_.cast<T>();
+//            LOG(INFO) << " observation 3d " << observation_3d.translation();
+//            LOG(INFO) << " observation 3d rot " << observation_3d.rotation();
+
+//            LOG(INFO) << " observation 3d rot linear " << observation_3d.linear();
             // TODO verify that yaw extraction is correct
-            T yaw = observation_3d.rotation().eulerAngles(0, 1, 2)[2];
+//            T yaw = observation_3d.rotation().eulerAngles(0, 1, 2)[2];
+
+            T yaw = observation_3d.linear().eulerAngles(0, 1, 2)[2];
+
+            LOG(INFO) << "Yaw: " << yaw;
 
             Eigen::Matrix<T, 3, 1> object_pose_2d;
             object_pose_2d << observation_3d.translation().x(), observation_3d.translation().y(), yaw;
 
             // TODO is this the correct form for the cost?
             T inference_val = gp_->Inference<T>(object_pose_2d)(0, 0);
-            residuals[0] = -log(inference_val);
+            LOG(INFO) << "Inference output " << inference_val;
+//            residuals[0] = -inference_val;
+            residuals[0] = -log(inference_val + 0.0000000000001);
+            LOG(INFO) << "Residual " << residuals[0];
 
             return true;
         }
