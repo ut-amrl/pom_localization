@@ -359,41 +359,43 @@ int main(int argc, char** argv) {
     pose_graph.addMapFrameObservations(obs_by_class);
     LOG(INFO) << "Done adding map frame observations to regressor";
 
-    pose_optimization::PoseGraphOptimizer optimizer;
-    ceres::Problem problem;
-    LOG(INFO) << "Building pose graph optimization problem";
-    optimizer.buildPoseGraphOptimizationProblem(pose_graph, &problem);
-    LOG(INFO) << "Solving optimization problem";
-    optimizer.SolveOptimizationProblem(&problem);
-    LOG(INFO)<<"Done solving optimization problem";
-
-    std::unordered_map<pose_graph::NodeId, Pose3d> node_poses;
-    pose_graph.getNodePoses(node_poses);
-
-    std::vector<Pose3d> node_poses_list;
-
-    for (size_t i = 0; i < initial_node_positions.size(); i++) {
-        Pose3d init_pose = initial_node_positions[i];
-        Pose3d optimized_pose = node_poses[i];
-        Pose2d gt_2d = robot_gt_poses_2d[i];
-        node_poses_list.emplace_back(optimized_pose);
-        LOG(INFO) << "Node i " << i;
-        LOG(INFO) << "True pose " << gt_2d.first.x() << ", " << gt_2d.first.y() << ", " << gt_2d.second;
-        LOG(INFO) << "Init est " << init_pose.first.x() << ", " << init_pose.first.y() << ", " << init_pose.first.z() << ", " << init_pose.second.w() << ", " << init_pose.second.z() << ", " << init_pose.second.x() << ", " << init_pose.second.y();
-        LOG(INFO) << "Opt est " << optimized_pose.first.x() << ", " << optimized_pose.first.y() << ", " << optimized_pose.first.z() << ", " << optimized_pose.second.w() << ", " << optimized_pose.second.z() << ", " << optimized_pose.second.x() << ", " << optimized_pose.second.y();
-    }
-
-
+//    pose_optimization::PoseGraphOptimizer optimizer;
+//    ceres::Problem problem;
+//    LOG(INFO) << "Building pose graph optimization problem";
+//    optimizer.buildPoseGraphOptimizationProblem(pose_graph, &problem);
+//    LOG(INFO) << "Solving optimization problem";
+//    optimizer.SolveOptimizationProblem(&problem);
+//    LOG(INFO)<<"Done solving optimization problem";
+//
+//    std::unordered_map<pose_graph::NodeId, Pose3d> node_poses;
+//    pose_graph.getNodePoses(node_poses);
+//
+//    std::vector<Pose3d> node_poses_list;
+//
+//    for (size_t i = 0; i < initial_node_positions.size(); i++) {
+//        Pose3d init_pose = initial_node_positions[i];
+//        Pose3d optimized_pose = node_poses[i];
+//        Pose2d gt_2d = robot_gt_poses_2d[i];
+//        node_poses_list.emplace_back(optimized_pose);
+//        LOG(INFO) << "Node i " << i;
+//        LOG(INFO) << "True pose " << gt_2d.first.x() << ", " << gt_2d.first.y() << ", " << gt_2d.second;
+//        LOG(INFO) << "Init est " << init_pose.first.x() << ", " << init_pose.first.y() << ", " << init_pose.first.z() << ", " << init_pose.second.w() << ", " << init_pose.second.z() << ", " << init_pose.second.x() << ", " << init_pose.second.y();
+//        LOG(INFO) << "Opt est " << optimized_pose.first.x() << ", " << optimized_pose.first.y() << ", " << optimized_pose.first.z() << ", " << optimized_pose.second.w() << ", " << optimized_pose.second.z() << ", " << optimized_pose.second.x() << ", " << optimized_pose.second.y();
+//    }
+//
+//
     std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> regressor = pose_graph.getMovableObjGpRegressor(car_class);
-
-    manager.displayOdomTrajectory(initial_node_positions);
-    manager.displayEstTrajectory(node_poses_list);
+//
+//    manager.displayOdomTrajectory(initial_node_positions);
+//    manager.displayEstTrajectory(node_poses_list);
     manager.displayTrueTrajectory(robot_gt_poses_3d);
-    manager.displayTrueCarPoses(car_poses_in_parking_spots_3d);
-    manager.displayNoisyCarPosesFromEstTrajectory(node_poses_list, noisy_observations);
+//    manager.displayTrueCarPoses(car_poses_in_parking_spots_3d);
+//    manager.displayNoisyCarPosesFromEstTrajectory(node_poses_list, noisy_observations);
     manager.displayNoisyCarPosesFromGt(robot_gt_poses_3d, noisy_observations);
     manager.displayNoisyCarPosesFromOdomTrajectory(initial_node_positions, noisy_observations);
-    manager.displayMaxGpRegressorOutput(regressor, 0.1, -5.0, 15, -5, 20);
+//    manager.displayMaxGpRegressorOutput(regressor, 0.1, -5.0, 15, -5, 20);
+    manager.displayMaxGpRegressorOutput(regressor, 0.2, -5.0, 15, -5, 20);
+
 //    std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> regressor,
 //    const double &resolution, const double &x_min, const double &x_max, const double &y_min,
 //    const double &y_max) {

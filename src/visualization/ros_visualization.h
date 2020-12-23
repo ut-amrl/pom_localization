@@ -29,6 +29,7 @@ namespace visualization {
                 std::string topic_name = "regressor_" + angle_name + "_val";
                 pub_for_angle_mult_[i] = node_handle_.advertise<nav_msgs::OccupancyGrid>(topic_name, 2);
             }
+            test_occ_pub_ = node_handle_.advertise<visualization_msgs::Marker>("test_occ_pub", 2);
         }
 
         void displayTrueTrajectory(const std::vector<pose::Pose3d> &true_trajectory) {
@@ -118,6 +119,9 @@ namespace visualization {
             best_occ_grid.info.height = y_max_unscaled - y_min_unscaled + 1;
             best_occ_grid.data.resize(best_occ_grid.info.width * best_occ_grid.info.height);
 
+            nav_msgs::OccupancyGrid test_grid;
+            test_grid = best_occ_grid;
+
             std::unordered_map<int, nav_msgs::OccupancyGrid> occ_grids_by_angle;
             LOG(INFO) << "Creating occ grids";
 
@@ -138,39 +142,99 @@ namespace visualization {
 
             LOG(INFO) << "Looping through vals";
 
+            int size = best_occ_grid.info.width * best_occ_grid.info.height;
+
+//            std::vector<double, grid
+
+            std::unordered_map<int, Eigen::Matrix<double, 3, Eigen::Dynamic>> mats_by_angle;
+            for (int i = -5; i <= 6; i++) {
+                mats_by_angle[i] = Eigen::Matrix<double, 3, Eigen::Dynamic>(3, size);
+            }
+
+
+
+            LOG(INFO) << "Creating input matrices for different angles";
             for (int y_val = y_min_unscaled; y_val <= y_max_unscaled; y_val++) {
                 for (int x_val = x_min_unscaled; x_val <= x_max_unscaled; x_val++) {
-                    long data_index = ((x_max_unscaled - x_min_unscaled + 1) * (y_val - y_min_unscaled)) + x_val - y_min_unscaled; // Should I switch x and y?
-                    LOG(INFO) << "data index " << data_index;
-                    double best_val = 0.0;
+
+                    long data_index = (best_occ_grid.info.width * (y_val - y_min_unscaled)) + x_val - x_min_unscaled; // Should I switch x and y?
+
+//                    long data_index = (best_occ_grid.info.height * (x_val - x_min_unscaled)) + y_val - y_min_unscaled; // Should I switch x and y?
+
                     for (int i = -5; i <= 6; i++) {
+                        Eigen::Matrix<double, 3, Eigen::Dynamic> mat_for_angle = mats_by_angle[i];
                         double yaw = i * M_PI / 6;
-                        ros::Publisher pub_for_angle = pub_for_angle_mult_[i];
-                        LOG(INFO) << "Got publisher for angle";
 
                         Eigen::Matrix<double, 3, 1> object_pose_2d;
                         object_pose_2d << (x_val * resolution), (y_val * resolution), yaw;
-//                        LOG(INFO) << "Getting regressor val";
-                        Eigen::Matrix<double, 1, 1> regressor_val = regressor->Inference(object_pose_2d);
-//                        LOG(INFO) << "Full inf value";
-                        double inf_val = regressor_val(0, 0);
-//                        LOG(INFO) << " Got regressor val";
-                        if (inf_val > best_val) {
-                            best_val = inf_val;
-                        }
-
-                        nav_msgs::OccupancyGrid occ_grid_for_angle = occ_grids_by_angle[i];
-//                        LOG(INFO)<<"Setting data";
-                        occ_grid_for_angle.data[data_index] = inf_val;
-//                        LOG(INFO)<<"Done setting data";
-                        occ_grids_by_angle[i] = occ_grid_for_angle;
+                        mat_for_angle.col(data_index) = object_pose_2d;
+                        mats_by_angle[i] = mat_for_angle;
                     }
-//                    LOG(INFO)<<"Setting best data";
-                    best_occ_grid.data[data_index] = best_val;
-//                    LOG(INFO)<<"Done setting best data";
                 }
             }
 
+            std::unordered_map<int, Eigen::Matrix<double, 1, Eigen::Dynamic>> output_mats;
+            for (int i = -5; i <= 6; i++) {
+                LOG(INFO) << "Getting regression value for angle index " << i;
+
+                LOG(INFO) << "Input size " << mats_by_angle[i].rows() << ", " << mats_by_angle[i].cols();
+                output_mats[i] = regressor->Inference(mats_by_angle[i]);
+                LOG(INFO) << "Output size " << output_mats[i].rows() << ", " << output_mats[i].cols();
+                LOG(INFO) << "Output " << output_mats[i];
+            }
+
+            LOG(INFO) << "Setting occupancy grid data";
+
+            for (int i = 0; i < size; i++) {
+                double best_val = 0.0;
+                for (int j = -5; j <= 6; j++) {
+                    ros::Publisher pub_for_angle = pub_for_angle_mult_[i];
+                    double inf_val = output_mats[j](0, i);
+                    if (inf_val > best_val) {
+                        best_val = inf_val;
+                    }
+
+                    nav_msgs::OccupancyGrid occ_grid_for_angle = occ_grids_by_angle[j];
+                    occ_grid_for_angle.data[i] = (int8_t) (100 * inf_val);
+                    occ_grids_by_angle[j] = occ_grid_for_angle;
+                }
+                best_occ_grid.data[i] = best_val;
+            }
+
+//            for (int y_val = y_min_unscaled; y_val <= y_max_unscaled; y_val++) {
+//                for (int x_val = x_min_unscaled; x_val <= x_max_unscaled; x_val++) {
+//                    long data_index = ((x_max_unscaled - x_min_unscaled + 1) * (y_val - y_min_unscaled)) + x_val - y_min_unscaled; // Should I switch x and y?
+//                    LOG(INFO) << "data index " << data_index;
+//                    double best_val = 0.0;
+//                    for (int i = -5; i <= 6; i++) {
+//                        double yaw = i * M_PI / 6;
+//                        ros::Publisher pub_for_angle = pub_for_angle_mult_[i];
+//                        LOG(INFO) << "Got publisher for angle";
+//
+//                        Eigen::Matrix<double, 3, 1> object_pose_2d;
+//                        object_pose_2d << (x_val * resolution), (y_val * resolution), yaw;
+////                        LOG(INFO) << "Getting regressor val";
+//                        Eigen::Matrix<double, 1, 1> regressor_val = regressor->Inference(object_pose_2d);
+////                        LOG(INFO) << "Full inf value";
+//                        double inf_val = regressor_val(0, 0);
+////                        LOG(INFO) << " Got regressor val";
+//                        if (inf_val > best_val) {
+//                            best_val = inf_val;
+//                        }
+//
+//                        nav_msgs::OccupancyGrid occ_grid_for_angle = occ_grids_by_angle[i];
+////                        LOG(INFO)<<"Setting data";
+//                        occ_grid_for_angle.data[data_index] = inf_val;
+////                        LOG(INFO)<<"Done setting data";
+//                        occ_grids_by_angle[i] = occ_grid_for_angle;
+//                    }
+////                    LOG(INFO)<<"Setting best data";
+//                    best_occ_grid.data[data_index] = best_val;
+////                    LOG(INFO)<<"Done setting best data";
+//                }
+//            }
+
+            LOG(INFO) << "Publishing occ grid data";
             regressor_max_val_for_pos_pub_.publish(best_occ_grid);
             for (int i = -5; i <= 6; i++) {
                 ros::Publisher publisher = pub_for_angle_mult_[i];
@@ -217,7 +281,7 @@ namespace visualization {
 
 
         ros::Publisher regressor_max_val_for_pos_pub_;
-
+        ros::Publisher test_occ_pub_;
 //
 //        ros::Publisher regressor_val_for_neg_150_pub_;
 //        ros::Publisher regressor_val_for_neg_120_pub_;

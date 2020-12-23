@@ -90,15 +90,20 @@ namespace gp_regression {
          * @return Estimated output value for the given input.
          */
         template<typename T>
-        Eigen::Matrix<T, M, 1> Inference(const Eigen::Matrix<T, N, 1>& x) {
+        Eigen::Matrix<T, M, Eigen::Dynamic> Inference(const Eigen::Matrix<T, N, Eigen::Dynamic>& x) {
+//            LOG(INFO) << "O " << O;
 
-            Eigen::Matrix<T, 1, Eigen::Dynamic> k_x_transp(1, num_datapoints_);
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> k_x_transp(x.cols(), num_datapoints_);
             for (int i = 0; i < num_datapoints_; i++) {
                 // TODO Is it a problem here that inputs_.col(i) is of type float instead of T? Need to investigate
                 Eigen::Matrix<T, N, 1> input_i = inputs_.col(i).cast<T>();
-                k_x_transp(0, i) = kernel_->evaluateKernel(input_i, x);
+                for (int j = 0; j < x.cols(); j++) {
+//                    LOG(INFO) << " j  " << j;
+                    Eigen::Matrix<T, N, 1> eval_input = x.col(j);
+                    k_x_transp(j, i) = kernel_->evaluateKernel(input_i, eval_input);
+                }
             }
-            Eigen::Matrix<T, 1, M> mu_star_transp = k_x_transp * inv_gram_matrix_.cast<T>() * outputs_transp_.cast<T>();
+            Eigen::Matrix<T, Eigen::Dynamic, M> mu_star_transp = k_x_transp * inv_gram_matrix_.cast<T>() * outputs_transp_.cast<T>();
 
             return mu_star_transp.transpose();
         }
