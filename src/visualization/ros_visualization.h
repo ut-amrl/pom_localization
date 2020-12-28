@@ -30,6 +30,7 @@ namespace visualization {
                 pub_for_angle_mult_[i] = node_handle_.advertise<nav_msgs::OccupancyGrid>(topic_name, 2);
             }
             test_occ_pub_ = node_handle_.advertise<visualization_msgs::Marker>("test_occ_pub", 2);
+            ros::Duration(5).sleep();
         }
 
         void displayTrueTrajectory(const std::vector<pose::Pose3d> &true_trajectory) {
@@ -63,6 +64,7 @@ namespace visualization {
             std_msgs::ColorRGBA color;
             color.a = 1.0;
             color.r = 1.0;
+            color.b = 0.7;
 
             publishLinesToCarDetections(est_trajectory, relative_car_poses, color, kObservedFromEstCarDetectionLines);
             publishCarDetectionsRelToRobotPoses(est_trajectory, relative_car_poses, color, kObservedFromEstCarDetections);
@@ -73,6 +75,7 @@ namespace visualization {
             std_msgs::ColorRGBA color;
             color.a = 1.0;
             color.b = 1.0;
+            color.g = 0.7;
 
             publishLinesToCarDetections(odom_trajectory, relative_car_poses, color, kObservedFromOdomCarDetectionLines);
             publishCarDetectionsRelToRobotPoses(odom_trajectory, relative_car_poses, color, kObservedFromOdomCarDetections);
@@ -194,50 +197,32 @@ namespace visualization {
                         best_val = inf_val;
                     }
 
+                    if (inf_val > 1) {
+                        LOG(INFO) << "Inf val " << inf_val;
+                    }
+
+
                     nav_msgs::OccupancyGrid occ_grid_for_angle = occ_grids_by_angle[j];
+//                    LOG(INFO) << "Double val " << inf_val;
+//                    LOG(INFO) << std::to_string(((int8_t) (100 * inf_val)));
                     occ_grid_for_angle.data[i] = (int8_t) (100 * inf_val);
+//                    LOG(INFO) << std::to_string(occ_grid_for_angle.data[i]);
                     occ_grids_by_angle[j] = occ_grid_for_angle;
                 }
-                best_occ_grid.data[i] = best_val;
+                best_occ_grid.data[i] = (int8_t) (100 * best_val);
             }
 
-//            for (int y_val = y_min_unscaled; y_val <= y_max_unscaled; y_val++) {
-//                for (int x_val = x_min_unscaled; x_val <= x_max_unscaled; x_val++) {
-//                    long data_index = ((x_max_unscaled - x_min_unscaled + 1) * (y_val - y_min_unscaled)) + x_val - y_min_unscaled; // Should I switch x and y?
-//                    LOG(INFO) << "data index " << data_index;
-//                    double best_val = 0.0;
-//                    for (int i = -5; i <= 6; i++) {
-//                        double yaw = i * M_PI / 6;
-//                        ros::Publisher pub_for_angle = pub_for_angle_mult_[i];
-//                        LOG(INFO) << "Got publisher for angle";
-//
-//                        Eigen::Matrix<double, 3, 1> object_pose_2d;
-//                        object_pose_2d << (x_val * resolution), (y_val * resolution), yaw;
-////                        LOG(INFO) << "Getting regressor val";
-//                        Eigen::Matrix<double, 1, 1> regressor_val = regressor->Inference(object_pose_2d);
-////                        LOG(INFO) << "Full inf value";
-//                        double inf_val = regressor_val(0, 0);
-////                        LOG(INFO) << " Got regressor val";
-//                        if (inf_val > best_val) {
-//                            best_val = inf_val;
-//                        }
-//
-//                        nav_msgs::OccupancyGrid occ_grid_for_angle = occ_grids_by_angle[i];
-////                        LOG(INFO)<<"Setting data";
-//                        occ_grid_for_angle.data[data_index] = inf_val;
-////                        LOG(INFO)<<"Done setting data";
-//                        occ_grids_by_angle[i] = occ_grid_for_angle;
-//                    }
-////                    LOG(INFO)<<"Setting best data";
-//                    best_occ_grid.data[data_index] = best_val;
-////                    LOG(INFO)<<"Done setting best data";
-//                }
-//            }
-
             LOG(INFO) << "Publishing occ grid data";
+            std::string occ_data;
+            for (size_t i = 0; i < best_occ_grid.data.size(); i++) {
+                occ_data += std::to_string(best_occ_grid.data[i]);
+                occ_data += ", ";
+            }
+            LOG(INFO) << "Occ " << occ_data;
             regressor_max_val_for_pos_pub_.publish(best_occ_grid);
             for (int i = -5; i <= 6; i++) {
                 ros::Publisher publisher = pub_for_angle_mult_[i];
+
                 publisher.publish(occ_grids_by_angle[i]);
             }
         }
@@ -321,6 +306,7 @@ namespace visualization {
                 point.z = traj_pose.first.z();
                 marker_msg.points.emplace_back(point);
             }
+            LOG(INFO) << "Trajectory len " << marker_msg.points.size();
 
             marker_msg.pose.orientation.w = 1.0;
 
@@ -331,11 +317,20 @@ namespace visualization {
 
             visualization_msgs::Marker marker_msg;
 
+            marker_msg.scale.x = 0.5;
+            marker_msg.scale.y = 0.3;
+            marker_msg.scale.z = 0.15;
 
-            // TODO scale
-            // TODO type
-            // TODO pose
-            // TODO points
+            marker_msg.type = visualization_msgs::Marker::CUBE_LIST;
+            marker_msg.pose.orientation.w = 1.0;
+
+            for (const pose::Pose3d &car_pose : car_poses) {
+                geometry_msgs::Point point;
+                point.x = car_pose.first.x();
+                point.y = car_pose.first.y();
+                point.z = car_pose.first.z();
+                marker_msg.points.emplace_back(point);
+            }
 
             marker_msg.color = color;
             marker_msg.id = id;

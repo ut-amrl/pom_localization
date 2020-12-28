@@ -37,6 +37,7 @@ namespace gp_kernel {
 
         template<typename T>
         T evaluateKernel(const InputType<T>& x1, const InputType<T>& x2) {
+
             T scaled_distance = ((x1 - x2).squaredNorm() / math_util::Sq(static_cast<T>(length_)));
             return static_cast<T>(variance_) * exp(-0.5 * scaled_distance);
         }

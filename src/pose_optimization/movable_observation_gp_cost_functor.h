@@ -84,10 +84,12 @@ namespace pose_optimization {
             object_pose_2d << observation_3d.translation().x(), observation_3d.translation().y(), yaw;
 
             // TODO is this the correct form for the cost?
+            // Should we take square root, since the other one is squared later
             T inference_val = gp_->Inference<T>(object_pose_2d)(0, 0);
             LOG(INFO) << "Inference output " << inference_val;
 //            residuals[0] = -inference_val;
             residuals[0] = -log(inference_val + 0.0000000000001);
+//            residuals[0] = T(1) * inference_val;
             LOG(INFO) << "Residual " << residuals[0];
 
             return true;
