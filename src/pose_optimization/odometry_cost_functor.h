@@ -63,7 +63,7 @@ namespace pose_optimization {
             // Scale the residuals by the measurement uncertainty.
             residuals.applyOnTheLeft(sqrt_information_.template cast<T>());
 
-            LOG(INFO) << "Residuals " << residuals;
+//            LOG(INFO) << "Residuals " << residuals;
 
             return true;
         }

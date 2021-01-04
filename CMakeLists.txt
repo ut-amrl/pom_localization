@@ -35,6 +35,8 @@ include_directories(${EIGEN_INCLUDE_DIRS})
 link_directories(${EIGEN_LIBRARY_DIRS})
 find_package(Ceres REQUIRED)
 
+option(TESTING "Build tests" ON)
+
 SET(libs roslib roscpp rosbag glog gflags amrl_shared_lib lua5.1 ceres
     pthread)
 
@@ -52,3 +54,16 @@ TARGET_LINK_LIBRARIES(momo_pose_optimization ${libs})
 
 ROSBUILD_ADD_EXECUTABLE(momo_pose_optimization_test src/pose_optimization/movable_pose_optimization_test_main.cc)
 TARGET_LINK_LIBRARIES(momo_pose_optimization_test ${libs})
+
+#IF(TESTING)
+#  enable_testing()
+##  add_subdirectory(test)
+#
+#  ADD_EXECUTABLE(autodiff_gp_test
+#          test/pose_optimization/test_movable_observation_gp_cost_functor.cpp)
+#  TARGET_LINK_LIBRARIES(autodiff_gp_test
+#
+#          gtest
+#          gtest_main
+#          libs)
+#ENDIF()

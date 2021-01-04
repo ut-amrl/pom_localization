@@ -103,9 +103,11 @@ namespace gp_regression {
                     k_x_transp(j, i) = kernel_->evaluateKernel(input_i, eval_input);
                 }
             }
-            Eigen::Matrix<T, Eigen::Dynamic, M> mu_star_transp = k_x_transp * inv_gram_matrix_.cast<T>() * outputs_transp_.cast<T>();
 
-            return mu_star_transp.transpose();
+            return k_x_transp;
+//            Eigen::Matrix<T, Eigen::Dynamic, M> mu_star_transp = k_x_transp * inv_gram_matrix_.cast<T>() * outputs_transp_.cast<T>();
+//
+//            return mu_star_transp.transpose();
         }
 
     private:

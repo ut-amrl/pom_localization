@@ -38,6 +38,13 @@ namespace pose_optimization {
                                     pose_graph.getMovableObjGpRegressor(factor.observation_.semantic_class_),
                                     factor.observation_.observation_transl_,
                                     factor.observation_.observation_orientation_));
+//
+//                    ceres::CostFunction *cost_function = new ceres::NumericDiffCostFunction<pose_optimization::MovableObservationCostFunctor, ceres::CENTRAL, 1, 3, 4>(
+//                            new pose_optimization::MovableObservationCostFunctor(
+//                                    pose_graph.getMovableObjGpRegressor(factor.observation_.semantic_class_),
+//                                    factor.observation_.observation_transl_,
+//                                    factor.observation_.observation_orientation_));
+
 
                     problem->AddResidualBlock(cost_function, nullptr, pose_vars_.first->data(),
                                               pose_vars_.second->coeffs().data());
@@ -63,10 +70,10 @@ namespace pose_optimization {
                     LOG(ERROR) << "To node " << factor.to_node_ << " did not exist in the pose graph. Skipping odometry observation";
                     continue;
                 }
-                LOG(INFO) << "Odom factor " << factor.from_node_ << " to " << factor.to_node_ << ": " <<
-                factor.translation_change_ << ", " << factor.orientation_change_.w() << ", " <<
-                factor.orientation_change_.x() << ", " << factor.orientation_change_.y() << ", " <<
-                factor.orientation_change_.z();
+//                LOG(INFO) << "Odom factor " << factor.from_node_ << " to " << factor.to_node_ << ": " <<
+//                factor.translation_change_ << ", " << factor.orientation_change_.w() << ", " <<
+//                factor.orientation_change_.x() << ", " << factor.orientation_change_.y() << ", " <<
+//                factor.orientation_change_.z();
                 ceres::CostFunction *cost_function = new ceres::AutoDiffCostFunction<pose_optimization::OdometryCostFunctor, 6, 3, 4, 3, 4>(
                         new pose_optimization::OdometryCostFunctor(
                                 factor.translation_change_, factor.orientation_change_, factor.sqrt_information_));
@@ -79,22 +86,27 @@ namespace pose_optimization {
                 problem->SetParameterization(to_pose_vars_.second->coeffs().data(),
                                              quaternion_local_parameterization);
             }
-            std::pair<std::shared_ptr<Eigen::Vector3d>, std::shared_ptr<Eigen::Quaterniond>> start_pose_vars_;
-            pose_graph.getNodePosePointers(0, start_pose_vars_);
-            problem->SetParameterBlockConstant(start_pose_vars_.first->data());
-
-            problem->SetParameterBlockConstant(start_pose_vars_.second->coeffs().data());
+//            std::pair<std::shared_ptr<Eigen::Vector3d>, std::shared_ptr<Eigen::Quaterniond>> start_pose_vars_;
+//            pose_graph.getNodePosePointers(0, start_pose_vars_);
+//            problem->SetParameterBlockConstant(start_pose_vars_.first->data());
+//
+//            problem->SetParameterBlockConstant(start_pose_vars_.second->coeffs().data());
         }
 
         bool SolveOptimizationProblem(ceres::Problem* problem) {
             CHECK(problem != NULL);
             ceres::Solver::Options options;
-            options.max_num_iterations = 200;
+            options.max_num_iterations = 50;
             options.minimizer_progress_to_stdout = true;
+            options.function_tolerance = 1e-13;
             options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+            options.gradient_tolerance = 1e-15;
+//            options.minimizer_type = ceres::LINE_SEARCH;
+//            options.line_search_direction_type = ceres::STEEPEST_DESCENT;
             ceres::Solver::Summary summary;
             ceres::Solve(options, problem, &summary);
             std::cout << summary.FullReport() << '\n';
+
             return summary.IsSolutionUsable();
         }
     };
