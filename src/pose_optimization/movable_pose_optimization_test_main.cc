@@ -5,6 +5,8 @@
 #include <unsupported/Eigen/MatrixFunctions>
 #include <util/random.h>
 
+#include <gaussian_process/kernel_density_estimator.h>
+
 #include <base_lib/pose_reps.h>
 #include <visualization/ros_visualization.h>
 
@@ -158,10 +160,17 @@ int main(int argc, char** argv) {
 //    float orientation_kernel_len = 0.539952; // tODO get this from config
 //    float orientation_kernel_var = 15.7752; // TODO get this from config
 
-    float position_kernel_len = 0.669073; // tODO get this from config
-    float position_kernel_var = 20.539952; // TODO get this from config
-    float orientation_kernel_len = 0.539952; // tODO get this from config
-    float orientation_kernel_var = 15.7752; // TODO get this from config
+//    float position_kernel_len = 0.669073; // tODO get this from config
+
+    float position_kernel_len = 0.5; // tODO get this from config
+    float position_kernel_var = 2; // TODO get this from config
+//    float position_kernel_var = 1.0 / position_kernel_len; // TODO get this from config
+//    float position_kernel_var = 20.539952; // TODO get this from config
+//    float orientation_kernel_len = 0.539952; // tODO get this from config
+    float orientation_kernel_len = 0.3; // tODO get this from config
+    float orientation_kernel_var = 2; // TODO get this from config
+//    float orientation_kernel_var = 1.0 / orientation_kernel_len; // TODO get this from config
+//    float orientation_kernel_var = 15.7752; // TODO get this from config
 
 
 //    float movable_observation_x_std_dev = 0.6;
@@ -380,7 +389,9 @@ int main(int argc, char** argv) {
 
     std::vector<Pose3d> node_poses_list;
 
-    for (int j = 0; j < 10; j++) {
+//    for (int j = 0; j < 10; j++) {
+
+    for (int j = 0; j < 1; j++) {
         optimizer.SolveOptimizationProblem(&problem);
         LOG(INFO) << "Done solving optimization problem";
 
@@ -416,39 +427,47 @@ int main(int argc, char** argv) {
         manager.displayNoisyCarPosesFromOdomTrajectory(initial_node_positions, noisy_observations);
         ros::Duration(1).sleep();
     }
+//
+//    std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> regressor = pose_graph.getMovableObjGpRegressor(
+//            car_class);
 
-    std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> regressor = pose_graph.getMovableObjGpRegressor(
+    std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde = pose_graph.getMovableObjKde(
             car_class);
     for (size_t i = 1; i < noisy_observations.size(); i++) {
         std::vector<pose::Pose3d> relative_poses = noisy_observations[i];
         for (size_t j = 0; j < relative_poses.size(); j++) {
             Eigen::Vector3f transl = relative_poses[j].first.cast<float>();
             Eigen::Quaternionf rot = relative_poses[j].second.cast<float>();
-            pose_optimization::MovableObservationCostFunctor factor(regressor, transl, rot);
+            pose_optimization::MovableObservationCostFunctor factor(kde, transl, rot);
 
             double true_pose_residual;
             double est_pose_residual;
+            double init_pose_residual;
 
             Pose3d true_pose = robot_gt_poses_3d[i];
             Pose3d est_pose = node_poses_list[i-1];
+            Pose3d init_pose = initial_node_positions[i];
 
             factor(true_pose.first.data(), true_pose.second.coeffs().data(), &true_pose_residual);
 
             factor(est_pose.first.data(), est_pose.second.coeffs().data(), &est_pose_residual);
+            factor(init_pose.first.data(), init_pose.second.coeffs().data(), &init_pose_residual);
 
             LOG(INFO) << "Pose " << i << ", observation " << j;
             LOG(INFO) << "True pose residual " << true_pose_residual;
             LOG(INFO) << "Estimated pose residual " << est_pose_residual;
+            LOG(INFO) << "Init pose residual " << init_pose_residual;
 
         }
     }
 //    manager.displayMaxGpRegressorOutput(regressor, 0.1, -10.0, 15, -5, 20);
+    manager.displayMaxGpRegressorOutput(kde, 0.1, -10.0, 15, -5, 20);
 
     double yaw = - M_PI / 6;
 
     Eigen::Matrix<double, 3, Eigen::Dynamic> object_pose_2d(3, 1);
     object_pose_2d << 3, 7, yaw;
-    LOG(INFO) << regressor->Inference(object_pose_2d);
+    LOG(INFO) << kde->Inference(object_pose_2d);
 
     ros::spin();
 

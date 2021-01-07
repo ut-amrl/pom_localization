@@ -30,12 +30,14 @@ namespace pose_optimization {
                     continue;
                 }
 
-                std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> movable_object_regressor = pose_graph.getMovableObjGpRegressor(factor.observation_.semantic_class_);
-                if (movable_object_regressor) {
+//                std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> movable_object_regressor = pose_graph.getMovableObjGpRegressor(factor.observation_.semantic_class_);
+                std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> movable_object_kde = pose_graph.getMovableObjKde(factor.observation_.semantic_class_);
+                if (movable_object_kde) {
 
                     ceres::CostFunction *cost_function = new ceres::AutoDiffCostFunction<pose_optimization::MovableObservationCostFunctor, 1, 3, 4>(
                             new pose_optimization::MovableObservationCostFunctor(
-                                    pose_graph.getMovableObjGpRegressor(factor.observation_.semantic_class_),
+//                                    pose_graph.getMovableObjGpRegressor(factor.observation_.semantic_class_),
+                                    movable_object_kde,
                                     factor.observation_.observation_transl_,
                                     factor.observation_.observation_orientation_));
 //

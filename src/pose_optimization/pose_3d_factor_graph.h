@@ -11,6 +11,7 @@
 #include <gaussian_process/kernel/pose_2d_kernel.h>
 #include <memory>
 #include <unordered_set>
+#include <gaussian_process/kernel_density_estimator.h>
 
 
 namespace pose_graph {
@@ -233,34 +234,59 @@ namespace pose_graph {
          *
          * @param observations_by_class Observations by their class.
          */
+//        void addMapFrameObservations(const std::unordered_map<std::string, std::pair<std::vector<NegativeMovableObservation2D>, std::vector<MapObservation2D>>> &observations_by_class) {
+//            for (const auto &obs_by_class : observations_by_class) {
+//                Eigen::MatrixXf inputs;
+//                Eigen::MatrixXf outputs;
+//                if (getMatrixRepresentationOfDetections(obs_by_class.second, inputs, outputs)) {
+//                    auto gp_iter = movable_object_2d_gp_regressors_by_class_.find(obs_by_class.first);
+//                    std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> gp_regressor;
+//                    if (gp_iter != movable_object_2d_gp_regressors_by_class_.end()) {
+//                        gp_regressor = gp_iter->second;
+//                        gp_regressor->appendData(inputs, outputs);
+//                    } else {
+//                        gp_regressor = std::make_shared<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>>(inputs, outputs, &pose_2d_kernel_);
+//                    }
+//                    movable_object_2d_gp_regressors_by_class_[obs_by_class.first] = gp_regressor;
+//                }
+//            }
+//        }
+
         void addMapFrameObservations(const std::unordered_map<std::string, std::pair<std::vector<NegativeMovableObservation2D>, std::vector<MapObservation2D>>> &observations_by_class) {
             for (const auto &obs_by_class : observations_by_class) {
                 Eigen::MatrixXf inputs;
-                Eigen::MatrixXf outputs;
-                if (getMatrixRepresentationOfDetections(obs_by_class.second, inputs, outputs)) {
-                    auto gp_iter = movable_object_2d_gp_regressors_by_class_.find(obs_by_class.first);
-                    std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> gp_regressor;
-                    if (gp_iter != movable_object_2d_gp_regressors_by_class_.end()) {
-                        gp_regressor = gp_iter->second;
-                        gp_regressor->appendData(inputs, outputs);
+                if (getMatrixRepresentationOfDetections(obs_by_class.second.second, inputs)) {
+                    auto kde_iter = movable_object_2d_kdes_by_class_.find(obs_by_class.first);
+                    std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde;
+                    if (kde_iter != movable_object_2d_kdes_by_class_.end()) {
+                        kde = kde_iter->second;
+                        kde->appendData(inputs);
                     } else {
-                        gp_regressor = std::make_shared<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>>(inputs, outputs, &pose_2d_kernel_);
+                        kde = std::make_shared<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>>(inputs, &pose_2d_kernel_);
                     }
-                    movable_object_2d_gp_regressors_by_class_[obs_by_class.first] = gp_regressor;
+                    movable_object_2d_kdes_by_class_[obs_by_class.first] = kde;
                 }
             }
         }
+//
+//        /**
+//         * Get the movable object gp regressor for the given semantic class.
+//         *
+//         * @param class_label Class label to get the regressor for.
+//         *
+//         * @return Regressor (or null pointer if it doesn't exist).
+//         */
+//        std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> getMovableObjGpRegressor(const std::string &class_label) {
+//            auto regressor_iter = movable_object_2d_gp_regressors_by_class_.find(class_label);
+//            if (regressor_iter != movable_object_2d_gp_regressors_by_class_.end()) {
+//                return regressor_iter->second;
+//            }
+//            return nullptr;
+//        }
 
-        /**
-         * Get the movable object gp regressor for the given semantic class.
-         *
-         * @param class_label Class label to get the regressor for.
-         *
-         * @return Regressor (or null pointer if it doesn't exist).
-         */
-        std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> getMovableObjGpRegressor(const std::string &class_label) {
-            auto regressor_iter = movable_object_2d_gp_regressors_by_class_.find(class_label);
-            if (regressor_iter != movable_object_2d_gp_regressors_by_class_.end()) {
+        std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> getMovableObjKde(const std::string &class_label) {
+            auto regressor_iter = movable_object_2d_kdes_by_class_.find(class_label);
+            if (regressor_iter != movable_object_2d_kdes_by_class_.end()) {
                 return regressor_iter->second;
             }
             return nullptr;
@@ -321,10 +347,15 @@ namespace pose_graph {
         std::vector<GaussianBinaryFactor> binary_factors_;
 
         // TODO convert class labels to enum?
+//        /**
+//         * Movable object GP regressors, by their semantic class.
+//         */
+//        std::unordered_map<std::string, std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>>> movable_object_2d_gp_regressors_by_class_;
+
         /**
-         * Movable object GP regressors, by their semantic class.
+         * Movable object KDEs, by their semantic class.
          */
-        std::unordered_map<std::string, std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>>> movable_object_2d_gp_regressors_by_class_;
+        std::unordered_map<std::string, std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>>> movable_object_2d_kdes_by_class_;
 
         /**
          * Convert the negative and positive observations to a matrix of inputs and outputs representing the observations.
@@ -377,6 +408,26 @@ namespace pose_graph {
                     input_matrix(1, index) = neg_obs[i].transl_.y();
                     input_matrix(2, index) = angle;
                 }
+            }
+            return true;
+        }
+
+        bool getMatrixRepresentationOfDetections(
+                const std::vector<MapObservation2D> &pos_observations,
+                Eigen::MatrixXf &input_matrix) const {
+
+            size_t pos_obs_count = pos_observations.size();
+
+            if (pos_obs_count == 0) {
+                return false;
+            }
+
+            // Inputs should have 3 rows and as many columns as examples
+            input_matrix = Eigen::MatrixXf(3, pos_obs_count);
+            for (size_t i = 0; i < pos_obs_count; i++) {
+                input_matrix(0, i) = pos_observations[i].transl_.x();
+                input_matrix(1, i) = pos_observations[i].transl_.y();
+                input_matrix(2, i) = pos_observations[i].orientation_;
             }
             return true;
         }

@@ -99,8 +99,12 @@ namespace visualization {
             publishTrajectory(color, est_trajectory, kEstTrajectoryId);
         }
 
+//        void displayMaxGpRegressorOutput(
+//                std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> regressor,
+//                const double &resolution, const double &x_min, const double &x_max, const double &y_min,
+//                const double &y_max) {
         void displayMaxGpRegressorOutput(
-                std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> regressor,
+                std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde,
                 const double &resolution, const double &x_min, const double &x_max, const double &y_min,
                 const double &y_max) {
             int64_t x_min_unscaled = floor(x_min / resolution);
@@ -181,7 +185,8 @@ namespace visualization {
                 LOG(INFO) << "Getting regression value for angle index " << i;
 
                 LOG(INFO) << "Input size " << mats_by_angle[i].rows() << ", " << mats_by_angle[i].cols();
-                output_mats[i] = regressor->Inference(mats_by_angle[i]);
+//                output_mats[i] = regressor->Inference(mats_by_angle[i]);
+                output_mats[i] = kde->Inference(mats_by_angle[i]);
                 LOG(INFO) << "Output size " << output_mats[i].rows() << ", " << output_mats[i].cols();
                 LOG(INFO) << "Output " << output_mats[i];
             }

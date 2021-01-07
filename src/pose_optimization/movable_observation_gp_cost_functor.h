@@ -12,6 +12,7 @@
 #include <gaussian_process/gp_regression.h>
 #include <gaussian_process/kernel/periodic_gaussian_kernel.h>
 #include <gaussian_process/kernel/pose_2d_kernel.h>
+#include <gaussian_process/kernel_density_estimator.h>
 
 namespace pose_optimization {
 
@@ -34,10 +35,19 @@ namespace pose_optimization {
          * @param observation_transl        Translation component of the observation (in 3D).
          * @param observation_orientation   Orientation component of the observation (in 3D).
          */
+//        MovableObservationCostFunctor(
+//                std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> gp,
+//                Eigen::Vector3f &observation_transl, Eigen::Quaternionf &observation_orientation) :gp_(gp),
+//                observation_translation_(observation_transl), observation_orientation_(observation_orientation) {
+//
+//            observation_transform_.translation() = observation_translation_;
+//            observation_transform_.linear() = observation_orientation_.toRotationMatrix();
+//        }
+
         MovableObservationCostFunctor(
-                std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> gp,
-                Eigen::Vector3f &observation_transl, Eigen::Quaternionf &observation_orientation) :gp_(gp),
-                observation_translation_(observation_transl), observation_orientation_(observation_orientation) {
+                std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde,
+                Eigen::Vector3f &observation_transl, Eigen::Quaternionf &observation_orientation) :kde_(kde),
+                                                                                                   observation_translation_(observation_transl), observation_orientation_(observation_orientation) {
 
             observation_transform_.translation() = observation_translation_;
             observation_transform_.linear() = observation_orientation_.toRotationMatrix();
@@ -57,7 +67,8 @@ namespace pose_optimization {
 //            robot_quat_copy = robot_orientation;
 //            LOG(INFO) << robot_quat_copy.x() << ", " << robot_quat_copy.y() << ", " << robot_quat_copy.z() << ", " << robot_quat_copy.w();
 //            LOG(INFO) << " Rot mat: " << robot_quat_copy.toRotationMatrix();
-//            LOG(INFO) << "Orig rot mat " << robot_orientation.toRotationMatrix();
+            LOG(INFO) << "Translation " << robot_position;
+            LOG(INFO) << "Orig rot mat " << robot_orientation.toRotationMatrix();
 
             Eigen::Transform<T,3,Eigen::Affine> robot_tf =   Eigen::Transform<T, 3, Eigen::Affine>::Identity();
             robot_tf.translation() = robot_position;
@@ -86,25 +97,35 @@ namespace pose_optimization {
 
             // TODO is this the correct form for the cost?
             // Should we take square root, since the other one is squared later
-            T inference_val = gp_->Inference<T>(object_pose_2d)(0, 0);
+//            T inference_val = gp_->Inference<T>(object_pose_2d)(0, 0);
+            T inference_val = kde_->Inference<T>(object_pose_2d)(0, 0);
+
 //            LOG(INFO) << "Inference output " << inference_val;
 //            residuals[0] = -inference_val;
 
-//            residuals[0] = -log(inference_val);
+            residuals[0] = -log(inference_val);
 //            residuals[0] = log(inference_val + 0.0000000000001);
 
 //            residuals[0] = -log(0.9 * inference_val + 0.0000000000001);
-            residuals[0] = T(-20) * (T(2.0) - inference_val);
+//            residuals[0] = T(20) * (T(1.15) - inference_val);
             LOG(INFO) << "Residual " << residuals[0];
 
             return true;
         }
+//
+//        /**
+//         * Gaussian process regressor for evaluating the likelihood of the 2D projection of the object detection in
+//         * the map frame.
+//         */
+//        std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> gp_;
+
+
 
         /**
          * Gaussian process regressor for evaluating the likelihood of the 2D projection of the object detection in
          * the map frame.
          */
-        std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> gp_;
+        std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde_;
 
         /**
          * Translation component of the observation relative to the robot.
