@@ -17,7 +17,7 @@ namespace visualization {
     public:
 
         VisualizationManager(ros::NodeHandle &node_handle) : node_handle_(node_handle) {
-            marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("visualization_marker", 10);
+            marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("visualization_marker", 10000);
             regressor_max_val_for_pos_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>("regressor_max_val_for_pos", 2);
             for (int i = -5; i <= 6; i++) {
                 std::string angle_name;
@@ -47,7 +47,15 @@ namespace visualization {
             color.a = 1.0;
             color.g = 1.0;
 
-            publishCarPoses(true_car_poses, color, kCarGtPoses);
+            int32_t car_poses_count = true_car_poses.size();
+            for (int32_t i = 0; i < car_poses_count; i++) {
+                pose::Pose3d pose = true_car_poses[i];
+                publishCarPoses(pose, color, kCarGtPosesMin + i);
+            }
+
+            for (int32_t i = kCarGtPosesMin + car_poses_count; i <= kCarGtPosesMax; i++) {
+                removeMarker(i);
+            }
         }
 
         void displayNoisyCarPosesFromGt(const std::vector<pose::Pose3d> &gt_trajectory, const std::vector<std::vector<pose::Pose3d>> &relative_car_poses) {
@@ -57,7 +65,8 @@ namespace visualization {
             color.b = 1.0;
 
             publishLinesToCarDetections(gt_trajectory, relative_car_poses, color, kObservedFromGtCarDetectionLines);
-            publishCarDetectionsRelToRobotPoses(gt_trajectory, relative_car_poses, color, kObservedFromGtCarDetections);
+            publishCarDetectionsRelToRobotPoses(gt_trajectory, relative_car_poses, color,
+                                                kObservedFromGtCarDetectionsMin, kObservedFromGtCarDetectionsMax);
         }
 
         void displayNoisyCarPosesFromEstTrajectory(const std::vector<pose::Pose3d> &est_trajectory, const std::vector<std::vector<pose::Pose3d>> &relative_car_poses) {
@@ -67,7 +76,8 @@ namespace visualization {
             color.b = 0.7;
 
             publishLinesToCarDetections(est_trajectory, relative_car_poses, color, kObservedFromEstCarDetectionLines);
-            publishCarDetectionsRelToRobotPoses(est_trajectory, relative_car_poses, color, kObservedFromEstCarDetections);
+            publishCarDetectionsRelToRobotPoses(est_trajectory, relative_car_poses, color,
+                                                kObservedFromEstCarDetectionsMin, kObservedFromEstCarDetectionsMax);
         }
 
         void displayNoisyCarPosesFromOdomTrajectory(const std::vector<pose::Pose3d> &odom_trajectory, const std::vector<std::vector<pose::Pose3d>> &relative_car_poses) {
@@ -78,7 +88,8 @@ namespace visualization {
             color.g = 0.7;
 
             publishLinesToCarDetections(odom_trajectory, relative_car_poses, color, kObservedFromOdomCarDetectionLines);
-            publishCarDetectionsRelToRobotPoses(odom_trajectory, relative_car_poses, color, kObservedFromOdomCarDetections);
+            publishCarDetectionsRelToRobotPoses(odom_trajectory, relative_car_poses, color,
+                                                kObservedFromOdomCarDetectionsMin, kObservedFromOdomCarDetectionsMax);
         }
 
         void displayOdomTrajectory(const std::vector<pose::Pose3d> &odom_trajectory) {
@@ -232,6 +243,173 @@ namespace visualization {
             }
         }
 
+        void displayPoseResiduals(pose_optimization::MovableObservationCostFunctor cost_functor,
+                                  const double &resolution, const double &x_min, const double &x_max, const double &y_min,
+                                  const double &y_max) {
+            int64_t x_min_unscaled = floor(x_min / resolution);
+            int64_t x_max_unscaled = ceil(x_max / resolution);
+            int64_t y_min_unscaled = floor(y_min / resolution);
+            int64_t y_max_unscaled = ceil(y_max / resolution);
+
+            LOG(INFO) << "Creating best occ grid";
+
+            nav_msgs::OccupancyGrid best_occ_grid;
+            best_occ_grid.header.frame_id = kVizFrame;
+            best_occ_grid.header.stamp = ros::Time::now();
+            best_occ_grid.info.resolution = resolution;
+            best_occ_grid.info.origin.position.z = -3;
+            best_occ_grid.info.origin.position.x = x_min_unscaled * resolution;
+            best_occ_grid.info.origin.position.y = y_min_unscaled * resolution;
+            best_occ_grid.info.origin.orientation.w = 1.0;
+            best_occ_grid.info.width = x_max_unscaled - x_min_unscaled + 1;
+            best_occ_grid.info.height = y_max_unscaled - y_min_unscaled + 1;
+            best_occ_grid.data.resize(best_occ_grid.info.width * best_occ_grid.info.height);
+
+            nav_msgs::OccupancyGrid test_grid;
+            test_grid = best_occ_grid;
+
+            std::unordered_map<int, nav_msgs::OccupancyGrid> occ_grids_by_angle;
+            LOG(INFO) << "Creating occ grids";
+
+            for (int i = -5; i <= 6; i++) {
+                nav_msgs::OccupancyGrid occ_grid;
+                occ_grid.header.frame_id = kVizFrame;
+                occ_grid.header.stamp = ros::Time::now();
+                occ_grid.info.resolution = resolution;
+                occ_grid.info.origin.position.z = -10 + i;
+                occ_grid.info.origin.position.x = x_min_unscaled * resolution;
+                occ_grid.info.origin.position.y = y_min_unscaled * resolution;
+                occ_grid.info.origin.orientation.w = 1.0;
+                occ_grid.info.width = x_max_unscaled - x_min_unscaled + 1;
+                occ_grid.info.height = y_max_unscaled - y_min_unscaled + 1;
+                occ_grid.data.resize(occ_grid.info.width * occ_grid.info.height);
+                occ_grids_by_angle[i] = occ_grid;
+            }
+
+            LOG(INFO) << "Looping through vals";
+
+            int size = best_occ_grid.info.width * best_occ_grid.info.height;
+
+//            std::vector<double, grid
+
+//            std::unordered_map<int, Eigen::Matrix<double, 3, Eigen::Dynamic>> mats_by_angle;
+//            for (int i = -5; i <= 6; i++) {
+//                mats_by_angle[i] = Eigen::Matrix<double, 3, Eigen::Dynamic>(3, size);
+//            }
+
+            LOG(INFO) << "Creating input matrices for different angles";
+
+
+            std::unordered_map<int, Eigen::Matrix<double, 1, Eigen::Dynamic>> output_mats;
+            for (int i = -5; i <= 6; i++) {
+
+                double yaw = i * M_PI / 6;
+                LOG(INFO) << "Grid yaw for i=" << i << ": " << yaw;
+
+                Eigen::Quaterniond quat(cos(yaw/2), 0, 0, sin(yaw/2));
+                LOG(INFO) << "Quaternion " << quat.coeffs();
+                Eigen::Matrix<double, 1, Eigen::Dynamic> output_mat = Eigen::Matrix<double, 1, Eigen::Dynamic>(1, size);
+                for (int y_val = y_min_unscaled; y_val <= y_max_unscaled; y_val++) {
+                    for (int x_val = x_min_unscaled; x_val <= x_max_unscaled; x_val++) {
+
+                        long data_index = (best_occ_grid.info.width * (y_val - y_min_unscaled)) + x_val -
+                                          x_min_unscaled; // Should I switch x and y?
+
+//                    long data_index = (best_occ_grid.info.height * (x_val - x_min_unscaled)) + y_val - y_min_unscaled; // Should I switch x and y?
+
+
+                        Eigen::Matrix<double, 3, 1> object_pose_2d;
+                        double residual;
+                        Eigen::Vector3d transl(x_val * resolution, y_val * resolution, 0);
+//                        LOG(INFO) << "Transl for robot: " << transl;
+
+
+                        cost_functor(transl.data(), quat.coeffs().data(), &residual);
+//
+//                        if (residual < 0) {
+//                            LOG(INFO) << "Neg residual " << residual;
+//                        }
+//
+//                        output_mat(0, data_index) = std::exp(-residual);
+                        if (residual < 100) {
+
+                            output_mat(0, data_index) = residual;
+                        } else {
+                            output_mat(0, data_index) = 100;
+                        }
+//                        mats_by_angle[i] = mat_for_angle;
+
+
+                }
+            }
+            output_mats[i] = output_mat;
+        }
+
+//            for (int i = -5; i <= 6; i++) {
+//                LOG(INFO) << "Getting regression value for angle index " << i;
+//
+//                LOG(INFO) << "Input size " << mats_by_angle[i].rows() << ", " << mats_by_angle[i].cols();
+////                output_mats[i] = regressor->Inference(mats_by_angle[i]);
+//
+//                Eigen::Matrix<double
+//                Eigen::Matrix<double, 1, Eigen::Dynamic> mat_for_angle(1, mats_by_angle[i].cols());
+//                for (int j = 0; j < mats_by_angle[i].cols(); j++) {
+//                    double residual;
+//                    double x = mats_by_angle[]
+//
+////                    bool operator()(const T* const robot_position_ptr, const T* const robot_orientation_ptr, T* residuals) const {
+////                        factor()
+//                }
+////                }
+//                output_mats[i] = mat_for_angle;
+//                LOG(INFO) << "Output size " << output_mats[i].rows() << ", " << output_mats[i].cols();
+//                LOG(INFO) << "Output " << output_mats[i];
+//            }
+
+            LOG(INFO) << "Setting occupancy grid data";
+
+            for (int i = 0; i < size; i++) {
+                double best_val = 100.0;
+                for (int j = -5; j <= 6; j++) {
+                    ros::Publisher pub_for_angle = pub_for_angle_mult_[i];
+                    double inf_val = output_mats[j](0, i);
+                    if (inf_val < best_val) {
+                        best_val = inf_val;
+                    }
+
+//                    if (inf_val > 1) {
+//                        LOG(INFO) << "Inf val " << inf_val;
+//                    }
+
+
+                    nav_msgs::OccupancyGrid occ_grid_for_angle = occ_grids_by_angle[j];
+//                    LOG(INFO) << "Double val " << inf_val;
+//                    LOG(INFO) << std::to_string(((int8_t) (100 * inf_val)));
+//                    occ_grid_for_angle.data[i] = (int8_t) (100 * inf_val);
+                    occ_grid_for_angle.data[i] = (int8_t) (inf_val);
+//                    LOG(INFO) << std::to_string(occ_grid_for_angle.data[i]);
+                    occ_grids_by_angle[j] = occ_grid_for_angle;
+                }
+
+                best_occ_grid.data[i] = (int8_t) (best_val);
+//                best_occ_grid.data[i] = (int8_t) (100 * best_val);
+            }
+
+            LOG(INFO) << "Publishing occ grid data";
+            std::string occ_data;
+            for (size_t i = 0; i < best_occ_grid.data.size(); i++) {
+                occ_data += std::to_string(best_occ_grid.data[i]);
+                occ_data += ", ";
+            }
+//            LOG(INFO) << "Occ " << occ_data;
+            regressor_max_val_for_pos_pub_.publish(best_occ_grid);
+            for (int i = -5; i <= 6; i++) {
+                ros::Publisher publisher = pub_for_angle_mult_[i];
+
+                publisher.publish(occ_grids_by_angle[i]);
+            }
+        }
+
     private:
 
         const std::string kVizFrame = "map";
@@ -244,20 +422,21 @@ namespace visualization {
 
         const int32_t kGtTrajectoryId = 3;
 
-        const int32_t kCarGtPoses = 4;
+        const int32_t kObservedFromGtCarDetectionLines = 4;
+        const int32_t kObservedFromOdomCarDetectionLines = 5;
+        const int32_t kObservedFromEstCarDetectionLines = 6;
 
-        const int32_t kObservedFromGtCarDetections = 5;
+        // TODO might need to increase these
+        const int32_t kMaxObservationsToDisplay = 200;
+        const int32_t kObservedFromGtCarDetectionsMin = 100;
+        const int32_t kObservedFromOdomCarDetectionsMin = kObservedFromGtCarDetectionsMin + kMaxObservationsToDisplay;
+        const int32_t kObservedFromEstCarDetectionsMin = kObservedFromOdomCarDetectionsMin + kMaxObservationsToDisplay;
+        const int32_t kCarGtPosesMin = kObservedFromEstCarDetectionsMin + kMaxObservationsToDisplay;
 
-        const int32_t kObservedFromGtCarDetectionLines = 6;
-
-
-        const int32_t kObservedFromOdomCarDetections = 7;
-
-        const int32_t kObservedFromOdomCarDetectionLines = 8;
-
-        const int32_t kObservedFromEstCarDetections = 9;
-
-        const int32_t kObservedFromEstCarDetectionLines = 10;
+        const int32_t kObservedFromGtCarDetectionsMax = kObservedFromOdomCarDetectionsMin - 1;
+        const int32_t kObservedFromOdomCarDetectionsMax = kObservedFromEstCarDetectionsMin - 1;
+        const int32_t kObservedFromEstCarDetectionsMax = kCarGtPosesMin - 1;
+        const int32_t kCarGtPosesMax = kCarGtPosesMin + kMaxObservationsToDisplay - 1;
 
         /**
          * Node handle.
@@ -271,6 +450,7 @@ namespace visualization {
 
 
         ros::Publisher regressor_max_val_for_pos_pub_;
+
         ros::Publisher test_occ_pub_;
 //
 //        ros::Publisher regressor_val_for_neg_150_pub_;
@@ -296,6 +476,18 @@ namespace visualization {
             marker_pub_.publish(marker_msg);
         }
 
+        void removeMarker(const int32_t id_to_remove) {
+            visualization_msgs::Marker marker_msg;
+
+            marker_msg.id = id_to_remove;
+            marker_msg.header.frame_id = kVizFrame;
+            marker_msg.header.stamp = ros::Time();
+            marker_msg.ns = "momo_demo";
+            marker_msg.action = visualization_msgs::Marker::DELETE;
+//            LOG(INFO) << "Publishing vis msg";
+            marker_pub_.publish(marker_msg);
+        }
+
         void publishTrajectory(const std_msgs::ColorRGBA &color, const std::vector<pose::Pose3d> &trajectory_poses,
                                const int32_t &id) {
             visualization_msgs::Marker marker_msg;
@@ -318,7 +510,7 @@ namespace visualization {
             publishMarker(marker_msg);
         }
 
-        void publishCarPoses(const std::vector<pose::Pose3d> &car_poses, const std_msgs::ColorRGBA &color, const int32_t id) {
+        void publishCarPoses(pose::Pose3d &car_pose, const std_msgs::ColorRGBA &color, const int32_t id) {
 
             visualization_msgs::Marker marker_msg;
 
@@ -326,16 +518,16 @@ namespace visualization {
             marker_msg.scale.y = 0.3;
             marker_msg.scale.z = 0.15;
 
-            marker_msg.type = visualization_msgs::Marker::CUBE_LIST;
-            marker_msg.pose.orientation.w = 1.0;
+            marker_msg.pose.position.x = car_pose.first.x();
+            marker_msg.pose.position.y = car_pose.first.y();
+            marker_msg.pose.position.z = car_pose.first.z();
 
-            for (const pose::Pose3d &car_pose : car_poses) {
-                geometry_msgs::Point point;
-                point.x = car_pose.first.x();
-                point.y = car_pose.first.y();
-                point.z = car_pose.first.z();
-                marker_msg.points.emplace_back(point);
-            }
+            marker_msg.pose.orientation.w = car_pose.second.w();
+            marker_msg.pose.orientation.x = car_pose.second.x();
+            marker_msg.pose.orientation.y = car_pose.second.y();
+            marker_msg.pose.orientation.z = car_pose.second.z();
+
+            marker_msg.type = visualization_msgs::Marker::CUBE;
 
             marker_msg.color = color;
             marker_msg.id = id;
@@ -345,16 +537,20 @@ namespace visualization {
 
         void publishCarDetectionsRelToRobotPoses(const std::vector<pose::Pose3d> &robot_poses,
                                                  const std::vector<std::vector<pose::Pose3d>> &car_detections,
-                                                 const std_msgs::ColorRGBA &color, const int32_t id) {
-            std::vector<pose::Pose3d> car_poses_map_frame;
+                                                 const std_msgs::ColorRGBA &color, const int32_t min_id, const int32_t max_id) {
+
             for (size_t i = 0; i < robot_poses.size(); i++) {
                 pose::Pose3d robot_pose = robot_poses[i];
                 for (const pose::Pose3d &car_detection : car_detections[i]) {
-                    car_poses_map_frame.emplace_back(pose::combinePoses(robot_pose, car_detection));
+                    pose::Pose3d car_pose = pose::combinePoses(robot_pose, car_detection);
+                    publishCarPoses(car_pose, color, min_id + i);
                 }
             }
 
-            publishCarPoses(car_poses_map_frame, color, id);
+
+            for (int32_t i = robot_poses.size() + min_id; i <= max_id; i++) {
+                removeMarker(i);
+            }
         }
 
         void publishLinesToCarDetections(const std::vector<pose::Pose3d> &robot_poses,

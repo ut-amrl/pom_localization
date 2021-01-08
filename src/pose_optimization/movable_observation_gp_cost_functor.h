@@ -67,8 +67,8 @@ namespace pose_optimization {
 //            robot_quat_copy = robot_orientation;
 //            LOG(INFO) << robot_quat_copy.x() << ", " << robot_quat_copy.y() << ", " << robot_quat_copy.z() << ", " << robot_quat_copy.w();
 //            LOG(INFO) << " Rot mat: " << robot_quat_copy.toRotationMatrix();
-            LOG(INFO) << "Translation " << robot_position;
-            LOG(INFO) << "Orig rot mat " << robot_orientation.toRotationMatrix();
+//            LOG(INFO) << "Translation " << robot_position;
+//            LOG(INFO) << "Orig rot mat " << robot_orientation.toRotationMatrix();
 
             Eigen::Transform<T,3,Eigen::Affine> robot_tf =   Eigen::Transform<T, 3, Eigen::Affine>::Identity();
             robot_tf.translation() = robot_position;
@@ -108,7 +108,7 @@ namespace pose_optimization {
 
 //            residuals[0] = -log(0.9 * inference_val + 0.0000000000001);
 //            residuals[0] = T(20) * (T(1.15) - inference_val);
-            LOG(INFO) << "Residual " << residuals[0];
+//            LOG(INFO) << "Residual " << residuals[0];
 
             return true;
         }

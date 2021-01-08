@@ -95,14 +95,19 @@ namespace pose_optimization {
 //            problem->SetParameterBlockConstant(start_pose_vars_.second->coeffs().data());
         }
 
-        bool SolveOptimizationProblem(ceres::Problem* problem) {
+        bool SolveOptimizationProblem(ceres::Problem* problem, std::vector<ceres::IterationCallback*> callbacks) {
             CHECK(problem != NULL);
             ceres::Solver::Options options;
-            options.max_num_iterations = 50;
+            options.max_num_iterations = 100000;
             options.minimizer_progress_to_stdout = true;
             options.function_tolerance = 1e-13;
             options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
             options.gradient_tolerance = 1e-15;
+            options.parameter_tolerance = 1e-20;
+            options.callbacks = callbacks;
+            if (!callbacks.empty()) {
+                options.update_state_every_iteration = true;
+            }
 //            options.minimizer_type = ceres::LINE_SEARCH;
 //            options.line_search_direction_type = ceres::STEEPEST_DESCENT;
             ceres::Solver::Summary summary;
