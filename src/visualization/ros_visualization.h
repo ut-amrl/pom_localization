@@ -17,8 +17,11 @@ namespace visualization {
     public:
 
         VisualizationManager(ros::NodeHandle &node_handle) : node_handle_(node_handle) {
-            marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("visualization_marker", 10000);
+            gt_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("gt_visualization_marker", 250);
+            est_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("est_pos_marker", 250);
+            odom_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("odom_pos_marker", 250);
             regressor_max_val_for_pos_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>("regressor_max_val_for_pos", 2);
+            robot_pose_max_val_pub_  = node_handle_.advertise<nav_msgs::OccupancyGrid>("robot_pose_max_val", 2);
             for (int i = -5; i <= 6; i++) {
                 std::string angle_name;
                 if (i < 0) {
@@ -26,10 +29,11 @@ namespace visualization {
                 }
                 angle_name += std::to_string(abs(30 * i));
 
-                std::string topic_name = "regressor_" + angle_name + "_val";
-                pub_for_angle_mult_[i] = node_handle_.advertise<nav_msgs::OccupancyGrid>(topic_name, 2);
+                std::string obj_heat_topic_name = "regressor_" + angle_name + "_val";
+                std::string robot_pose_topic_name = "robot_pose_" + angle_name + "_val";
+                pub_for_angle_mult_[i] = node_handle_.advertise<nav_msgs::OccupancyGrid>(obj_heat_topic_name, 2);
+                robot_pose_pub_for_angle_mult_[i] = node_handle_.advertise<nav_msgs::OccupancyGrid>(robot_pose_topic_name, 2);
             }
-            test_occ_pub_ = node_handle_.advertise<visualization_msgs::Marker>("test_occ_pub", 2);
             ros::Duration(5).sleep();
         }
 
@@ -39,7 +43,7 @@ namespace visualization {
             color.a = 1.0;
             color.g = 1.0;
 
-            publishTrajectory(color, true_trajectory, kGtTrajectoryId);
+            publishTrajectory(gt_marker_pub_, color, true_trajectory, kGtTrajectoryId);
         }
 
         void displayTrueCarPoses(const std::vector<pose::Pose3d> &true_car_poses) {
@@ -50,12 +54,12 @@ namespace visualization {
             int32_t car_poses_count = true_car_poses.size();
             for (int32_t i = 0; i < car_poses_count; i++) {
                 pose::Pose3d pose = true_car_poses[i];
-                publishCarPoses(pose, color, kCarGtPosesMin + i);
+                publishCarPoses(gt_marker_pub_, pose, color, kCarGtPosesMin + i);
             }
 
-            for (int32_t i = kCarGtPosesMin + car_poses_count; i <= kCarGtPosesMax; i++) {
-                removeMarker(i);
-            }
+//            for (int32_t i = kCarGtPosesMin + car_poses_count; i <= kCarGtPosesMax; i++) {
+//                removeMarker(i, gt_marker_pub_);
+//            }
         }
 
         void displayNoisyCarPosesFromGt(const std::vector<pose::Pose3d> &gt_trajectory, const std::vector<std::vector<pose::Pose3d>> &relative_car_poses) {
@@ -64,8 +68,8 @@ namespace visualization {
             color.g = 1.0;
             color.b = 1.0;
 
-            publishLinesToCarDetections(gt_trajectory, relative_car_poses, color, kObservedFromGtCarDetectionLines);
-            publishCarDetectionsRelToRobotPoses(gt_trajectory, relative_car_poses, color,
+            publishLinesToCarDetections(gt_marker_pub_, gt_trajectory, relative_car_poses, color, kObservedFromGtCarDetectionLines);
+            publishCarDetectionsRelToRobotPoses(gt_marker_pub_, gt_trajectory, relative_car_poses, color,
                                                 kObservedFromGtCarDetectionsMin, kObservedFromGtCarDetectionsMax);
         }
 
@@ -75,8 +79,8 @@ namespace visualization {
             color.r = 1.0;
             color.b = 0.7;
 
-            publishLinesToCarDetections(est_trajectory, relative_car_poses, color, kObservedFromEstCarDetectionLines);
-            publishCarDetectionsRelToRobotPoses(est_trajectory, relative_car_poses, color,
+            publishLinesToCarDetections(est_marker_pub_, est_trajectory, relative_car_poses, color, kObservedFromEstCarDetectionLines);
+            publishCarDetectionsRelToRobotPoses(est_marker_pub_, est_trajectory, relative_car_poses, color,
                                                 kObservedFromEstCarDetectionsMin, kObservedFromEstCarDetectionsMax);
         }
 
@@ -87,8 +91,8 @@ namespace visualization {
             color.b = 1.0;
             color.g = 0.7;
 
-            publishLinesToCarDetections(odom_trajectory, relative_car_poses, color, kObservedFromOdomCarDetectionLines);
-            publishCarDetectionsRelToRobotPoses(odom_trajectory, relative_car_poses, color,
+            publishLinesToCarDetections(odom_marker_pub_, odom_trajectory, relative_car_poses, color, kObservedFromOdomCarDetectionLines);
+            publishCarDetectionsRelToRobotPoses(odom_marker_pub_, odom_trajectory, relative_car_poses, color,
                                                 kObservedFromOdomCarDetectionsMin, kObservedFromOdomCarDetectionsMax);
         }
 
@@ -98,7 +102,7 @@ namespace visualization {
             color.a = 1.0;
             color.b = 1.0;
 
-            publishTrajectory(color, odom_trajectory, kOdomTrajectoryId);
+            publishTrajectory(odom_marker_pub_, color, odom_trajectory, kOdomTrajectoryId);
         }
 
         void displayEstTrajectory(const std::vector<pose::Pose3d> &est_trajectory) {
@@ -107,7 +111,7 @@ namespace visualization {
             color.a = 1.0;
             color.r = 1.0;
 
-            publishTrajectory(color, est_trajectory, kEstTrajectoryId);
+            publishTrajectory(est_marker_pub_, color, est_trajectory, kEstTrajectoryId);
         }
 
 //        void displayMaxGpRegressorOutput(
@@ -251,13 +255,13 @@ namespace visualization {
             int64_t y_min_unscaled = floor(y_min / resolution);
             int64_t y_max_unscaled = ceil(y_max / resolution);
 
-            LOG(INFO) << "Creating best occ grid";
+//            LOG(INFO) << "Creating best occ grid";
 
             nav_msgs::OccupancyGrid best_occ_grid;
             best_occ_grid.header.frame_id = kVizFrame;
             best_occ_grid.header.stamp = ros::Time::now();
             best_occ_grid.info.resolution = resolution;
-            best_occ_grid.info.origin.position.z = -3;
+            best_occ_grid.info.origin.position.z = -18;
             best_occ_grid.info.origin.position.x = x_min_unscaled * resolution;
             best_occ_grid.info.origin.position.y = y_min_unscaled * resolution;
             best_occ_grid.info.origin.orientation.w = 1.0;
@@ -269,14 +273,14 @@ namespace visualization {
             test_grid = best_occ_grid;
 
             std::unordered_map<int, nav_msgs::OccupancyGrid> occ_grids_by_angle;
-            LOG(INFO) << "Creating occ grids";
+//            LOG(INFO) << "Creating occ grids";
 
             for (int i = -5; i <= 6; i++) {
                 nav_msgs::OccupancyGrid occ_grid;
                 occ_grid.header.frame_id = kVizFrame;
                 occ_grid.header.stamp = ros::Time::now();
                 occ_grid.info.resolution = resolution;
-                occ_grid.info.origin.position.z = -10 + i;
+                occ_grid.info.origin.position.z = -25 + i;
                 occ_grid.info.origin.position.x = x_min_unscaled * resolution;
                 occ_grid.info.origin.position.y = y_min_unscaled * resolution;
                 occ_grid.info.origin.orientation.w = 1.0;
@@ -286,7 +290,7 @@ namespace visualization {
                 occ_grids_by_angle[i] = occ_grid;
             }
 
-            LOG(INFO) << "Looping through vals";
+//            LOG(INFO) << "Looping through vals";
 
             int size = best_occ_grid.info.width * best_occ_grid.info.height;
 
@@ -297,7 +301,7 @@ namespace visualization {
 //                mats_by_angle[i] = Eigen::Matrix<double, 3, Eigen::Dynamic>(3, size);
 //            }
 
-            LOG(INFO) << "Creating input matrices for different angles";
+//            LOG(INFO) << "Creating input matrices for different angles";
 
 
             std::unordered_map<int, Eigen::Matrix<double, 1, Eigen::Dynamic>> output_mats;
@@ -307,7 +311,7 @@ namespace visualization {
                 LOG(INFO) << "Grid yaw for i=" << i << ": " << yaw;
 
                 Eigen::Quaterniond quat(cos(yaw/2), 0, 0, sin(yaw/2));
-                LOG(INFO) << "Quaternion " << quat.coeffs();
+//                LOG(INFO) << "Quaternion " << quat.coeffs();
                 Eigen::Matrix<double, 1, Eigen::Dynamic> output_mat = Eigen::Matrix<double, 1, Eigen::Dynamic>(1, size);
                 for (int y_val = y_min_unscaled; y_val <= y_max_unscaled; y_val++) {
                     for (int x_val = x_min_unscaled; x_val <= x_max_unscaled; x_val++) {
@@ -366,7 +370,7 @@ namespace visualization {
 //                LOG(INFO) << "Output " << output_mats[i];
 //            }
 
-            LOG(INFO) << "Setting occupancy grid data";
+//            LOG(INFO) << "Setting occupancy grid data";
 
             for (int i = 0; i < size; i++) {
                 double best_val = 100.0;
@@ -395,16 +399,16 @@ namespace visualization {
 //                best_occ_grid.data[i] = (int8_t) (100 * best_val);
             }
 
-            LOG(INFO) << "Publishing occ grid data";
+//            LOG(INFO) << "Publishing occ grid data";
             std::string occ_data;
             for (size_t i = 0; i < best_occ_grid.data.size(); i++) {
                 occ_data += std::to_string(best_occ_grid.data[i]);
                 occ_data += ", ";
             }
 //            LOG(INFO) << "Occ " << occ_data;
-            regressor_max_val_for_pos_pub_.publish(best_occ_grid);
+            robot_pose_max_val_pub_.publish(best_occ_grid);
             for (int i = -5; i <= 6; i++) {
-                ros::Publisher publisher = pub_for_angle_mult_[i];
+                ros::Publisher publisher = robot_pose_pub_for_angle_mult_[i];
 
                 publisher.publish(occ_grids_by_angle[i]);
             }
@@ -443,40 +447,28 @@ namespace visualization {
          */
         ros::NodeHandle node_handle_;
 
-        ros::Publisher marker_pub_;
+        ros::Publisher gt_marker_pub_;
+        ros::Publisher est_marker_pub_;
+        ros::Publisher odom_marker_pub_;
 
 
         std::unordered_map<int32_t, ros::Publisher> pub_for_angle_mult_;
+        std::unordered_map<int32_t, ros::Publisher> robot_pose_pub_for_angle_mult_;
 
+        ros::Publisher robot_pose_max_val_pub_;
 
         ros::Publisher regressor_max_val_for_pos_pub_;
 
-        ros::Publisher test_occ_pub_;
-//
-//        ros::Publisher regressor_val_for_neg_150_pub_;
-//        ros::Publisher regressor_val_for_neg_120_pub_;
-//        ros::Publisher regressor_val_for_neg_90_pub_;
-//        ros::Publisher regressor_val_for_neg_60_pub_;
-//        ros::Publisher regressor_val_for_neg_30_pub_;
-//        ros::Publisher regressor_val_for_0_pub_;
-//        ros::Publisher regressor_val_for_30_pub_;
-//        ros::Publisher regressor_val_for_60_pub_;
-//        ros::Publisher regressor_val_for_90_pub_;
-//        ros::Publisher regressor_val_for_120_pub_;
-//        ros::Publisher regressor_val_for_150_pub_;
-//        ros::Publisher regressor_val_for_180_pub_;
-
-
-        void publishMarker(visualization_msgs::Marker &marker_msg) {
+        void publishMarker(visualization_msgs::Marker &marker_msg, ros::Publisher &marker_pub) {
             marker_msg.header.frame_id = kVizFrame;
             marker_msg.header.stamp = ros::Time();
             marker_msg.ns = "momo_demo";
             marker_msg.action = visualization_msgs::Marker::ADD;
-            LOG(INFO) << "Publishing vis msg";
-            marker_pub_.publish(marker_msg);
+//            LOG(INFO) << "Publishing vis msg";
+            marker_pub.publish(marker_msg);
         }
 
-        void removeMarker(const int32_t id_to_remove) {
+        void removeMarker(const int32_t id_to_remove, ros::Publisher &marker_pub) {
             visualization_msgs::Marker marker_msg;
 
             marker_msg.id = id_to_remove;
@@ -485,10 +477,10 @@ namespace visualization {
             marker_msg.ns = "momo_demo";
             marker_msg.action = visualization_msgs::Marker::DELETE;
 //            LOG(INFO) << "Publishing vis msg";
-            marker_pub_.publish(marker_msg);
+            marker_pub.publish(marker_msg);
         }
 
-        void publishTrajectory(const std_msgs::ColorRGBA &color, const std::vector<pose::Pose3d> &trajectory_poses,
+        void publishTrajectory(ros::Publisher &marker_pub, const std_msgs::ColorRGBA &color, const std::vector<pose::Pose3d> &trajectory_poses,
                                const int32_t &id) {
             visualization_msgs::Marker marker_msg;
             marker_msg.id = id;
@@ -507,10 +499,10 @@ namespace visualization {
 
             marker_msg.pose.orientation.w = 1.0;
 
-            publishMarker(marker_msg);
+            publishMarker(marker_msg, marker_pub);
         }
 
-        void publishCarPoses(pose::Pose3d &car_pose, const std_msgs::ColorRGBA &color, const int32_t id) {
+        void publishCarPoses(ros::Publisher &marker_pub, pose::Pose3d &car_pose, const std_msgs::ColorRGBA &color, const int32_t id) {
 
             visualization_msgs::Marker marker_msg;
 
@@ -532,10 +524,10 @@ namespace visualization {
             marker_msg.color = color;
             marker_msg.id = id;
 
-            publishMarker(marker_msg);
+            publishMarker(marker_msg, marker_pub);
         }
 
-        void publishCarDetectionsRelToRobotPoses(const std::vector<pose::Pose3d> &robot_poses,
+        void publishCarDetectionsRelToRobotPoses(ros::Publisher &marker_pub, const std::vector<pose::Pose3d> &robot_poses,
                                                  const std::vector<std::vector<pose::Pose3d>> &car_detections,
                                                  const std_msgs::ColorRGBA &color, const int32_t min_id, const int32_t max_id) {
 
@@ -543,17 +535,17 @@ namespace visualization {
                 pose::Pose3d robot_pose = robot_poses[i];
                 for (const pose::Pose3d &car_detection : car_detections[i]) {
                     pose::Pose3d car_pose = pose::combinePoses(robot_pose, car_detection);
-                    publishCarPoses(car_pose, color, min_id + i);
+                    publishCarPoses(marker_pub, car_pose, color, min_id + i);
                 }
             }
 
 
-            for (int32_t i = robot_poses.size() + min_id; i <= max_id; i++) {
-                removeMarker(i);
-            }
+//            for (int32_t i = robot_poses.size() + min_id; i <= max_id; i++) {
+//                removeMarker(i, marker_pub);
+//            }
         }
 
-        void publishLinesToCarDetections(const std::vector<pose::Pose3d> &robot_poses,
+        void publishLinesToCarDetections(ros::Publisher &marker_pub, const std::vector<pose::Pose3d> &robot_poses,
                                          const std::vector<std::vector<pose::Pose3d>> &car_detections,
                                          const std_msgs::ColorRGBA &color, const int32_t id) {
             visualization_msgs::Marker marker_msg;
@@ -586,7 +578,7 @@ namespace visualization {
             marker_msg.id = id;
             marker_msg.color = color;
 
-            publishMarker(marker_msg);
+            publishMarker(marker_msg, marker_pub);
         }
     };
 }

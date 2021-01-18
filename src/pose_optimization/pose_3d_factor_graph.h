@@ -313,9 +313,9 @@ namespace pose_graph {
             for (const auto &node : nodes_) {
                 node_positions[node.first] = std::make_pair(Eigen::Vector3d(*(node.second.est_position_)),
                                                             Eigen::Quaterniond(*(node.second.est_orientation_)));
-                LOG(INFO) << node.first;
-                LOG(INFO) << node_positions[node.first].first;
-                LOG(INFO) << node.second.est_position_->x() << ", " << node.second.est_position_->y() << ", " << node.second.est_position_->z();
+//                LOG(INFO) << node.first;
+//                LOG(INFO) << node_positions[node.first].first;
+//                LOG(INFO) << node.second.est_position_->x() << ", " << node.second.est_position_->y() << ", " << node.second.est_position_->z();
             }
         }
 

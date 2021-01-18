@@ -93,6 +93,7 @@ namespace pose_optimization {
 //            LOG(INFO) << "Yaw: " << yaw;
 
             Eigen::Matrix<T, 3, 1> object_pose_2d;
+//            LOG(INFO) << "Object pose: " << object_pose_2d;
             object_pose_2d << observation_3d.translation().x(), observation_3d.translation().y(), yaw;
 
             // TODO is this the correct form for the cost?
@@ -103,7 +104,7 @@ namespace pose_optimization {
 //            LOG(INFO) << "Inference output " << inference_val;
 //            residuals[0] = -inference_val;
 
-            residuals[0] = -log(inference_val);
+            residuals[0] = T(-10) * log(inference_val);
 //            residuals[0] = log(inference_val + 0.0000000000001);
 
 //            residuals[0] = -log(0.9 * inference_val + 0.0000000000001);

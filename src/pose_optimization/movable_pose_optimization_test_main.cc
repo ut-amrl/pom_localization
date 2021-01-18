@@ -47,9 +47,9 @@ std::vector<Pose2d> createGroundTruthPoses() {
     poses.emplace_back(createPose2d(0, 0, 0)); // Should test how this deals with non-zero-origins?
     poses.emplace_back(createPose2d(0.1, 1, 0));
     poses.emplace_back(createPose2d(0, 4, M_PI_2));
-//    poses.emplace_back(createPose2d(-.04, 7, M_PI_2));
-//    poses.emplace_back(createPose2d(0, 10, M_PI_2));
-//    poses.emplace_back(createPose2d(0.3, 13, M_PI_2));
+    poses.emplace_back(createPose2d(-.04, 7, M_PI_2));
+    poses.emplace_back(createPose2d(0, 10, M_PI_2));
+    poses.emplace_back(createPose2d(0.3, 13, M_PI_2));
 //    poses.emplace_back(createPose2d(0.7, 15, M_PI_4));
 //    poses.emplace_back(createPose2d(2, 17, 0));
 //    poses.emplace_back(createPose2d(4, 18, 0));
@@ -91,13 +91,13 @@ std::vector<Pose2d> createGroundTruthPoses() {
 std::vector<Pose2d> createParkedCarPoses() {
     std::vector<Pose2d> poses;
     poses.emplace_back(createPose2d(-3, 2, -(M_PI * 5.0/6.0)));
-//    poses.emplace_back(createPose2d(-3, 4, -(M_PI * 5.0/6.0)));
+    poses.emplace_back(createPose2d(-3, 4, -(M_PI * 5.0/6.0)));
 //    poses.emplace_back(createPose2d(-7, 6, -(M_PI / 6.0)));
 //
 //    poses.emplace_back(createPose2d(3, 2, -(M_PI /6.0)));
 //    poses.emplace_back(createPose2d(3, 6, -(M_PI /6.0)));
 //    poses.emplace_back(createPose2d(3, 8, -(M_PI /6.0)));
-//    poses.emplace_back(createPose2d(3, 14, -(M_PI /6.0)));
+    poses.emplace_back(createPose2d(3, 14, -(M_PI /6.0)));
 //
 //    poses.emplace_back(createPose2d(7, 12, -(M_PI * 5.0 /6.0)));
 //    poses.emplace_back(createPose2d(7, 10, -(M_PI * 5.0/6.0)));
@@ -182,7 +182,7 @@ class CeresCallback : public ceres::IterationCallback {
 //         manager_->displayEstTrajectory(node_poses_list);
          }
 
-//         ros::Duration(0.5).sleep();
+//         ros::Duration(0.001).sleep();
 
        return ceres::SOLVER_CONTINUE;
      }
@@ -220,12 +220,16 @@ int main(int argc, char** argv) {
 
 //    float position_kernel_len = 0.669073; // tODO get this from config
 
-    float position_kernel_len = 0.17; // tODO get this from config was 0.07
+//    float position_kernel_len = 0.17; // tODO get this from config was 0.07
+//    float position_kernel_len = 0.5;
+    float position_kernel_len = 0.7;
     float position_kernel_var = 1; // TODO get this from config
 //    float position_kernel_var = 1.0 / position_kernel_len; // TODO get this from config
 //    float position_kernel_var = 20.539952; // TODO get this from config
 //    float orientation_kernel_len = 0.539952; // tODO get this from config
-    float orientation_kernel_len = 0.09; // tODO get this from config was 0.03
+//    float orientation_kernel_len = 0.03; // tODO get this from config was 0.03
+
+    float orientation_kernel_len = 0.1; // tODO get this from config was 0.03
     float orientation_kernel_var = 1; // TODO get this from config
 //    float orientation_kernel_var = 1.0 / orientation_kernel_len; // TODO get this from config
 //    float orientation_kernel_var = 15.7752; // TODO get this from config
@@ -247,20 +251,27 @@ int main(int argc, char** argv) {
 //    float odometry_z_std_dev = 0.8;
 //    float odometry_yaw_std_dev = 0.6;
 
-//    float odometry_x_std_dev = 0.5;
-//    float odometry_y_std_dev = 0.5;
-//    float odometry_z_std_dev = 0.005;
-//    float odometry_yaw_std_dev = 0.001;
+    float odometry_x_std_dev = 0.05;
+    float odometry_y_std_dev = 0.05;
+    float odometry_z_std_dev = 0.005;
+    float odometry_yaw_std_dev = 0.01;
 //
 //    float odometry_x_std_dev = 0.3;
 //    float odometry_y_std_dev = 0.3;
 //    float odometry_z_std_dev = 0.3;
 //    float odometry_yaw_std_dev = 0.15;
 
-    float odometry_x_std_dev = 0.3;
-    float odometry_y_std_dev = 0.3;
-    float odometry_z_std_dev = 0.3;
-    float odometry_yaw_std_dev = 0.7;
+//    float odometry_x_std_dev = 0.3;
+//    float odometry_y_std_dev = 0.3;
+//    float odometry_z_std_dev = 0.01;
+//    float odometry_z_std_dev = 0.3;
+//    float odometry_yaw_std_dev = 0.1; // 0.7;
+    bool enable_odometry = true;
+
+    float init_pose_gaussian_noise_x = 0.5;
+    float init_pose_gaussian_noise_y = 0.5;
+    float init_pose_gaussian_noise_z = 0.5;
+    float init_pose_gaussian_noise_yaw = 0.5;
 
     std::vector<Pose2d> robot_gt_poses_2d = createGroundTruthPoses();
     std::vector<Pose2d> filled_parking_spots = createParkedCarPoses();
@@ -319,15 +330,15 @@ int main(int argc, char** argv) {
     for (const std::vector<Pose3d> &true_observations : true_transforms_at_bot_poses) {
         std::vector<Pose3d> noisy_at_pose;
         for (const Pose3d &true_obs : true_observations) {
-            noisy_at_pose.emplace_back(true_obs);
+//            noisy_at_pose.emplace_back(true_obs);
             Pose3d noisy_obs = addGaussianNoise(true_obs, movable_observation_x_std_dev,
                                                 movable_observation_y_std_dev, movable_observation_z_std_dev,
                                                 movable_observation_yaw_std_dev, random_generator);
 //            LOG(INFO) << "True obs: " << true_obs.first;
 //            LOG(INFO) << true_obs.second.coeffs();
-            LOG(INFO) << "Noisy obs: " << noisy_obs.first;
+//            LOG(INFO) << "Noisy obs: " << noisy_obs.first;
 //            LOG(INFO) << noisy_obs.second.coeffs();
-//            noisy_at_pose.emplace_back(noisy_obs);
+            noisy_at_pose.emplace_back(noisy_obs);
         }
         noisy_observations.emplace_back(noisy_at_pose);
     }
@@ -343,7 +354,10 @@ int main(int argc, char** argv) {
     Pose3d prev_pose = toPose3d(createPose2d(0, 0, 0));
     initial_node_positions.emplace_back(prev_pose);
     for (const Pose3d &odom_to_next_pos : noisy_odometry) {
-        Pose3d new_pose = combinePoses(prev_pose, odom_to_next_pos);
+        Pose3d noisier_odom = addGaussianNoise(odom_to_next_pos, init_pose_gaussian_noise_x,
+                                               init_pose_gaussian_noise_y, init_pose_gaussian_noise_z, init_pose_gaussian_noise_yaw, random_generator);
+//        Pose3d new_pose = combinePoses(prev_pose, odom_to_next_pos);
+        Pose3d new_pose = combinePoses(prev_pose, noisier_odom);
         initial_node_positions.emplace_back(new_pose);
         prev_pose = new_pose;
     }
@@ -353,7 +367,7 @@ int main(int argc, char** argv) {
 
     // Create nodes with initial positions based on odometry
 //    for (size_t i = 0; i < initial_node_positions.size(); i++) {
-    for (size_t i = 1; i < initial_node_positions.size(); i++) {
+    for (size_t i = 0; i < initial_node_positions.size(); i++) {
         pose_graph::Node node;
         node.id_ = i;
         node.est_position_ = std::make_shared<Eigen::Vector3d>(initial_node_positions[i].first);
@@ -375,30 +389,33 @@ int main(int argc, char** argv) {
         pose_graph.addMovableObservationFactors(i, movable_observations);
     }
 
-//    for (uint64_t i = 0; i < noisy_odometry.size(); i++) {
-//        pose_graph::NodeId prev_node = i;
-//        pose_graph::NodeId to_node = i + 1;
-//        pose_graph::GaussianBinaryFactor factor;
-//        factor.to_node_ = to_node;
-//        factor.from_node_ = prev_node;
-//        factor.translation_change_ = noisy_odometry[i].first;
-//        factor.orientation_change_ = noisy_odometry[i].second;
-//        Eigen::Matrix<double, 6, 6> cov_mat = Eigen::Matrix<double, 6, 6>::Zero();
-//        cov_mat(0, 0) = pow(odometry_x_std_dev, 2);
-//        cov_mat(1, 1) = pow(odometry_y_std_dev, 2);
-//        cov_mat(2, 2) = pow(odometry_z_std_dev, 2);
-//
-//        // Fix these - probably not right...
-//        cov_mat(3, 3) = pow(odometry_yaw_std_dev, 2);
-//        cov_mat(4, 4) = pow(odometry_yaw_std_dev, 2);
-//        cov_mat(5, 5) = pow(odometry_yaw_std_dev, 2);
-//
-//        Eigen::Matrix<double, 6, 6> information_mat = cov_mat.inverse();
-//        factor.sqrt_information_ = information_mat.sqrt();
-//
-//        // TODO sqrt information matrix
-//        pose_graph.addGaussianBinaryFactor(factor);
-//    }
+    if (enable_odometry) {
+
+        for (uint64_t i = 0; i < noisy_odometry.size(); i++) {
+            pose_graph::NodeId prev_node = i;
+            pose_graph::NodeId to_node = i + 1;
+            pose_graph::GaussianBinaryFactor factor;
+            factor.to_node_ = to_node;
+            factor.from_node_ = prev_node;
+            factor.translation_change_ = noisy_odometry[i].first;
+            factor.orientation_change_ = noisy_odometry[i].second;
+            Eigen::Matrix<double, 6, 6> cov_mat = Eigen::Matrix<double, 6, 6>::Zero();
+            cov_mat(0, 0) = pow(odometry_x_std_dev, 2);
+            cov_mat(1, 1) = pow(odometry_y_std_dev, 2);
+            cov_mat(2, 2) = pow(odometry_z_std_dev, 2);
+
+            // Fix these - probably not right...
+            cov_mat(3, 3) = pow(odometry_yaw_std_dev, 2);
+            cov_mat(4, 4) = pow(odometry_yaw_std_dev, 2);
+            cov_mat(5, 5) = pow(odometry_yaw_std_dev, 2);
+
+            Eigen::Matrix<double, 6, 6> information_mat = cov_mat.inverse();
+            factor.sqrt_information_ = information_mat.sqrt();
+
+            // TODO sqrt information matrix
+            pose_graph.addGaussianBinaryFactor(factor);
+        }
+    }
 
 //    // Add loop closure (last pose to first pose)
 //    {
@@ -451,53 +468,60 @@ int main(int argc, char** argv) {
     LOG(INFO) << "Done adding map frame observations to regressor";
 
     pose_optimization::PoseGraphOptimizer optimizer;
-    ceres::Problem problem;
+
     LOG(INFO) << "Building pose graph optimization problem";
-    optimizer.buildPoseGraphOptimizationProblem(pose_graph, &problem);
-    LOG(INFO) << "Solving optimization problem";
+    std::unordered_set<pose_graph::NodeId> nodes_to_optimize;
+    nodes_to_optimize.insert(0);
+
+    int32_t num_poses = initial_node_positions.size();
+    for (int next_pose_to_optimize = 1; next_pose_to_optimize < num_poses; next_pose_to_optimize++) {
+        nodes_to_optimize.insert(next_pose_to_optimize);
+        LOG(INFO) << "Adding node " << next_pose_to_optimize << " to optimization";
+
+        ceres::Problem problem;
+        optimizer.buildPoseGraphOptimizationProblem(pose_graph, nodes_to_optimize, &problem);
+        LOG(INFO) << "Solving optimization problem";
 
 
-    std::vector<Pose3d> node_poses_list;
+        std::vector<Pose3d> node_poses_list;
 
-    std::vector<std::vector<Pose3d>> noisy_obs_without_first;
-    for (size_t k = 1; k < noisy_observations.size(); k++) {
-        noisy_obs_without_first.emplace_back(noisy_observations[k]);
-    }
+        std::vector<std::vector<Pose3d>> noisy_obs_without_first;
+        for (size_t k = 1; k < noisy_observations.size(); k++) {
+            noisy_obs_without_first.emplace_back(noisy_observations[k]);
+        }
 
 //    for (int j = 0; j < 10; j++) {
 
 
-    std::vector<ceres::IterationCallback*> callbacks;
-    int32_t num_poses = initial_node_positions.size();
-    CeresCallback callback(&pose_graph, &manager, num_poses, noisy_obs_without_first);
+        std::vector<ceres::IterationCallback *> callbacks;
+        CeresCallback callback(&pose_graph, &manager, num_poses, noisy_obs_without_first);
 
-    callbacks.emplace_back(&callback);
-
+        callbacks.emplace_back(&callback);
 
 
-    manager.displayOdomTrajectory(initial_node_positions);
-    manager.displayTrueTrajectory(robot_gt_poses_3d);
-    manager.displayTrueCarPoses(car_poses_in_parking_spots_3d);
-
-    manager.displayNoisyCarPosesFromGt(robot_gt_poses_3d, noisy_observations);
-
-    manager.displayNoisyCarPosesFromOdomTrajectory(initial_node_positions, noisy_observations);
+        manager.displayTrueTrajectory(robot_gt_poses_3d);
+        manager.displayTrueCarPoses(car_poses_in_parking_spots_3d);
+        manager.displayNoisyCarPosesFromGt(robot_gt_poses_3d, noisy_observations);
+        manager.displayOdomTrajectory(initial_node_positions);
 
 
-    optimizer.SolveOptimizationProblem(&problem, callbacks);
-    LOG(INFO) << "Done solving optimization problem";
-
-    std::unordered_map<pose_graph::NodeId, Pose3d> node_poses;
-    pose_graph.getNodePoses(node_poses);
-
-    node_poses_list.clear();
+        manager.displayNoisyCarPosesFromOdomTrajectory(initial_node_positions, noisy_observations);
 
 
-    for (size_t i = 1; i < initial_node_positions.size(); i++) {
+        optimizer.SolveOptimizationProblem(&problem, callbacks);
+        LOG(INFO) << "Done solving optimization problem";
+
+        std::unordered_map<pose_graph::NodeId, Pose3d> node_poses;
+        pose_graph.getNodePoses(node_poses);
+
+        node_poses_list.clear();
+
+
+        for (size_t i = 1; i < initial_node_positions.size(); i++) {
 //            Pose3d init_pose = initial_node_positions[i];
-        Pose3d optimized_pose = node_poses[i];
+            Pose3d optimized_pose = node_poses[i];
 //            Pose2d gt_2d = robot_gt_poses_2d[i];
-        node_poses_list.emplace_back(optimized_pose);
+            node_poses_list.emplace_back(optimized_pose);
 //            LOG(INFO) << "Node i " << i;
 //            LOG(INFO) << "True pose " << gt_2d.first.x() << ", " << gt_2d.first.y() << ", " << gt_2d.second;
 //            LOG(INFO) << "Init est " << init_pose.first.x() << ", " << init_pose.first.y() << ", "
@@ -507,62 +531,66 @@ int main(int argc, char** argv) {
 //                      << optimized_pose.first.z() << ", " << optimized_pose.second.w() << ", "
 //                      << optimized_pose.second.z() << ", " << optimized_pose.second.x() << ", "
 //                      << optimized_pose.second.y();
-    }
+        }
 
-    manager.displayEstTrajectory(node_poses_list);
-    manager.displayNoisyCarPosesFromEstTrajectory(node_poses_list, noisy_obs_without_first);
-    ros::Duration(1).sleep();
+        manager.displayEstTrajectory(node_poses_list);
+        manager.displayNoisyCarPosesFromEstTrajectory(node_poses_list, noisy_obs_without_first);
+        ros::Duration(1).sleep();
 
 //
 //    std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> regressor = pose_graph.getMovableObjGpRegressor(
 //            car_class);
 
-    std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde = pose_graph.getMovableObjKde(
-            car_class);
-    for (size_t i = 1; i < noisy_observations.size(); i++) {
-        std::vector<pose::Pose3d> relative_poses = noisy_observations[i];
-        for (size_t j = 0; j < relative_poses.size(); j++) {
-            Eigen::Vector3f transl = relative_poses[j].first.cast<float>();
-            Eigen::Quaternionf rot = relative_poses[j].second.cast<float>();
-            pose_optimization::MovableObservationCostFunctor factor(kde, transl, rot);
+        std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde = pose_graph.getMovableObjKde(
+                car_class);
+        for (int i = 1; i <= next_pose_to_optimize; i++) {
+            std::vector<pose::Pose3d> relative_poses = noisy_observations[i];
+            for (size_t j = 0; j < relative_poses.size(); j++) {
+                Eigen::Vector3f transl = relative_poses[j].first.cast<float>();
+                Eigen::Quaternionf rot = relative_poses[j].second.cast<float>();
+                pose_optimization::MovableObservationCostFunctor factor(kde, transl, rot);
 
-            manager.displayPoseResiduals(factor, 0.1, -10.0, 15, -5, 20);
+//                manager.displayPoseResiduals(factor, 0.1, -10.0, 15, -5, 20);
 
-            double true_pose_residual;
-            double est_pose_residual;
-            double init_pose_residual;
+                double true_pose_residual;
+                double est_pose_residual;
+                double init_pose_residual;
 
-            Pose3d true_pose = robot_gt_poses_3d[i];
-            Pose3d est_pose = node_poses_list[i-1];
-            Pose3d init_pose = initial_node_positions[i];
+                Pose3d true_pose = robot_gt_poses_3d[i];
+                Pose3d est_pose = node_poses_list[i - 1];
+                Pose3d init_pose = initial_node_positions[i];
 
-            factor(true_pose.first.data(), true_pose.second.coeffs().data(), &true_pose_residual);
+                factor(true_pose.first.data(), true_pose.second.coeffs().data(), &true_pose_residual);
 
-            factor(est_pose.first.data(), est_pose.second.coeffs().data(), &est_pose_residual);
-            factor(init_pose.first.data(), init_pose.second.coeffs().data(), &init_pose_residual);
+                factor(est_pose.first.data(), est_pose.second.coeffs().data(), &est_pose_residual);
+                factor(init_pose.first.data(), init_pose.second.coeffs().data(), &init_pose_residual);
 
-            LOG(INFO) << "Pose " << i << ", observation " << j;
-            LOG(INFO) << "True pose residual " << true_pose_residual;
-            LOG(INFO) << "Estimated pose residual " << est_pose_residual;
-            LOG(INFO) << "Init pose residual " << init_pose_residual;
-            LOG(INFO) << "True pose " << true_pose.first << ", Quat: " << true_pose.second.coeffs();
-            LOG(INFO) << true_pose.second.toRotationMatrix().eulerAngles(0, 1, 2)[2];
-            LOG(INFO) << "Est pose " << est_pose.first << ", Quat: " << est_pose.second.coeffs();
-            LOG(INFO) << est_pose.second.toRotationMatrix().eulerAngles(0, 1, 2)[2];
-            LOG(INFO) << "Init pose " << init_pose.first << ", Quat: " << init_pose.second.coeffs();;
-            LOG(INFO) << init_pose.second.toRotationMatrix().eulerAngles(0, 1, 2)[2];
+                LOG(INFO) << "Pose " << i << ", observation " << j;
+                LOG(INFO) << "True pose residual " << true_pose_residual;
+                LOG(INFO) << "Estimated pose residual " << est_pose_residual;
+                LOG(INFO) << "Init pose residual " << init_pose_residual;
+//                LOG(INFO) << "True pose " << true_pose.first << ", Quat: " << true_pose.second.coeffs();
+//                LOG(INFO) << true_pose.second.toRotationMatrix().eulerAngles(0, 1, 2)[2];
+//                LOG(INFO) << "Est pose " << est_pose.first << ", Quat: " << est_pose.second.coeffs();
+//                LOG(INFO) << est_pose.second.toRotationMatrix().eulerAngles(0, 1, 2)[2];
+//                LOG(INFO) << "Init pose " << init_pose.first << ", Quat: " << init_pose.second.coeffs();;
+//                LOG(INFO) << init_pose.second.toRotationMatrix().eulerAngles(0, 1, 2)[2];
+            }
         }
+
+        LOG(INFO) << "Done optimizing up to node " << next_pose_to_optimize;
+        ros::Duration(3).sleep();
     }
 //    manager.displayMaxGpRegressorOutput(regressor, 0.1, -10.0, 15, -5, 20);
 //    manager.displayMaxGpRegressorOutput(kde, 0.1, -10.0, 15, -5, 20);
 
-    double yaw = - M_PI / 6;
+//    double yaw = - M_PI / 6;
+//
+//    Eigen::Matrix<double, 3, Eigen::Dynamic> object_pose_2d(3, 1);
+//    object_pose_2d << 3, 7, yaw;
+//    LOG(INFO) << kde->Inference(object_pose_2d);
 
-    Eigen::Matrix<double, 3, Eigen::Dynamic> object_pose_2d(3, 1);
-    object_pose_2d << 3, 7, yaw;
-    LOG(INFO) << kde->Inference(object_pose_2d);
-
-    ros::spin();
+//    ros::spin();
 
     // TODO output updated poses
 

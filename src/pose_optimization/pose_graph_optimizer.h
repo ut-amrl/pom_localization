@@ -17,7 +17,7 @@ namespace pose_optimization {
     public:
         PoseGraphOptimizer() = default;
 
-        void buildPoseGraphOptimizationProblem(pose_graph::PoseGraph &pose_graph, ceres::Problem *problem) {
+        void buildPoseGraphOptimizationProblem(pose_graph::PoseGraph &pose_graph, const std::unordered_set<pose_graph::NodeId> &nodes_to_optimize, ceres::Problem *problem) {
 
             ceres::LocalParameterization* quaternion_local_parameterization =
                     new ceres::EigenQuaternionParameterization;
@@ -27,6 +27,10 @@ namespace pose_optimization {
                 std::pair<std::shared_ptr<Eigen::Vector3d>, std::shared_ptr<Eigen::Quaterniond>> pose_vars_;
                 if (!pose_graph.getNodePosePointers(factor.observed_at_node_, pose_vars_)) {
                     LOG(ERROR) << "Node " << factor.observed_at_node_ << " did not exist in the pose graph. Skipping movable object observation";
+                    continue;
+                }
+
+                if (nodes_to_optimize.find(factor.observed_at_node_) == nodes_to_optimize.end()) {
                     continue;
                 }
 
@@ -61,6 +65,15 @@ namespace pose_optimization {
 
             // Add residuals from odometry (visual, lidar, or wheel) factors
             for (pose_graph::GaussianBinaryFactor &factor : pose_graph.getBinaryFactors()) {
+
+                if (nodes_to_optimize.find(factor.to_node_) == nodes_to_optimize.end()) {
+                    continue;
+                }
+
+                if (nodes_to_optimize.find(factor.from_node_) == nodes_to_optimize.end()) {
+                    continue;
+                }
+
                 std::pair<std::shared_ptr<Eigen::Vector3d>, std::shared_ptr<Eigen::Quaterniond>> from_pose_vars_;
                 if (!pose_graph.getNodePosePointers(factor.from_node_, from_pose_vars_)) {
                     LOG(ERROR) << "From node " << factor.from_node_ << " did not exist in the pose graph. Skipping odometry observation";
@@ -88,19 +101,22 @@ namespace pose_optimization {
                 problem->SetParameterization(to_pose_vars_.second->coeffs().data(),
                                              quaternion_local_parameterization);
             }
-//            std::pair<std::shared_ptr<Eigen::Vector3d>, std::shared_ptr<Eigen::Quaterniond>> start_pose_vars_;
-//            pose_graph.getNodePosePointers(0, start_pose_vars_);
-//            problem->SetParameterBlockConstant(start_pose_vars_.first->data());
-//
-//            problem->SetParameterBlockConstant(start_pose_vars_.second->coeffs().data());
+            std::pair<std::shared_ptr<Eigen::Vector3d>, std::shared_ptr<Eigen::Quaterniond>> start_pose_vars_;
+            pose_graph.getNodePosePointers(0, start_pose_vars_);
+            problem->SetParameterBlockConstant(start_pose_vars_.first->data());
+
+            problem->SetParameterBlockConstant(start_pose_vars_.second->coeffs().data());
         }
 
         bool SolveOptimizationProblem(ceres::Problem* problem, std::vector<ceres::IterationCallback*> callbacks) {
             CHECK(problem != NULL);
             ceres::Solver::Options options;
-            options.max_num_iterations = 100000;
+//            options.max_num_iterations = 100000;
+
+            options.max_num_iterations = 10000;
             options.minimizer_progress_to_stdout = true;
-            options.function_tolerance = 1e-13;
+//            options.function_tolerance = 1e-10;
+            options.function_tolerance = 1e-20;
             options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
             options.gradient_tolerance = 1e-15;
             options.parameter_tolerance = 1e-20;
@@ -110,6 +126,7 @@ namespace pose_optimization {
             }
 //            options.minimizer_type = ceres::LINE_SEARCH;
 //            options.line_search_direction_type = ceres::STEEPEST_DESCENT;
+//            options.line_search_direction_type = ceres::NONLINEAR_CONJUGATE_GRADIENT;
             ceres::Solver::Summary summary;
             ceres::Solve(options, problem, &summary);
             std::cout << summary.FullReport() << '\n';
