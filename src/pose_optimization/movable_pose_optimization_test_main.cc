@@ -7,6 +7,9 @@
 
 #include <gaussian_process/kernel_density_estimator.h>
 
+#include <pose_optimization/sample_based_movable_observation_gp_cost_functor_2d.h>
+#include <pose_optimization/sample_based_movable_observation_gp_cost_functor_3d.h>
+
 #include <base_lib/pose_reps.h>
 #include <visualization/ros_visualization.h>
 

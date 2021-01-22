@@ -18,7 +18,6 @@ namespace pose_graph {
 
     typedef uint64_t NodeId;
 
-
     struct GaussianBinaryFactor {
 
 //        GaussianBinaryFactor(const NodeId &from_node, const NodeId &to_node, const Eigen::Vector3d &translation,
@@ -110,6 +109,9 @@ namespace pose_graph {
          * Relative orientation of the object.
          */
         Eigen::Quaternionf observation_orientation_;
+
+        // TODO
+        Eigen::Matrix<double, 6, 6> observation_covariance_;
     };
 
     /**
@@ -138,6 +140,8 @@ namespace pose_graph {
          */
         MovableObservation3D observation_;
     };
+
+
 
     /**
      * Node in the trajectory of the robot.
