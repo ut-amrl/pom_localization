@@ -28,22 +28,6 @@ namespace pose_optimization {
      */
     struct SampleBasedMovableObservationCostFunctor3D {
 
-        /**
-         * Constructor for a single observation residual.
-         *
-         * @param gp                        Gaussian process regressor that has been trained with previous observations.
-         * @param observation_transl        Translation component of the observation (in 3D).
-         * @param observation_orientation   Orientation component of the observation (in 3D).
-         */
-//        MovableObservationCostFunctor(
-//                std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> gp,
-//                Eigen::Vector3f &observation_transl, Eigen::Quaternionf &observation_orientation) :gp_(gp),
-//                observation_translation_(observation_transl), observation_orientation_(observation_orientation) {
-//
-//            observation_transform_.translation() = observation_translation_;
-//            observation_transform_.linear() = observation_orientation_.toRotationMatrix();
-//        }
-
         SampleBasedMovableObservationCostFunctor3D(
                 std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde,
                 const std::vector<std::pair<Eigen::Vector3f, Eigen::Quaternionf>> &observation_samples) :kde_(kde) {
@@ -55,7 +39,7 @@ namespace pose_optimization {
 
         template<typename T>
         Eigen::Transform<T, 3, Eigen::Affine> convertTranslationAndRotationToMatrix(
-                const Eigen::Matrix<T, 3, 1> &translation, const Eigen::Quaternion<T> &rotation) {
+                const Eigen::Matrix<T, 3, 1> &translation, const Eigen::Quaternion<T> &rotation) const {
             Eigen::Transform<T, 3, Eigen::Affine> transform = Eigen::Transform<T, 3, Eigen::Affine>::Identity();
             transform.translate(translation);
             transform.rotate(rotation);
@@ -69,7 +53,7 @@ namespace pose_optimization {
             Eigen::Map<const Eigen::Quaternion<T>> robot_orientation(robot_orientation_ptr);
 
             Eigen::Transform<T, 3, Eigen::Affine> robot_tf =
-                    convertTranslationAndRotationToMatrix(robot_position, robot_orientation);
+                    convertTranslationAndRotationToMatrix<T>(robot_position, robot_orientation);
 
             T cumulative_probability = T(0.0);
 
@@ -79,7 +63,7 @@ namespace pose_optimization {
 
                 T yaw = world_frame_obj_tf.linear().eulerAngles(0, 1, 2)[2];
 
-                obj_pose_vector << world_frame_obj_tf.translation().x() << world_frame_obj_tf.translation().y() << yaw;
+                obj_pose_vector << world_frame_obj_tf.translation().x(), world_frame_obj_tf.translation().y(), yaw;
                 cumulative_probability += kde_->Inference<T>(obj_pose_vector)(0, 0);
             }
 

@@ -371,7 +371,7 @@ int main(int argc, char** argv) {
     // Create nodes with initial positions based on odometry
 //    for (size_t i = 0; i < initial_node_positions.size(); i++) {
     for (size_t i = 0; i < initial_node_positions.size(); i++) {
-        pose_graph::Node node;
+        pose_graph::Node3d node;
         node.id_ = i;
         node.est_position_ = std::make_shared<Eigen::Vector3d>(initial_node_positions[i].first);
         node.est_orientation_ = std::make_shared<Eigen::Quaterniond>(initial_node_positions[i].second);
@@ -551,7 +551,7 @@ int main(int argc, char** argv) {
             for (size_t j = 0; j < relative_poses.size(); j++) {
                 Eigen::Vector3f transl = relative_poses[j].first.cast<float>();
                 Eigen::Quaternionf rot = relative_poses[j].second.cast<float>();
-                pose_optimization::MovableObservationCostFunctor factor(kde, transl, rot);
+                pose_optimization::SampleBasedMovableObservationCostFunctor3D factor(kde, {{transl, rot}});
 
 //                manager.displayPoseResiduals(factor, 0.1, -10.0, 15, -5, 20);
 

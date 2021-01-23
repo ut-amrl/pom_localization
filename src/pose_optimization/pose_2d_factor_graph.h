@@ -1,0 +1,8 @@
+//
+// Created by amanda on 1/22/21.
+//
+
+#ifndef AUTODIFF_GP_POSE_2D_FACTOR_GRAPH_H
+#define AUTODIFF_GP_POSE_2D_FACTOR_GRAPH_H
+
+#endif //AUTODIFF_GP_POSE_2D_FACTOR_GRAPH_H

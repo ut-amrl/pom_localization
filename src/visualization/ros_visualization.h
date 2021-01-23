@@ -9,6 +9,8 @@
 #include <visualization_msgs/Marker.h>
 #include <nav_msgs/OccupancyGrid.h>
 
+#include <pose_optimization/sample_based_movable_observation_gp_cost_functor_3d.h>
+
 #include <base_lib/pose_reps.h>
 
 namespace visualization {
@@ -247,7 +249,8 @@ namespace visualization {
             }
         }
 
-        void displayPoseResiduals(pose_optimization::MovableObservationCostFunctor cost_functor,
+//        void displayPoseResiduals(pose_optimization::MovableObservationCostFunctor cost_functor,
+        void displayPoseResiduals(pose_optimization::SampleBasedMovableObservationCostFunctor3D cost_functor,
                                   const double &resolution, const double &x_min, const double &x_max, const double &y_min,
                                   const double &y_max) {
             int64_t x_min_unscaled = floor(x_min / resolution);

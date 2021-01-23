@@ -68,7 +68,7 @@ namespace pose_optimization {
             Eigen::Map<const Eigen::Matrix<T, 2, 1>> robot_translation(robot_position_ptr);
 
             Eigen::Transform<T, 2, Eigen::Affine> robot_tf =
-                    convertTranslationAndRotationToMatrix(robot_translation, *robot_orientation_ptr);
+                    convertTranslationAndRotationToMatrix<T>(robot_translation, *robot_orientation_ptr);
 
             T cumulative_probability = T(0.0);
 
@@ -76,7 +76,7 @@ namespace pose_optimization {
                 Eigen::Transform<T, 2, Eigen::Affine> world_frame_obj_tf = robot_tf * obs_sample_tf.cast<T>();
                 Eigen::Matrix<T, 3, 1> obj_pose_vector;
                 Eigen::Rotation2D<T> obj_rot_world(world_frame_obj_tf.linear());
-                obj_pose_vector << world_frame_obj_tf.translation().x() << world_frame_obj_tf.translation().y() << obj_rot_world.angle();
+                obj_pose_vector << world_frame_obj_tf.translation().x(), world_frame_obj_tf.translation().y(), obj_rot_world.angle();
                 cumulative_probability += kde_->Inference<T>(obj_pose_vector)(0, 0);
             }
 

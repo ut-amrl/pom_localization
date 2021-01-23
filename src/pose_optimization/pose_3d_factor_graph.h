@@ -13,10 +13,11 @@
 #include <unordered_set>
 #include <gaussian_process/kernel_density_estimator.h>
 
+#include <pose_optimization/pose_graph_generic.h>
 
 namespace pose_graph {
 
-    typedef uint64_t NodeId;
+    typedef Node<Eigen::Vector3d, Eigen::Quaterniond> Node3d;
 
     struct GaussianBinaryFactor {
 
@@ -143,30 +144,6 @@ namespace pose_graph {
 
 
 
-    /**
-     * Node in the trajectory of the robot.
-     */
-    struct Node {
-
-        /**
-         * Id of the node.
-         */
-        NodeId id_;
-
-        /**
-         * Estimated position of the node.
-         *
-         * TODO why did I make this a shared ptr again? So it could be updated by Ceres?
-         */
-        std::shared_ptr<Eigen::Vector3d> est_position_;
-
-        /**
-         * Estimated position of the node.
-         *
-         * TODO why did I make this a shared ptr again? So it could be updated by Ceres?
-         */
-        std::shared_ptr<Eigen::Quaterniond> est_orientation_;
-    };
 
     /**
      * Pose Graph containing all factors that constrain the robot's pose and the nodes representing the robot's pose.
@@ -189,7 +166,7 @@ namespace pose_graph {
          *
          * @param node Node in the trajectory.
          */
-        void addNode(const Node &node) {
+        void addNode(const Node3d &node) {
             nodes_[node.id_] = node;
         }
 
@@ -306,7 +283,7 @@ namespace pose_graph {
          */
         bool getNodePosePointers(const NodeId &node_id, std::pair<std::shared_ptr<Eigen::Vector3d>, std::shared_ptr<Eigen::Quaterniond>> &pointer_results) {
             if (nodes_.find(node_id) != nodes_.end()) {
-                Node node = nodes_.at(node_id);
+                Node3d node = nodes_.at(node_id);
                 pointer_results = std::make_pair(node.est_position_, node.est_orientation_);
                 return true;
             }
@@ -336,7 +313,7 @@ namespace pose_graph {
         /**
          * Map of node id to the nodes.
          */
-        std::unordered_map<NodeId, Node> nodes_;
+        std::unordered_map<NodeId, Node3d> nodes_;
 
         /**
          * Movable observation factors.
