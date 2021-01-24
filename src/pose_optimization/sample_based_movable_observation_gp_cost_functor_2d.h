@@ -46,8 +46,8 @@ namespace pose_optimization {
 
         SampleBasedMovableObservationCostFunctor2D(
                 std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde,
-                const std::vector<std::pair<Eigen::Vector2f, float>> &observation_samples) :kde_(kde) {
-            for (const std::pair<Eigen::Vector2f, float> &observation_sample : observation_samples) {
+                const std::vector<std::pair<Eigen::Vector2d, double>> &observation_samples) :kde_(kde) {
+            for (const std::pair<Eigen::Vector2d, double> &observation_sample : observation_samples) {
                 observation_transforms_.emplace_back(convertTranslationAndRotationToMatrix(observation_sample.first,
                                                                                            observation_sample.second));
             }

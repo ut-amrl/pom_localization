@@ -17,103 +17,13 @@
 
 namespace pose_graph {
 
-    typedef Node<Eigen::Vector3d, Eigen::Quaterniond> Node3d;
+    typedef Node<3, Eigen::Quaterniond> Node3d;
+    typedef GaussianBinaryFactor<3, Eigen::Quaterniond, 6> GaussianBinaryFactor3d;
+    typedef MapObjectObservation<2, double> MapObjectObservation2d;
+    typedef NegativeMapObjectObservation<2> NegativeMapObjectObservation2d;
+    typedef MovableObservation<3, Eigen::Quaterniond, 6> MovableObservation3d;
 
-    struct GaussianBinaryFactor {
 
-//        GaussianBinaryFactor(const NodeId &from_node, const NodeId &to_node, const Eigen::Vector3d &translation,
-//                             const Eigen::Quaterniond &orientation) : from_node_(from_node), to_node_(d){
-//
-//        }
-
-        /**
-         * Node that serves as the coordinate frame for the measurement.
-         */
-        NodeId from_node_;
-
-        /**
-         * Node that was estimated to be at the given position in the frame of the from_node.
-         */
-        NodeId to_node_;
-
-        /**
-         * Measured location of the to_node_ in the from_node_ frame.
-         */
-        Eigen::Vector3d translation_change_;
-
-        /**
-         * Provides measured orientation of the to_node in the from node's frame.
-         */
-        Eigen::Quaterniond orientation_change_;
-
-        /**
-         * Square root information matrix providing uncertainty of the measurement.
-         */
-        Eigen::Matrix<double, 6, 6> sqrt_information_;
-    };
-
-    /**
-     * Observation of an object in the map in 2D.
-     */
-    struct MapObservation2D {
-
-        /**
-         * Semantic class of the object.
-         */
-        std::string semantic_class_;
-
-        /**
-         * Location of the object in the map.
-         */
-        Eigen::Vector2f transl_;
-
-        /**
-         * Relative orientation of the object in the map.
-         */
-        float orientation_;
-    };
-
-    /**
-     * Negative movable object observation.
-     *
-     * No object of the given class was detected at the location.
-     */
-    struct NegativeMovableObservation2D {
-
-        /**
-         * Semantic class that was not present at the given location.
-         */
-        std::string semantic_class_;
-
-        /**
-         * Location in the map that did not have an object of the given type.
-         */
-        Eigen::Vector2f transl_;
-    };
-
-    /**
-     * 3D Observation of a movable object.
-     */
-    struct MovableObservation3D {
-
-        /**
-         * Semantic class of the object.
-         */
-        std::string semantic_class_;
-
-        /**
-         * Relative location of the object.
-         */
-        Eigen::Vector3f observation_transl_;
-
-        /**
-         * Relative orientation of the object.
-         */
-        Eigen::Quaternionf observation_orientation_;
-
-        // TODO
-        Eigen::Matrix<double, 6, 6> observation_covariance_;
-    };
 
     /**
      * Factor that encodes a sighting of a movable object.
@@ -126,7 +36,7 @@ namespace pose_graph {
          * @param node_id       Node that the object was observed at.
          * @param observation   Observation of the object, relative to the robot.
          */
-        MovableObservationFactor(const NodeId &node_id, const MovableObservation3D &observation) :
+        MovableObservationFactor(const NodeId &node_id, const MovableObservation3d &observation) :
         observed_at_node_(node_id), observation_(observation) {}
 
         // TODO should this contain one observation or all at the node?
@@ -139,7 +49,7 @@ namespace pose_graph {
         /**
          * Observation of the object, relative to the robot.
          */
-        MovableObservation3D observation_;
+        MovableObservation3d observation_;
     };
 
 
@@ -176,8 +86,8 @@ namespace pose_graph {
          * @param node_id               Node at which the object detections occurred.
          * @param observations_at_node  Observations that were made at the node.
          */
-        void addMovableObservationFactors(const NodeId &node_id, const std::vector<MovableObservation3D> &observations_at_node) {
-            for (const MovableObservation3D &observation : observations_at_node) {
+        void addMovableObservationFactors(const NodeId &node_id, const std::vector<MovableObservation3d> &observations_at_node) {
+            for (const MovableObservation3d &observation : observations_at_node) {
                 observation_factors_.emplace_back(node_id, observation);
             }
         }
@@ -187,7 +97,7 @@ namespace pose_graph {
          *
          * @param binary_factor Binary factor to add
          */
-        void addGaussianBinaryFactor(const GaussianBinaryFactor &binary_factor) {
+        void addGaussianBinaryFactor(const GaussianBinaryFactor3d &binary_factor) {
             binary_factors_.push_back(binary_factor);
         }
 
@@ -205,7 +115,7 @@ namespace pose_graph {
          *
          * @return binary factors with gaussian noise.
          */
-        std::vector<GaussianBinaryFactor> getBinaryFactors() {
+        std::vector<GaussianBinaryFactor3d> getBinaryFactors() {
             return binary_factors_;
         }
 
@@ -233,7 +143,7 @@ namespace pose_graph {
 //            }
 //        }
 
-        void addMapFrameObservations(const std::unordered_map<std::string, std::pair<std::vector<NegativeMovableObservation2D>, std::vector<MapObservation2D>>> &observations_by_class) {
+        void addMapFrameObservations(const std::unordered_map<std::string, std::pair<std::vector<NegativeMapObjectObservation2d>, std::vector<MapObjectObservation2d>>> &observations_by_class) {
             for (const auto &obs_by_class : observations_by_class) {
                 Eigen::MatrixXf inputs;
                 if (getMatrixRepresentationOfDetections(obs_by_class.second.second, inputs)) {
@@ -325,7 +235,7 @@ namespace pose_graph {
         /**
          * Factors relating two nodes that assume gaussian noise.
          */
-        std::vector<GaussianBinaryFactor> binary_factors_;
+        std::vector<GaussianBinaryFactor3d> binary_factors_;
 
         // TODO convert class labels to enum?
 //        /**
@@ -351,11 +261,11 @@ namespace pose_graph {
          * @return True if the matrices were populated, false if not (if the observations were empty).
          */
         bool getMatrixRepresentationOfDetections(
-                const std::pair<std::vector<NegativeMovableObservation2D>,
-                        std::vector<MapObservation2D>> &pos_and_neg_observations,
+                const std::pair<std::vector<NegativeMapObjectObservation2d>,
+                        std::vector<MapObjectObservation2d>> &pos_and_neg_observations,
                         Eigen::MatrixXf &input_matrix, Eigen::MatrixXf &output_matrix) const {
-            std::vector<MapObservation2D> observations = pos_and_neg_observations.second;
-            std::vector<NegativeMovableObservation2D> neg_obs = pos_and_neg_observations.first;
+            std::vector<MapObjectObservation2d> observations = pos_and_neg_observations.second;
+            std::vector<NegativeMapObjectObservation2d> neg_obs = pos_and_neg_observations.first;
 
             size_t neg_obs_count = neg_obs.size();
             size_t pos_obs_count = observations.size();
@@ -394,7 +304,7 @@ namespace pose_graph {
         }
 
         bool getMatrixRepresentationOfDetections(
-                const std::vector<MapObservation2D> &pos_observations,
+                const std::vector<MapObjectObservation2d> &pos_observations,
                 Eigen::MatrixXf &input_matrix) const {
 
             size_t pos_obs_count = pos_observations.size();

@@ -8,7 +8,7 @@
 #include <eigen3/Eigen/Dense>
 
 namespace pose {
-    typedef std::pair<Eigen::Vector2f, float> Pose2d;
+    typedef std::pair<Eigen::Vector2d, double> Pose2d;
     typedef std::pair<Eigen::Vector3d, Eigen::Quaterniond> Pose3d;
 
 

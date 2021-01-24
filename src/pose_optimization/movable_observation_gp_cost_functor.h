@@ -46,7 +46,7 @@ namespace pose_optimization {
 
         MovableObservationCostFunctor(
                 std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde,
-                Eigen::Vector3f &observation_transl, Eigen::Quaternionf &observation_orientation) :kde_(kde),
+                Eigen::Vector3d &observation_transl, Eigen::Quaterniond &observation_orientation) :kde_(kde),
                                                                                                    observation_translation_(observation_transl), observation_orientation_(observation_orientation) {
 
             observation_transform_.translation() = observation_translation_;
@@ -131,17 +131,17 @@ namespace pose_optimization {
         /**
          * Translation component of the observation relative to the robot.
          */
-        Eigen::Vector3f observation_translation_;
+        Eigen::Vector3d observation_translation_;
 
         /**
          * Orientation component of the observation relative to the robot's frame.
          */
-        Eigen::Quaternionf observation_orientation_;
+        Eigen::Quaterniond observation_orientation_;
 
         /**
          * Affine transform that provides the object's coordinate frame relative to the robot's coordinate frame.
          */
-        Eigen::Affine3f observation_transform_;
+        Eigen::Affine3d observation_transform_;
     };
 } // end pose_optimization
 

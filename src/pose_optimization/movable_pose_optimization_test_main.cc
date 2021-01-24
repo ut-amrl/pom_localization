@@ -17,8 +17,8 @@
 
 using namespace pose;
 
-Pose2d createPose2d(const float &x, const float &y, const float &theta) {
-    return std::make_pair(Eigen::Vector2f(x, y), theta);
+Pose2d createPose2d(const double &x, const double &y, const double &theta) {
+    return std::make_pair(Eigen::Vector2d(x, y), theta);
 }
 
 Pose3d toPose3d(Pose2d pose_2d) {
@@ -28,8 +28,11 @@ Pose3d toPose3d(Pose2d pose_2d) {
     return std::make_pair(transl, rot);
 }
 
-Pose2d addGaussianNoise(const Pose2d &original_pose_2d, const float &x_std_dev, const float &y_std_dev, const float &theta_std_dev, util_random::Random &rand_gen) {
-    return std::make_pair(Eigen::Vector2f(rand_gen.Gaussian(original_pose_2d.first.x(), x_std_dev), rand_gen.Gaussian(original_pose_2d.first.y(), y_std_dev)), rand_gen.Gaussian(original_pose_2d.second, theta_std_dev));
+Pose2d addGaussianNoise(const Pose2d &original_pose_2d, const double &x_std_dev, const double &y_std_dev,
+                        const double &theta_std_dev, util_random::Random &rand_gen) {
+    return std::make_pair(Eigen::Vector2d(rand_gen.Gaussian(original_pose_2d.first.x(), x_std_dev),
+                                          rand_gen.Gaussian(original_pose_2d.first.y(), y_std_dev)),
+                          rand_gen.Gaussian(original_pose_2d.second, theta_std_dev));
 }
 
 // TODO sample angle from Gaussian in SO(3)
@@ -109,20 +112,20 @@ std::vector<Pose2d> createParkedCarPoses() {
     return poses;
 }
 
-std::vector<Eigen::Vector2f> createNegativeObservations() {
-    std::vector<std::pair<Eigen::Vector2f, Eigen::Vector2f>> exclude_regions;
-    exclude_regions.emplace_back(std::make_pair(Eigen::Vector2f(-9, 0), Eigen::Vector2f(1, 10)));
-    exclude_regions.emplace_back(std::make_pair(Eigen::Vector2f(1, 0), Eigen::Vector2f(9, 16)));
+std::vector<Eigen::Vector2d> createNegativeObservations() {
+    std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> exclude_regions;
+    exclude_regions.emplace_back(std::make_pair(Eigen::Vector2d(-9, 0), Eigen::Vector2d(1, 10)));
+    exclude_regions.emplace_back(std::make_pair(Eigen::Vector2d(1, 0), Eigen::Vector2d(9, 16)));
 
-    std::vector<Eigen::Vector2f> negative_observations;
+    std::vector<Eigen::Vector2d> negative_observations;
     for (int x = -15; x <= 20; x++) {
         for (int y = -5; y <= 25; y++) {
             bool in_exclude_region = false;
-            for (const std::pair<Eigen::Vector2f, Eigen::Vector2f> &exclude_region : exclude_regions) {
-                float x_min = exclude_region.first.x();
-                float x_max = exclude_region.second.x();
-                float y_min = exclude_region.first.y();
-                float y_max = exclude_region.second.y();
+            for (const std::pair<Eigen::Vector2d, Eigen::Vector2d> &exclude_region : exclude_regions) {
+                double x_min = exclude_region.first.x();
+                double x_max = exclude_region.second.x();
+                double y_min = exclude_region.first.y();
+                double y_max = exclude_region.second.y();
 
                 if ((y >= y_min) && (y <= y_max) && (x >= x_min) && (x <= x_max)) {
                     in_exclude_region = true;
@@ -131,7 +134,7 @@ std::vector<Eigen::Vector2f> createNegativeObservations() {
             }
 
             if (!in_exclude_region) {
-                negative_observations.emplace_back(Eigen::Vector2f(x, y));
+                negative_observations.emplace_back(Eigen::Vector2d(x, y));
             }
         }
     }
@@ -280,7 +283,7 @@ int main(int argc, char** argv) {
     std::vector<Pose2d> filled_parking_spots = createParkedCarPoses();
 
     std::vector<Pose2d> previous_car_locations = filled_parking_spots; // tODO at some point, we should replace this with observatiosn at all parking spots
-    std::vector<Eigen::Vector2f> negative_car_observations = createNegativeObservations();
+    std::vector<Eigen::Vector2d> negative_car_observations = createNegativeObservations();
 
     // Create 3d robot poses from 2d
     std::vector<Pose3d> robot_gt_poses_3d;
@@ -381,12 +384,12 @@ int main(int argc, char** argv) {
     // Create the movable observations at each node from the noisy observations
 //    for (uint64_t i = 0; i < noisy_observations.size(); i++) {
     for (uint64_t i = 1; i < noisy_observations.size(); i++) {
-        std::vector<pose_graph::MovableObservation3D> movable_observations;
+        std::vector<pose_graph::MovableObservation3d> movable_observations;
         for (const Pose3d &noisy_obs_at_node : noisy_observations[i]) {
-            pose_graph::MovableObservation3D obs;
+            pose_graph::MovableObservation3d obs;
             obs.semantic_class_ = car_class;
-            obs.observation_transl_ = noisy_obs_at_node.first.cast<float>();
-            obs.observation_orientation_ = noisy_obs_at_node.second.cast<float>();
+            obs.observation_transl_ = noisy_obs_at_node.first;
+            obs.observation_orientation_ = noisy_obs_at_node.second;
             movable_observations.emplace_back(obs);
         }
         pose_graph.addMovableObservationFactors(i, movable_observations);
@@ -397,7 +400,7 @@ int main(int argc, char** argv) {
         for (uint64_t i = 0; i < noisy_odometry.size(); i++) {
             pose_graph::NodeId prev_node = i;
             pose_graph::NodeId to_node = i + 1;
-            pose_graph::GaussianBinaryFactor factor;
+            pose_graph::GaussianBinaryFactor3d factor;
             factor.to_node_ = to_node;
             factor.from_node_ = prev_node;
             factor.translation_change_ = noisy_odometry[i].first;
@@ -448,8 +451,9 @@ int main(int argc, char** argv) {
 //    }
 
 
-    std::unordered_map<std::string, std::pair<std::vector<pose_graph::NegativeMovableObservation2D>, std::vector<pose_graph::MapObservation2D>>> obs_by_class;
-    std::vector<pose_graph::NegativeMovableObservation2D> neg_obs;
+    std::unordered_map<std::string, std::pair<std::vector<pose_graph::NegativeMapObjectObservation2d>,
+            std::vector<pose_graph::MapObjectObservation2d>>> obs_by_class;
+    std::vector<pose_graph::NegativeMapObjectObservation2d> neg_obs;
 //    for (const Eigen::Vector2f &neg_obs_pos : negative_car_observations) {
 //        pose_graph::NegativeMovableObservation2D negative_observation;
 //        negative_observation.semantic_class_ = car_class;
@@ -457,9 +461,9 @@ int main(int argc, char** argv) {
 //        neg_obs.emplace_back(negative_observation);
 //    }
 
-    std::vector<pose_graph::MapObservation2D> pos_observations;
+    std::vector<pose_graph::MapObjectObservation2d> pos_observations;
     for (const Pose2d &obs_pos : previous_car_locations) {
-        pose_graph::MapObservation2D observation;
+        pose_graph::MapObjectObservation2d observation;
         observation.semantic_class_ = car_class;
         observation.transl_ = obs_pos.first;
         observation.orientation_ = obs_pos.second;
@@ -549,8 +553,8 @@ int main(int argc, char** argv) {
         for (int i = 1; i <= next_pose_to_optimize; i++) {
             std::vector<pose::Pose3d> relative_poses = noisy_observations[i];
             for (size_t j = 0; j < relative_poses.size(); j++) {
-                Eigen::Vector3f transl = relative_poses[j].first.cast<float>();
-                Eigen::Quaternionf rot = relative_poses[j].second.cast<float>();
+                Eigen::Vector3d transl = relative_poses[j].first;
+                Eigen::Quaterniond rot = relative_poses[j].second;
                 pose_optimization::SampleBasedMovableObservationCostFunctor3D factor(kde, {{transl, rot}});
 
 //                manager.displayPoseResiduals(factor, 0.1, -10.0, 15, -5, 20);

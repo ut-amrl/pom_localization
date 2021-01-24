@@ -72,7 +72,7 @@ namespace pose_optimization {
 
 
             // Add residuals from odometry (visual, lidar, or wheel) factors
-            for (pose_graph::GaussianBinaryFactor &factor : pose_graph.getBinaryFactors()) {
+            for (pose_graph::GaussianBinaryFactor3d &factor : pose_graph.getBinaryFactors()) {
 
                 if (nodes_to_optimize.find(factor.to_node_) == nodes_to_optimize.end()) {
                     continue;
