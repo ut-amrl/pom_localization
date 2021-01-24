@@ -18,13 +18,13 @@ namespace pose_optimization {
     public:
         PoseGraphOptimizer() = default;
 
-        void buildPoseGraphOptimizationProblem(pose_graph::PoseGraph &pose_graph, const std::unordered_set<pose_graph::NodeId> &nodes_to_optimize, ceres::Problem *problem) {
+        void buildPoseGraphOptimizationProblem(pose_graph::PoseGraph3dHeatMap2d &pose_graph, const std::unordered_set<pose_graph::NodeId> &nodes_to_optimize, ceres::Problem *problem) {
 
             ceres::LocalParameterization* quaternion_local_parameterization =
                     new ceres::EigenQuaternionParameterization;
 
             // Add residuals from movable object observations
-            for (pose_graph::MovableObservationFactor &factor : pose_graph.getMovableObservationFactors()) {
+            for (pose_graph::MovableObservationFactor3d &factor : pose_graph.getMovableObservationFactors()) {
                 std::pair<std::shared_ptr<Eigen::Vector3d>, std::shared_ptr<Eigen::Quaterniond>> pose_vars_;
                 if (!pose_graph.getNodePosePointers(factor.observed_at_node_, pose_vars_)) {
                     LOG(ERROR) << "Node " << factor.observed_at_node_ << " did not exist in the pose graph. Skipping movable object observation";

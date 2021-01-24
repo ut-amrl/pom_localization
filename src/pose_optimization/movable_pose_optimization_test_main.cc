@@ -147,7 +147,7 @@ void outputToCsv(const std::string &file_name, const std::vector<Pose2d> &poses)
 
 class CeresCallback : public ceres::IterationCallback {
     public:
-     explicit CeresCallback(pose_graph::PoseGraph *pose_graph, visualization::VisualizationManager *manager, int32_t &num_poses, std::vector<std::vector<Pose3d>> &observed_cars) : pose_graph_(pose_graph), manager_(manager), num_poses_(num_poses), observed_cars_(observed_cars) {
+     explicit CeresCallback(pose_graph::PoseGraph3dHeatMap2d *pose_graph, visualization::VisualizationManager *manager, int32_t &num_poses, std::vector<std::vector<Pose3d>> &observed_cars) : pose_graph_(pose_graph), manager_(manager), num_poses_(num_poses), observed_cars_(observed_cars) {
 
      }
 
@@ -194,7 +194,7 @@ class CeresCallback : public ceres::IterationCallback {
      }
 
     private:
-        pose_graph::PoseGraph *pose_graph_;
+        pose_graph::PoseGraph3dHeatMap2d *pose_graph_;
 
         visualization::VisualizationManager *manager_;
 
@@ -354,7 +354,7 @@ int main(int argc, char** argv) {
     gp_kernel::PeriodicGaussianKernel<1> orientation_kernel(M_PI * 2, orientation_kernel_var, orientation_kernel_len);
     gp_kernel::Pose2dKernel pose_2d_kernel(position_kernel, orientation_kernel);
 
-    pose_graph::PoseGraph pose_graph(pose_2d_kernel);
+    pose_graph::PoseGraph3dHeatMap2d pose_graph(pose_2d_kernel);
 
     std::vector<Pose3d> initial_node_positions;
     Pose3d prev_pose = toPose3d(createPose2d(0, 0, 0));
