@@ -45,7 +45,7 @@ namespace pose_optimization {
 //        }
 
         SampleBasedMovableObservationCostFunctor2D(
-                std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde,
+                const std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde,
                 const std::vector<std::pair<Eigen::Vector2d, double>> &observation_samples) :kde_(kde) {
             for (const std::pair<Eigen::Vector2d, double> &observation_sample : observation_samples) {
                 observation_transforms_.emplace_back(convertTranslationAndRotationToMatrix(observation_sample.first,
@@ -55,7 +55,7 @@ namespace pose_optimization {
 
         template<typename T>
         Eigen::Transform<T,2, Eigen::Affine> convertTranslationAndRotationToMatrix(
-                const Eigen::Matrix<T, 2, 1> &translation, const T &rotation) {
+                const Eigen::Matrix<T, 2, 1> &translation, const T &rotation) const {
             Eigen::Rotation2D<T> rotation_eig(rotation);
             Eigen::Transform<T,2, Eigen::Affine> transform = Eigen::Transform<T, 2, Eigen::Affine>::Identity();
             transform.translate(translation);
@@ -67,8 +67,10 @@ namespace pose_optimization {
         bool operator()(const T* const robot_position_ptr, const T* const robot_orientation_ptr, T* residuals) const {
             Eigen::Map<const Eigen::Matrix<T, 2, 1>> robot_translation(robot_position_ptr);
 
+            const T robot_orientation = *robot_orientation_ptr;
+
             Eigen::Transform<T, 2, Eigen::Affine> robot_tf =
-                    convertTranslationAndRotationToMatrix<T>(robot_translation, *robot_orientation_ptr);
+                    convertTranslationAndRotationToMatrix<T>(robot_translation, robot_orientation);
 
             T cumulative_probability = T(0.0);
 

@@ -3,8 +3,8 @@
 // This file borrows heavily from https://github.com/ceres-solver/ceres-solver/blob/master/examples/slam/pose_graph_3d/pose_graph_3d_error_term.h
 //
 
-#ifndef AUTODIFF_GP_ODOMETRY_COST_FUNCTOR_H
-#define AUTODIFF_GP_ODOMETRY_COST_FUNCTOR_H
+#ifndef AUTODIFF_GP_ODOMETRY_3D_COST_FUNCTOR_H
+#define AUTODIFF_GP_ODOMETRY_3D_COST_FUNCTOR_H
 
 #include <eigen3/Eigen/Dense>
 
@@ -13,7 +13,7 @@ namespace pose_optimization {
     /**
      * Cost functor for an odometry (wheel odometry or lidar/visual odometry) factor in a pose graph.
      */
-    class OdometryCostFunctor {
+    class Odometry3dCostFunctor {
     public:
 
         /**
@@ -23,8 +23,8 @@ namespace pose_optimization {
          * @param orientation_change    Observed orientation change.
          * @param sqrt_information      Information matrix (inverse of covariance matrix).
          */
-        OdometryCostFunctor(Eigen::Vector3d &translation_change, Eigen::Quaterniond &orientation_change,
-                            Eigen::Matrix<double, 6, 6>& sqrt_information) : translation_change_(translation_change),
+        Odometry3dCostFunctor(const Eigen::Vector3d &translation_change, const Eigen::Quaterniond &orientation_change,
+                              const Eigen::Matrix<double, 6, 6>& sqrt_information) : translation_change_(translation_change),
                             orientation_change_(orientation_change), sqrt_information_(sqrt_information) {
 
         }
@@ -88,4 +88,4 @@ namespace pose_optimization {
 
 } // end pose_optimization
 
-#endif //AUTODIFF_GP_ODOMETRY_COST_FUNCTOR_H
+#endif //AUTODIFF_GP_ODOMETRY_3D_COST_FUNCTOR_H

@@ -29,7 +29,7 @@ namespace pose_optimization {
     struct SampleBasedMovableObservationCostFunctor3D {
 
         SampleBasedMovableObservationCostFunctor3D(
-                std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde,
+                const std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde,
                 const std::vector<std::pair<Eigen::Vector3d, Eigen::Quaterniond>> &observation_samples) :kde_(kde) {
             for (const std::pair<Eigen::Vector3d, Eigen::Quaterniond> &observation_sample : observation_samples) {
                 observation_transforms_.emplace_back(convertTranslationAndRotationToMatrix(observation_sample.first,

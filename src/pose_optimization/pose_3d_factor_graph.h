@@ -6,6 +6,12 @@
 #define AUTODIFF_GP_POSE_3D_FACTOR_GRAPH_H
 
 #include <pose_optimization/pose_graph_generic.h>
+#include <gaussian_process/kernel/pose_2d_kernel.h>
+#include <pose_optimization/angle_local_parameterization.h>
+#include <pose_optimization/sample_based_movable_observation_gp_cost_functor_2d.h>
+#include <pose_optimization/sample_based_movable_observation_gp_cost_functor_3d.h>
+#include <pose_optimization/odometry_2d_cost_functor.h>
+#include <pose_optimization/odometry_3d_cost_functor.h>
 
 namespace pose_graph {
 
@@ -23,12 +29,13 @@ namespace pose_graph {
     class PoseGraphXdHeatMap2d : public PoseGraph<gp_kernel::Pose2dKernel, MeasurementTranslationDim, MeasurementRotationType, CovDim, 2, double, 3> {
     public:
 
-        PoseGraphXdHeatMap2d(gp_kernel::Pose2dKernel &kernel) : PoseGraph<gp_kernel::Pose2dKernel, MeasurementTranslationDim, MeasurementRotationType, CovDim, 2, double, 3>(kernel) {
-
-        }
+        PoseGraphXdHeatMap2d(const std::function<ceres::LocalParameterization*()> &rotation_local_parameterization_creator,
+                             gp_kernel::Pose2dKernel &kernel) : PoseGraph<
+                                     gp_kernel::Pose2dKernel, MeasurementTranslationDim, MeasurementRotationType,
+                                     CovDim, 2, double, 3>(rotation_local_parameterization_creator, kernel) {}
 
         ~PoseGraphXdHeatMap2d() override {}
-//
+
 //        /**
 //         * Create the pose graph.
 //         *
@@ -292,8 +299,55 @@ namespace pose_graph {
         }
     };
 
-    typedef PoseGraphXdHeatMap2d<3, Eigen::Quaterniond, 6> PoseGraph3dHeatMap2d;
-    typedef PoseGraphXdHeatMap2d<2, double, 3> PoseGraph2dHeatMap2d;
+    class PoseGraph3dHeatMap2d : public PoseGraphXdHeatMap2d<3, Eigen::Quaterniond, 6> {
+    public:
+        PoseGraph3dHeatMap2d(gp_kernel::Pose2dKernel &kernel) : PoseGraphXdHeatMap2d<3, Eigen::Quaterniond, 6>(
+                createQuaternionParameterization, kernel) {
+        }
+
+        static ceres::LocalParameterization* createQuaternionParameterization() {
+            return new ceres::EigenQuaternionParameterization();
+        }
+
+        ceres::CostFunction *createMovableObjectCostFunctor(const std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> &movable_object_kde,
+                                                            const MovableObservationFactor<3, Eigen::Quaterniond, 6> &factor) const override {
+            return new ceres::AutoDiffCostFunction<pose_optimization::SampleBasedMovableObservationCostFunctor3D, 1, 3, 4>(
+                    new pose_optimization::SampleBasedMovableObservationCostFunctor3D(
+                            movable_object_kde,
+                            {{factor.observation_.observation_transl_,
+                                     factor.observation_.observation_orientation_}}));
+        }
+
+        ceres::CostFunction *createGaussianBinaryCostFunctor(
+                const GaussianBinaryFactor<3, Eigen::Quaterniond, 6> &factor) const override {
+            return new ceres::AutoDiffCostFunction<pose_optimization::Odometry3dCostFunctor, 6, 3, 4, 3, 4>(
+                    new pose_optimization::Odometry3dCostFunctor(
+                            factor.translation_change_, factor.orientation_change_, factor.sqrt_information_));
+        };
+    };
+
+    class PoseGraph2dHeatMap2d : public PoseGraphXdHeatMap2d<2, double, 3> {
+    public:
+        PoseGraph2dHeatMap2d(gp_kernel::Pose2dKernel &kernel) : PoseGraphXdHeatMap2d<2, double, 3>(
+                pose_optimization::AngleLocalParameterization::create, kernel) {
+        }
+
+        ceres::CostFunction *createMovableObjectCostFunctor(const std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> &movable_object_kde,
+                                                            const MovableObservationFactor<2, double, 3> &factor) const override {
+            return new ceres::AutoDiffCostFunction<pose_optimization::SampleBasedMovableObservationCostFunctor2D, 1, 2, 1>(
+                    new pose_optimization::SampleBasedMovableObservationCostFunctor2D(
+                            movable_object_kde,
+                            {{factor.observation_.observation_transl_,
+                                     factor.observation_.observation_orientation_}}));
+        }
+
+        ceres::CostFunction *createGaussianBinaryCostFunctor(
+                const GaussianBinaryFactorType &factor) const override {
+            return new ceres::AutoDiffCostFunction<pose_optimization::Odometry2dCostFunctor, 3, 2, 1, 2, 1>(
+                    new pose_optimization::Odometry2dCostFunctor(
+                            factor.translation_change_, factor.orientation_change_, factor.sqrt_information_));
+        };
+    };
 }
 
 #endif //AUTODIFF_GP_POSE_3D_FACTOR_GRAPH_H

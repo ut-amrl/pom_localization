@@ -18,14 +18,21 @@ namespace pose_optimization {
     public:
         PoseGraphOptimizer() = default;
 
-        void buildPoseGraphOptimizationProblem(pose_graph::PoseGraph3dHeatMap2d &pose_graph, const std::unordered_set<pose_graph::NodeId> &nodes_to_optimize, ceres::Problem *problem) {
+        template<typename MovObjKernelType, int MeasurementTranslationDim, typename MeasurementRotationType, int CovDim,
+                int MovableHeatMapTranslationDim, typename MovableHeatMapRotationType, int KernelDim>
+        void buildPoseGraphOptimizationProblem(
+                pose_graph::PoseGraph<MovObjKernelType, MeasurementTranslationDim, MeasurementRotationType, CovDim,
+                MovableHeatMapTranslationDim, MovableHeatMapRotationType, KernelDim> &pose_graph,
+                const std::unordered_set<pose_graph::NodeId> &nodes_to_optimize, ceres::Problem *problem) {
 
-            ceres::LocalParameterization* quaternion_local_parameterization =
-                    new ceres::EigenQuaternionParameterization;
+            ceres::LocalParameterization *rotation_parameterization = pose_graph.getRotationParameterization();
 
             // Add residuals from movable object observations
-            for (pose_graph::MovableObservationFactor3d &factor : pose_graph.getMovableObservationFactors()) {
-                std::pair<std::shared_ptr<Eigen::Vector3d>, std::shared_ptr<Eigen::Quaterniond>> pose_vars_;
+            for (pose_graph::MovableObservationFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim>
+                    &factor : pose_graph.getMovableObservationFactors()) {
+
+                std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
+                        std::shared_ptr<MeasurementRotationType>> pose_vars_;
                 if (!pose_graph.getNodePosePointers(factor.observed_at_node_, pose_vars_)) {
                     LOG(ERROR) << "Node " << factor.observed_at_node_ << " did not exist in the pose graph. Skipping movable object observation";
                     continue;
@@ -36,15 +43,17 @@ namespace pose_optimization {
                 }
 
 //                std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> movable_object_regressor = pose_graph.getMovableObjGpRegressor(factor.observation_.semantic_class_);
-                std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> movable_object_kde = pose_graph.getMovableObjKde(factor.observation_.semantic_class_);
+                std::shared_ptr<gp_regression::KernelDensityEstimator<KernelDim, MovObjKernelType>> movable_object_kde =
+                        pose_graph.getMovableObjKde(factor.observation_.semantic_class_);
                 if (movable_object_kde) {
 
-                    ceres::CostFunction *cost_function = new ceres::AutoDiffCostFunction<pose_optimization::SampleBasedMovableObservationCostFunctor3D, 1, 3, 4>(
-                            new pose_optimization::SampleBasedMovableObservationCostFunctor3D(
-//                                    pose_graph.getMovableObjGpRegressor(factor.observation_.semantic_class_),
-                                    movable_object_kde,
-                                    {{factor.observation_.observation_transl_,
-                                    factor.observation_.observation_orientation_}}));
+                    // TODO  need to replace this with something that is generic for 2D vs 3D
+                    ceres::CostFunction *cost_function = pose_graph.createMovableObjectCostFunctor(movable_object_kde, factor);
+//                    ceres::CostFunction *cost_function = new ceres::AutoDiffCostFunction<pose_optimization::SampleBasedMovableObservationCostFunctor3D, 1, 3, 4>(
+//                            new pose_optimization::SampleBasedMovableObservationCostFunctor3D(
+//                                    movable_object_kde,
+//                                    {{factor.observation_.observation_transl_,
+//                                    factor.observation_.observation_orientation_}}));
 
 //                    ceres::CostFunction *cost_function = new ceres::AutoDiffCostFunction<pose_optimization::MovableObservationCostFunctor, 1, 3, 4>(
 //                            new pose_optimization::MovableObservationCostFunctor(
@@ -63,8 +72,10 @@ namespace pose_optimization {
                     problem->AddResidualBlock(cost_function, nullptr, pose_vars_.first->data(),
                                               pose_vars_.second->coeffs().data());
 
-                    problem->SetParameterization(pose_vars_.second->coeffs().data(),
-                                                 quaternion_local_parameterization);
+                    if (rotation_parameterization != nullptr) {
+                        problem->SetParameterization(pose_vars_.second->coeffs().data(),
+                                                     rotation_parameterization);
+                    }
                 } else {
                     LOG(WARNING) << "No gp regressor for semantic class " << factor.observation_.semantic_class_;
                 }
@@ -72,7 +83,8 @@ namespace pose_optimization {
 
 
             // Add residuals from odometry (visual, lidar, or wheel) factors
-            for (pose_graph::GaussianBinaryFactor3d &factor : pose_graph.getBinaryFactors()) {
+            for (pose_graph::GaussianBinaryFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> &factor
+            : pose_graph.getBinaryFactors()) {
 
                 if (nodes_to_optimize.find(factor.to_node_) == nodes_to_optimize.end()) {
                     continue;
@@ -81,14 +93,15 @@ namespace pose_optimization {
                 if (nodes_to_optimize.find(factor.from_node_) == nodes_to_optimize.end()) {
                     continue;
                 }
-
-                std::pair<std::shared_ptr<Eigen::Vector3d>, std::shared_ptr<Eigen::Quaterniond>> from_pose_vars_;
+                std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
+                        std::shared_ptr<MeasurementRotationType>> from_pose_vars_;
                 if (!pose_graph.getNodePosePointers(factor.from_node_, from_pose_vars_)) {
                     LOG(ERROR) << "From node " << factor.from_node_ << " did not exist in the pose graph. Skipping odometry observation";
                     continue;
                 }
 
-                std::pair<std::shared_ptr<Eigen::Vector3d>, std::shared_ptr<Eigen::Quaterniond>> to_pose_vars_;
+                std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
+                        std::shared_ptr<MeasurementRotationType>> to_pose_vars_;
                 if (!pose_graph.getNodePosePointers(factor.to_node_, to_pose_vars_)) {
                     LOG(ERROR) << "To node " << factor.to_node_ << " did not exist in the pose graph. Skipping odometry observation";
                     continue;
@@ -97,19 +110,25 @@ namespace pose_optimization {
 //                factor.translation_change_ << ", " << factor.orientation_change_.w() << ", " <<
 //                factor.orientation_change_.x() << ", " << factor.orientation_change_.y() << ", " <<
 //                factor.orientation_change_.z();
-                ceres::CostFunction *cost_function = new ceres::AutoDiffCostFunction<pose_optimization::OdometryCostFunctor, 6, 3, 4, 3, 4>(
-                        new pose_optimization::OdometryCostFunctor(
-                                factor.translation_change_, factor.orientation_change_, factor.sqrt_information_));
+//                // TODO replace with non-dimension specific form
+//                ceres::CostFunction *cost_function = new ceres::AutoDiffCostFunction<pose_optimization::Odometry3dCostFunctor, 6, 3, 4, 3, 4>(
+//                        new pose_optimization::Odometry3dCostFunctor(
+//                                factor.translation_change_, factor.orientation_change_, factor.sqrt_information_));
+                ceres::CostFunction *cost_function = pose_graph.createGaussianBinaryCostFunctor(factor);
 
                 problem->AddResidualBlock(cost_function, nullptr, from_pose_vars_.first->data(), from_pose_vars_.second->coeffs().data(),
                                          to_pose_vars_.first->data(), to_pose_vars_.second->coeffs().data());
 
-                problem->SetParameterization(from_pose_vars_.second->coeffs().data(),
-                                             quaternion_local_parameterization);
-                problem->SetParameterization(to_pose_vars_.second->coeffs().data(),
-                                             quaternion_local_parameterization);
+                if (rotation_parameterization != nullptr) {
+                    problem->SetParameterization(from_pose_vars_.second->coeffs().data(),
+                                                 rotation_parameterization);
+                    problem->SetParameterization(to_pose_vars_.second->coeffs().data(),
+                                                 rotation_parameterization);
+                }
             }
-            std::pair<std::shared_ptr<Eigen::Vector3d>, std::shared_ptr<Eigen::Quaterniond>> start_pose_vars_;
+
+            std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
+                    std::shared_ptr<MeasurementRotationType>> start_pose_vars_;
             pose_graph.getNodePosePointers(0, start_pose_vars_);
             problem->SetParameterBlockConstant(start_pose_vars_.first->data());
 

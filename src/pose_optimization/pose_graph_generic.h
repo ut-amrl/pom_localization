@@ -5,12 +5,15 @@
 #ifndef AUTODIFF_GP_POSE_GRAPH_GENERIC_H
 #define AUTODIFF_GP_POSE_GRAPH_GENERIC_H
 
-#include <eigen3/Eigen/Dense>
-#include <unordered_map>
-#include <gaussian_process/gp_regression.h>
-#include <gaussian_process/kernel/pose_2d_kernel.h>
 #include <memory>
+#include <unordered_map>
 #include <unordered_set>
+
+#include <ceres/autodiff_local_parameterization.h>
+#include <ceres/autodiff_cost_function.h>
+#include <eigen3/Eigen/Dense>
+
+//#include <gaussian_process/gp_regression.h>
 #include <gaussian_process/kernel_density_estimator.h>
 
 namespace pose_graph {
@@ -187,6 +190,7 @@ namespace pose_graph {
         typedef GaussianBinaryFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> GaussianBinaryFactorType;
         typedef MapObjectObservation<MovableHeatMapTranslationDim, MovableHeatMapRotationType> MapObjectObservationType;
         typedef NegativeMapObjectObservation<MovableHeatMapTranslationDim> NegativeMapObjectObservationType;
+        typedef gp_regression::KernelDensityEstimator<KernelDim, MovObjKernelType> KdeType;
 
         /**
          * Create the pose graph.
@@ -194,7 +198,9 @@ namespace pose_graph {
          * @param kernel Kernel for comparing 2d movable object poses. // TODO, this doesn't seem like it necessarily
          * belongs to this class intuitively, any way to restructure?
          */
-        PoseGraph(MovObjKernelType &kernel) : mov_obj_kernel_(kernel) {
+        PoseGraph(const std::function<ceres::LocalParameterization*()> &rotation_local_parameterization_creator,
+                  MovObjKernelType &kernel) : rotation_local_parameterization_creator_(rotation_local_parameterization_creator),
+                  mov_obj_kernel_(kernel) {
 
         }
 
@@ -279,12 +285,12 @@ namespace pose_graph {
                 Eigen::MatrixXf inputs;
                 if (getMatrixRepresentationOfDetections(obs_by_class.second.second, inputs)) {
                     auto kde_iter = movable_object_2d_kdes_by_class_.find(obs_by_class.first);
-                    std::shared_ptr<gp_regression::KernelDensityEstimator<KernelDim, MovObjKernelType>> kde;
+                    std::shared_ptr<KdeType> kde;
                     if (kde_iter != movable_object_2d_kdes_by_class_.end()) {
                         kde = kde_iter->second;
                         kde->appendData(inputs);
                     } else {
-                        kde = std::make_shared<gp_regression::KernelDensityEstimator<KernelDim, MovObjKernelType>>(inputs, &mov_obj_kernel_);
+                        kde = std::make_shared<KdeType>(inputs, &mov_obj_kernel_);
                     }
                     movable_object_2d_kdes_by_class_[obs_by_class.first] = kde;
                 }
@@ -306,7 +312,7 @@ namespace pose_graph {
 //            return nullptr;
 //        }
 
-        std::shared_ptr<gp_regression::KernelDensityEstimator<KernelDim, MovObjKernelType>> getMovableObjKde(const std::string &class_label) {
+        std::shared_ptr<KdeType> getMovableObjKde(const std::string &class_label) {
             auto regressor_iter = movable_object_2d_kdes_by_class_.find(class_label);
             if (regressor_iter != movable_object_2d_kdes_by_class_.end()) {
                 return regressor_iter->second;
@@ -344,10 +350,23 @@ namespace pose_graph {
             }
         }
 
+        ceres::LocalParameterization* getRotationParameterization() const {
+            return rotation_local_parameterization_creator_();
+        }
+
+        virtual ceres::CostFunction *createMovableObjectCostFunctor(
+                const std::shared_ptr<KdeType> &movable_object_kde,
+                const MovableObservationFactorType &factor) const = 0;
+
+        virtual ceres::CostFunction *createGaussianBinaryCostFunctor(
+                const GaussianBinaryFactorType &factor) const = 0;
+
     protected:
 
         // TODO there has to be a better way than just inserting samples at a variety of orientations
         const uint8_t kNumDiscreteOrientationsNegObservations = 5;
+
+        std::function<ceres::LocalParameterization*()> rotation_local_parameterization_creator_;
 
         /**
          * Kernel for comparing 2d movable object pose similarity.
@@ -380,7 +399,7 @@ namespace pose_graph {
         /**
          * Movable object KDEs, by their semantic class.
          */
-        std::unordered_map<std::string, std::shared_ptr<gp_regression::KernelDensityEstimator<KernelDim, MovObjKernelType>>> movable_object_2d_kdes_by_class_;
+        std::unordered_map<std::string, std::shared_ptr<KdeType>> movable_object_2d_kdes_by_class_;
 
         // Commenting out because we're not currently using Negative detections - will probably be need to made into a
         // virtual method if we're using this
