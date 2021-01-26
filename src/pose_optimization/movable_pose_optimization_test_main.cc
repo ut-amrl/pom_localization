@@ -21,13 +21,6 @@ Pose2d createPose2d(const double &x, const double &y, const double &theta) {
     return std::make_pair(Eigen::Vector2d(x, y), theta);
 }
 
-Pose3d toPose3d(Pose2d pose_2d) {
-    Eigen::Vector3d transl(pose_2d.first.x(), pose_2d.first.y(), 0);
-    Eigen::Quaterniond rot;
-    rot = Eigen::AngleAxisd(pose_2d.second, Eigen::Vector3d::UnitZ());
-    return std::make_pair(transl, rot);
-}
-
 Pose2d addGaussianNoise(const Pose2d &original_pose_2d, const double &x_std_dev, const double &y_std_dev,
                         const double &theta_std_dev, util_random::Random &rand_gen) {
     return std::make_pair(Eigen::Vector2d(rand_gen.Gaussian(original_pose_2d.first.x(), x_std_dev),
@@ -145,13 +138,13 @@ void outputToCsv(const std::string &file_name, const std::vector<Pose2d> &poses)
 // TODO
 }
 
-class CeresCallback : public ceres::IterationCallback {
+class CeresCallback3d : public ceres::IterationCallback {
     public:
-     explicit CeresCallback(pose_graph::PoseGraph3dHeatMap2d *pose_graph, visualization::VisualizationManager *manager, int32_t &num_poses, std::vector<std::vector<Pose3d>> &observed_cars) : pose_graph_(pose_graph), manager_(manager), num_poses_(num_poses), observed_cars_(observed_cars) {
+     explicit CeresCallback3d(pose_graph::PoseGraph3dHeatMap2d *pose_graph, visualization::VisualizationManager *manager, int32_t &num_poses, std::vector<std::vector<Pose3d>> &observed_cars) : pose_graph_(pose_graph), manager_(manager), num_poses_(num_poses), observed_cars_(observed_cars) {
 
      }
 
-     ~CeresCallback() {}
+     ~CeresCallback3d() {}
 
      ceres::CallbackReturnType operator()(const ceres::IterationSummary& summary) {
 //       const char* kReportRowFormat =
@@ -202,6 +195,48 @@ class CeresCallback : public ceres::IterationCallback {
 
         std::vector<std::vector<Pose3d>> observed_cars_;
    };
+
+class CeresCallback2d : public ceres::IterationCallback {
+public:
+    explicit CeresCallback2d(pose_graph::PoseGraph2dHeatMap2d *pose_graph, visualization::VisualizationManager *manager,
+                             int32_t &num_poses,
+                             std::vector<std::vector<Pose2d>> &observed_cars) : pose_graph_(pose_graph),
+                             manager_(manager), num_poses_(num_poses), observed_cars_(observed_cars) {
+
+    }
+
+    ~CeresCallback2d() {}
+
+    ceres::CallbackReturnType operator()(const ceres::IterationSummary& summary) {
+
+        std::unordered_map<pose_graph::NodeId, Pose2d> node_poses;
+        pose_graph_->getNodePoses(node_poses);
+        std::vector<Pose2d> node_poses_list;
+
+        for (int32_t i = 1; i < num_poses_; i++) {
+//            Pose3d init_pose = initial_node_positions[i];
+            Pose2d optimized_pose = node_poses[i];
+//            Pose2d gt_2d = robot_gt_poses_2d[i];
+            node_poses_list.emplace_back(optimized_pose);
+
+            manager_->displayNoisyCarPosesFromEstTrajectory(node_poses_list, observed_cars_);
+//         manager_->displayEstTrajectory(node_poses_list);
+        }
+
+//         ros::Duration(0.001).sleep();
+
+        return ceres::SOLVER_CONTINUE;
+    }
+
+private:
+    pose_graph::PoseGraph2dHeatMap2d *pose_graph_;
+
+    visualization::VisualizationManager *manager_;
+
+    int32_t num_poses_;
+
+    std::vector<std::vector<Pose2d>> observed_cars_;
+};
 
 int main(int argc, char** argv) {
 
@@ -501,7 +536,7 @@ int main(int argc, char** argv) {
 
 
         std::vector<ceres::IterationCallback *> callbacks;
-        CeresCallback callback(&pose_graph, &manager, num_poses, noisy_obs_without_first);
+        CeresCallback3d callback(&pose_graph, &manager, num_poses, noisy_obs_without_first);
 
         callbacks.emplace_back(&callback);
 

@@ -31,6 +31,13 @@ namespace pose {
         return convertAffineToPose(combined_affine);
     }
 
+    Pose3d toPose3d(Pose2d pose_2d) {
+        Eigen::Vector3d transl(pose_2d.first.x(), pose_2d.first.y(), 0);
+        Eigen::Quaterniond rot;
+        rot = Eigen::AngleAxisd(pose_2d.second, Eigen::Vector3d::UnitZ());
+        return std::make_pair(transl, rot);
+    }
+
 /**
  * Get the pose of object 2 in the frame that pose 1 is relative to.
  *

@@ -115,8 +115,7 @@ namespace visualization {
 
             publishTrajectory(est_marker_pub_, color, est_trajectory, kEstTrajectoryId);
         }
-
-//        void displayMaxGpRegressorOutput(
+        //        void displayMaxGpRegressorOutput(
 //                std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> regressor,
 //                const double &resolution, const double &x_min, const double &x_max, const double &y_min,
 //                const double &y_max) {
@@ -250,15 +249,14 @@ namespace visualization {
         }
 
 //        void displayPoseResiduals(pose_optimization::MovableObservationCostFunctor cost_functor,
-        void displayPoseResiduals(pose_optimization::SampleBasedMovableObservationCostFunctor3D cost_functor,
+        template <typename FactorType>
+        void displayPoseResiduals(FactorType cost_functor,
                                   const double &resolution, const double &x_min, const double &x_max, const double &y_min,
                                   const double &y_max) {
             int64_t x_min_unscaled = floor(x_min / resolution);
             int64_t x_max_unscaled = ceil(x_max / resolution);
             int64_t y_min_unscaled = floor(y_min / resolution);
             int64_t y_max_unscaled = ceil(y_max / resolution);
-
-//            LOG(INFO) << "Creating best occ grid";
 
             nav_msgs::OccupancyGrid best_occ_grid;
             best_occ_grid.header.frame_id = kVizFrame;
@@ -276,7 +274,6 @@ namespace visualization {
             test_grid = best_occ_grid;
 
             std::unordered_map<int, nav_msgs::OccupancyGrid> occ_grids_by_angle;
-//            LOG(INFO) << "Creating occ grids";
 
             for (int i = -5; i <= 6; i++) {
                 nav_msgs::OccupancyGrid occ_grid;
@@ -293,19 +290,7 @@ namespace visualization {
                 occ_grids_by_angle[i] = occ_grid;
             }
 
-//            LOG(INFO) << "Looping through vals";
-
             int size = best_occ_grid.info.width * best_occ_grid.info.height;
-
-//            std::vector<double, grid
-
-//            std::unordered_map<int, Eigen::Matrix<double, 3, Eigen::Dynamic>> mats_by_angle;
-//            for (int i = -5; i <= 6; i++) {
-//                mats_by_angle[i] = Eigen::Matrix<double, 3, Eigen::Dynamic>(3, size);
-//            }
-
-//            LOG(INFO) << "Creating input matrices for different angles";
-
 
             std::unordered_map<int, Eigen::Matrix<double, 1, Eigen::Dynamic>> output_mats;
             for (int i = -5; i <= 6; i++) {
@@ -347,33 +332,10 @@ namespace visualization {
 //                        mats_by_angle[i] = mat_for_angle;
 
 
+                    }
                 }
+                output_mats[i] = output_mat;
             }
-            output_mats[i] = output_mat;
-        }
-
-//            for (int i = -5; i <= 6; i++) {
-//                LOG(INFO) << "Getting regression value for angle index " << i;
-//
-//                LOG(INFO) << "Input size " << mats_by_angle[i].rows() << ", " << mats_by_angle[i].cols();
-////                output_mats[i] = regressor->Inference(mats_by_angle[i]);
-//
-//                Eigen::Matrix<double
-//                Eigen::Matrix<double, 1, Eigen::Dynamic> mat_for_angle(1, mats_by_angle[i].cols());
-//                for (int j = 0; j < mats_by_angle[i].cols(); j++) {
-//                    double residual;
-//                    double x = mats_by_angle[]
-//
-////                    bool operator()(const T* const robot_position_ptr, const T* const robot_orientation_ptr, T* residuals) const {
-////                        factor()
-//                }
-////                }
-//                output_mats[i] = mat_for_angle;
-//                LOG(INFO) << "Output size " << output_mats[i].rows() << ", " << output_mats[i].cols();
-//                LOG(INFO) << "Output " << output_mats[i];
-//            }
-
-//            LOG(INFO) << "Setting occupancy grid data";
 
             for (int i = 0; i < size; i++) {
                 double best_val = 100.0;
@@ -415,6 +377,101 @@ namespace visualization {
 
                 publisher.publish(occ_grids_by_angle[i]);
             }
+        }
+
+        // 2D Variants ------------------------------------------------------------------------------------------------
+        void displayTrueTrajectory(const std::vector<pose::Pose2d> &true_trajectory) {
+
+            std_msgs::ColorRGBA color;
+            color.a = 1.0;
+            color.g = 1.0;
+
+            publishTrajectory(gt_marker_pub_, color, convert2DPosesTo3D(true_trajectory), kGtTrajectoryId);
+        }
+
+        void displayTrueCarPoses(const std::vector<pose::Pose2d> &true_car_poses) {
+            std_msgs::ColorRGBA color;
+            color.a = 1.0;
+            color.g = 1.0;
+
+            int32_t car_poses_count = true_car_poses.size();
+            for (int32_t i = 0; i < car_poses_count; i++) {
+                pose::Pose3d pose = pose::toPose3d(true_car_poses[i]);
+                publishCarPoses(gt_marker_pub_, pose, color, kCarGtPosesMin + i);
+            }
+
+//            for (int32_t i = kCarGtPosesMin + car_poses_count; i <= kCarGtPosesMax; i++) {
+//                removeMarker(i, gt_marker_pub_);
+//            }
+        }
+
+        void displayNoisyCarPosesFromGt(const std::vector<pose::Pose2d> &gt_trajectory, const std::vector<std::vector<pose::Pose2d>> &relative_car_poses) {
+            std_msgs::ColorRGBA color;
+            color.a = 1.0;
+            color.g = 1.0;
+            color.b = 1.0;
+
+            std::vector<std::vector<pose::Pose3d>> relative_car_poses_3d;
+            for (const std::vector<pose::Pose2d> &relative_car_pose_list : relative_car_poses) {
+                relative_car_poses_3d.emplace_back(convert2DPosesTo3D(relative_car_pose_list));
+            }
+
+            publishLinesToCarDetections(gt_marker_pub_, convert2DPosesTo3D(gt_trajectory), relative_car_poses_3d, color, kObservedFromGtCarDetectionLines);
+            publishCarDetectionsRelToRobotPoses(gt_marker_pub_, convert2DPosesTo3D(gt_trajectory), relative_car_poses_3d, color,
+                                                kObservedFromGtCarDetectionsMin, kObservedFromGtCarDetectionsMax);
+        }
+
+        void displayNoisyCarPosesFromEstTrajectory(const std::vector<pose::Pose2d> &est_trajectory, const std::vector<std::vector<pose::Pose2d>> &relative_car_poses) {
+            std_msgs::ColorRGBA color;
+            color.a = 1.0;
+            color.r = 1.0;
+            color.b = 0.7;
+
+            std::vector<std::vector<pose::Pose3d>> relative_car_poses_3d;
+            for (const std::vector<pose::Pose2d> &relative_car_pose_list : relative_car_poses) {
+                relative_car_poses_3d.emplace_back(convert2DPosesTo3D(relative_car_pose_list));
+            }
+
+            publishLinesToCarDetections(est_marker_pub_, convert2DPosesTo3D(est_trajectory),
+                                        relative_car_poses_3d, color, kObservedFromEstCarDetectionLines);
+            publishCarDetectionsRelToRobotPoses(est_marker_pub_, convert2DPosesTo3D(est_trajectory),
+                                                relative_car_poses_3d, color,
+                                                kObservedFromEstCarDetectionsMin, kObservedFromEstCarDetectionsMax);
+        }
+
+        void displayNoisyCarPosesFromOdomTrajectory(const std::vector<pose::Pose2d> &odom_trajectory, const std::vector<std::vector<pose::Pose2d>> &relative_car_poses) {
+
+            std_msgs::ColorRGBA color;
+            color.a = 1.0;
+            color.b = 1.0;
+            color.g = 0.7;
+
+            std::vector<std::vector<pose::Pose3d>> relative_car_poses_3d;
+            for (const std::vector<pose::Pose2d> &relative_car_pose_list : relative_car_poses) {
+                relative_car_poses_3d.emplace_back(convert2DPosesTo3D(relative_car_pose_list));
+            }
+
+            publishLinesToCarDetections(odom_marker_pub_, convert2DPosesTo3D(odom_trajectory), relative_car_poses_3d, color, kObservedFromOdomCarDetectionLines);
+            publishCarDetectionsRelToRobotPoses(odom_marker_pub_, convert2DPosesTo3D(odom_trajectory), relative_car_poses_3d, color,
+                                                kObservedFromOdomCarDetectionsMin, kObservedFromOdomCarDetectionsMax);
+        }
+
+        void displayOdomTrajectory(const std::vector<pose::Pose2d> &odom_trajectory) {
+
+            std_msgs::ColorRGBA color;
+            color.a = 1.0;
+            color.b = 1.0;
+
+            publishTrajectory(odom_marker_pub_, color, convert2DPosesTo3D(odom_trajectory), kOdomTrajectoryId);
+        }
+
+        void displayEstTrajectory(const std::vector<pose::Pose2d> &est_trajectory) {
+
+            std_msgs::ColorRGBA color;
+            color.a = 1.0;
+            color.r = 1.0;
+
+            publishTrajectory(est_marker_pub_, color, convert2DPosesTo3D(est_trajectory), kEstTrajectoryId);
         }
 
     private:
@@ -461,6 +518,14 @@ namespace visualization {
         ros::Publisher robot_pose_max_val_pub_;
 
         ros::Publisher regressor_max_val_for_pos_pub_;
+
+        std::vector<pose::Pose3d> convert2DPosesTo3D(const std::vector<pose::Pose2d> &poses_2d) {
+            std::vector<pose::Pose3d> poses_3d;
+            for (const pose::Pose2d &pose_2d : poses_2d) {
+                poses_3d.emplace_back(pose::toPose3d(pose_2d));
+            }
+            return poses_3d;
+        }
 
         void publishMarker(visualization_msgs::Marker &marker_msg, ros::Publisher &marker_pub) {
             marker_msg.header.frame_id = kVizFrame;
