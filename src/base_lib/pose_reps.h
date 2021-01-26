@@ -19,8 +19,20 @@ namespace pose {
         return mat;
     }
 
+    Eigen::Affine2d convertPoseToAffine(Pose2d &pose) {
+        Eigen::Affine2d mat;
+        mat.translation() = pose.first;
+        mat.linear() = Eigen::Rotation2Dd(pose.second).toRotationMatrix();
+        return mat;
+    }
+
     Pose3d convertAffineToPose(Eigen::Affine3d &mat) {
         return std::make_pair(mat.translation(), Eigen::Quaterniond(mat.linear()));
+    }
+
+    Pose2d convertAffineToPose(Eigen::Affine2d &mat) {
+        Eigen::Rotation2Dd rotation(mat.linear());
+        return std::make_pair(mat.translation(), rotation.angle());
     }
 
     Pose3d getPoseOfObj1RelToObj2(Pose3d obj1, Pose3d obj2) {
@@ -28,6 +40,14 @@ namespace pose {
         Eigen::Affine3d affine_1 = convertPoseToAffine(obj1);
         Eigen::Affine3d affine_2 = convertPoseToAffine(obj2);
         Eigen::Affine3d combined_affine = affine_2.inverse() * affine_1;
+        return convertAffineToPose(combined_affine);
+    }
+
+    Pose2d getPoseOfObj1RelToObj2(Pose2d obj1, Pose2d obj2) {
+
+        Eigen::Affine2d affine_1 = convertPoseToAffine(obj1);
+        Eigen::Affine2d affine_2 = convertPoseToAffine(obj2);
+        Eigen::Affine2d combined_affine = affine_2.inverse() * affine_1;
         return convertAffineToPose(combined_affine);
     }
 
@@ -52,6 +72,13 @@ namespace pose {
         Eigen::Affine3d affine_1 = convertPoseToAffine(pose_1);
         Eigen::Affine3d affine_2 = convertPoseToAffine(pose_2);
         Eigen::Affine3d combined_affine = affine_1 * affine_2;
+        return convertAffineToPose(combined_affine);
+    }
+
+    Pose2d combinePoses(Pose2d pose_1, Pose2d pose_2) {
+        Eigen::Affine2d affine_1 = convertPoseToAffine(pose_1);
+        Eigen::Affine2d affine_2 = convertPoseToAffine(pose_2);
+        Eigen::Affine2d combined_affine = affine_1 * affine_2;
         return convertAffineToPose(combined_affine);
     }
 }

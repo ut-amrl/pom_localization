@@ -361,6 +361,10 @@ namespace pose_graph {
         virtual ceres::CostFunction *createGaussianBinaryCostFunctor(
                 const GaussianBinaryFactorType &factor) const = 0;
 
+        virtual std::pair<double*, double*> getPointersToUnderlyingData(
+                const std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
+                std::shared_ptr<MeasurementRotationType>> node_pose_pointers) const = 0;
+
     protected:
 
         // TODO there has to be a better way than just inserting samples at a variety of orientations

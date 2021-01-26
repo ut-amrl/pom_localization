@@ -68,12 +68,13 @@ namespace pose_optimization {
 //                                    factor.observation_.observation_transl_,
 //                                    factor.observation_.observation_orientation_));
 
+                    std::pair<double*, double*> raw_pointers_for_node_data = pose_graph.getPointersToUnderlyingData(pose_vars_);
 
-                    problem->AddResidualBlock(cost_function, nullptr, pose_vars_.first->data(),
-                                              pose_vars_.second->coeffs().data());
+                    problem->AddResidualBlock(cost_function, nullptr, raw_pointers_for_node_data.first,
+                                              raw_pointers_for_node_data.second);
 
                     if (rotation_parameterization != nullptr) {
-                        problem->SetParameterization(pose_vars_.second->coeffs().data(),
+                        problem->SetParameterization(raw_pointers_for_node_data.second,
                                                      rotation_parameterization);
                     }
                 } else {
@@ -116,13 +117,18 @@ namespace pose_optimization {
 //                                factor.translation_change_, factor.orientation_change_, factor.sqrt_information_));
                 ceres::CostFunction *cost_function = pose_graph.createGaussianBinaryCostFunctor(factor);
 
-                problem->AddResidualBlock(cost_function, nullptr, from_pose_vars_.first->data(), from_pose_vars_.second->coeffs().data(),
-                                         to_pose_vars_.first->data(), to_pose_vars_.second->coeffs().data());
+                std::pair<double*, double*> raw_pointers_for_from_node_data = pose_graph.getPointersToUnderlyingData(from_pose_vars_);
+                std::pair<double*, double*> raw_pointers_for_to_node_data = pose_graph.getPointersToUnderlyingData(to_pose_vars_);
+
+                problem->AddResidualBlock(cost_function, nullptr, raw_pointers_for_from_node_data.first,
+                                          raw_pointers_for_from_node_data.second,
+                                          raw_pointers_for_to_node_data.first,
+                                          raw_pointers_for_to_node_data.second);
 
                 if (rotation_parameterization != nullptr) {
-                    problem->SetParameterization(from_pose_vars_.second->coeffs().data(),
+                    problem->SetParameterization(raw_pointers_for_from_node_data.second,
                                                  rotation_parameterization);
-                    problem->SetParameterization(to_pose_vars_.second->coeffs().data(),
+                    problem->SetParameterization(raw_pointers_for_to_node_data.second,
                                                  rotation_parameterization);
                 }
             }
@@ -130,9 +136,9 @@ namespace pose_optimization {
             std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
                     std::shared_ptr<MeasurementRotationType>> start_pose_vars_;
             pose_graph.getNodePosePointers(0, start_pose_vars_);
-            problem->SetParameterBlockConstant(start_pose_vars_.first->data());
-
-            problem->SetParameterBlockConstant(start_pose_vars_.second->coeffs().data());
+            std::pair<double*, double*> raw_pointers_for_start_node_data = pose_graph.getPointersToUnderlyingData(start_pose_vars_);
+            problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.first);
+            problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.second);
         }
 
         bool SolveOptimizationProblem(ceres::Problem* problem, std::vector<ceres::IterationCallback*> callbacks) {

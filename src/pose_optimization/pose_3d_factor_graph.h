@@ -22,6 +22,11 @@ namespace pose_graph {
     typedef MovableObservation<3, Eigen::Quaterniond, 6> MovableObservation3d;
     typedef MovableObservationFactor<3, Eigen::Quaterniond, 6> MovableObservationFactor3d;
 
+    typedef Node<2, double> Node2d;
+    typedef GaussianBinaryFactor<2, double, 3> GaussianBinaryFactor2d;
+    typedef MovableObservation<2, double, 3> MovableObservation2d;
+    typedef MovableObservationFactor<2, double, 3> MovableObservationFactor2d;
+
     /**
      * Pose Graph containing all factors that constrain the robot's pose and the nodes representing the robot's pose.
      */
@@ -324,6 +329,12 @@ namespace pose_graph {
                     new pose_optimization::Odometry3dCostFunctor(
                             factor.translation_change_, factor.orientation_change_, factor.sqrt_information_));
         };
+
+        std::pair<double*, double*> getPointersToUnderlyingData(
+                const std::pair<std::shared_ptr<Eigen::Matrix<double, 3, 1>>,
+                        std::shared_ptr<Eigen::Quaterniond>> node_pose_pointers) const override {
+            return {node_pose_pointers.first->data(), node_pose_pointers.second->coeffs().data()};
+        };
     };
 
     class PoseGraph2dHeatMap2d : public PoseGraphXdHeatMap2d<2, double, 3> {
@@ -347,6 +358,12 @@ namespace pose_graph {
                     new pose_optimization::Odometry2dCostFunctor(
                             factor.translation_change_, factor.orientation_change_, factor.sqrt_information_));
         };
+
+        std::pair<double*, double*> getPointersToUnderlyingData(
+                const std::pair<std::shared_ptr<Eigen::Matrix<double, 2, 1>>,
+                        std::shared_ptr<double>> node_pose_pointers) const override {
+            return {node_pose_pointers.first->data(), node_pose_pointers.second.get()};
+        }
     };
 }
 
