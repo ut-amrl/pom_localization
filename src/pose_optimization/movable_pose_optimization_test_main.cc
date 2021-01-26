@@ -248,6 +248,9 @@ int main(int argc, char** argv) {
     google::InitGoogleLogging(argv[0]);
     FLAGS_logtostderr = true;
 
+    pose_optimization::CostFunctionParameters cost_function_params;
+    cost_function_params.num_samples_per_movable_obj_observation_ = 20;
+
     std::string car_class = "car";
     // TODO the current values are based on the trained hyperparams for the toy observations I used in the python
     //  demoscript
@@ -485,6 +488,10 @@ int main(int argc, char** argv) {
     // Create the movable observations at each node from the noisy observations
 //    for (uint64_t i = 0; i < noisy_observations.size(); i++) {
 
+    Eigen::Matrix3d movable_obs_cov_mat;
+    movable_obs_cov_mat(0, 0) = pow(movable_observation_x_std_dev, 2);
+    movable_obs_cov_mat(1, 1) = pow(movable_observation_y_std_dev, 2);
+    movable_obs_cov_mat(2, 2) = pow(movable_observation_yaw_std_dev, 2);
     for (uint64_t i = 1; i < noisy_observations.size(); i++) {
         // TODO commenting out for 2d version
 //        std::vector<pose_graph::MovableObservation3d> movable_observations;
@@ -496,6 +503,7 @@ int main(int argc, char** argv) {
             obs.semantic_class_ = car_class;
             obs.observation_transl_ = noisy_obs_at_node.first;
             obs.observation_orientation_ = noisy_obs_at_node.second;
+            obs.observation_covariance_ = movable_obs_cov_mat;
             movable_observations.emplace_back(obs);
         }
         pose_graph.addMovableObservationFactors(i, movable_observations);
@@ -602,7 +610,7 @@ int main(int argc, char** argv) {
         LOG(INFO) << "Adding node " << next_pose_to_optimize << " to optimization";
 
         ceres::Problem problem;
-        optimizer.buildPoseGraphOptimizationProblem(pose_graph, nodes_to_optimize, &problem);
+        optimizer.buildPoseGraphOptimizationProblem(pose_graph, nodes_to_optimize, cost_function_params, &problem);
         LOG(INFO) << "Solving optimization problem";
 
         // TODO commenting out for 2d version
@@ -731,7 +739,7 @@ int main(int argc, char** argv) {
         }
 
         LOG(INFO) << "Done optimizing up to node " << next_pose_to_optimize;
-        ros::Duration(3).sleep();
+        ros::Duration(1).sleep();
     }
 //    manager.displayMaxGpRegressorOutput(regressor, 0.1, -10.0, 15, -5, 20);
 //    manager.displayMaxGpRegressorOutput(kde, 0.1, -10.0, 15, -5, 20);

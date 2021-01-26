@@ -15,6 +15,7 @@
 
 //#include <gaussian_process/gp_regression.h>
 #include <gaussian_process/kernel_density_estimator.h>
+#include <pose_optimization/pose_optimization_parameters.h>
 
 namespace pose_graph {
     typedef uint64_t NodeId;
@@ -356,7 +357,8 @@ namespace pose_graph {
 
         virtual ceres::CostFunction *createMovableObjectCostFunctor(
                 const std::shared_ptr<KdeType> &movable_object_kde,
-                const MovableObservationFactorType &factor) const = 0;
+                const MovableObservationFactorType &factor,
+                const pose_optimization::CostFunctionParameters &cost_function_params) const = 0;
 
         virtual ceres::CostFunction *createGaussianBinaryCostFunctor(
                 const GaussianBinaryFactorType &factor) const = 0;

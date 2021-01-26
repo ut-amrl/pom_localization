@@ -34,7 +34,7 @@ namespace pose_optimization {
     struct PoseOptimizationParameters {
         OptimizerParameters optimizer_params_;
         CostFunctionParameters cost_function_params_;
-    }
+    };
 
 } // end pose_optimization
 

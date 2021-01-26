@@ -11,6 +11,7 @@
 #include <pose_optimization/pose_3d_factor_graph.h>
 //#include <pose_optimization/movable_observation_gp_cost_functor.h>
 #include <pose_optimization/sample_based_movable_observation_gp_cost_functor_3d.h>
+#include <pose_optimization/pose_optimization_parameters.h>
 
 namespace pose_optimization {
 
@@ -23,7 +24,8 @@ namespace pose_optimization {
         void buildPoseGraphOptimizationProblem(
                 pose_graph::PoseGraph<MovObjKernelType, MeasurementTranslationDim, MeasurementRotationType, CovDim,
                 MovableHeatMapTranslationDim, MovableHeatMapRotationType, KernelDim> &pose_graph,
-                const std::unordered_set<pose_graph::NodeId> &nodes_to_optimize, ceres::Problem *problem) {
+                const std::unordered_set<pose_graph::NodeId> &nodes_to_optimize,
+                const CostFunctionParameters &cost_function_params, ceres::Problem *problem) {
 
             ceres::LocalParameterization *rotation_parameterization = pose_graph.getRotationParameterization();
 
@@ -48,25 +50,8 @@ namespace pose_optimization {
                 if (movable_object_kde) {
 
                     // TODO  need to replace this with something that is generic for 2D vs 3D
-                    ceres::CostFunction *cost_function = pose_graph.createMovableObjectCostFunctor(movable_object_kde, factor);
-//                    ceres::CostFunction *cost_function = new ceres::AutoDiffCostFunction<pose_optimization::SampleBasedMovableObservationCostFunctor3D, 1, 3, 4>(
-//                            new pose_optimization::SampleBasedMovableObservationCostFunctor3D(
-//                                    movable_object_kde,
-//                                    {{factor.observation_.observation_transl_,
-//                                    factor.observation_.observation_orientation_}}));
-
-//                    ceres::CostFunction *cost_function = new ceres::AutoDiffCostFunction<pose_optimization::MovableObservationCostFunctor, 1, 3, 4>(
-//                            new pose_optimization::MovableObservationCostFunctor(
-//                                    pose_graph.getMovableObjGpRegressor(factor.observation_.semantic_class_),
-//                                    movable_object_kde,
-//                                    factor.observation_.observation_transl_,
-//                                    factor.observation_.observation_orientation_));
-//
-//                    ceres::CostFunction *cost_function = new ceres::NumericDiffCostFunction<pose_optimization::MovableObservationCostFunctor, ceres::CENTRAL, 1, 3, 4>(
-//                            new pose_optimization::MovableObservationCostFunctor(
-//                                    pose_graph.getMovableObjGpRegressor(factor.observation_.semantic_class_),
-//                                    factor.observation_.observation_transl_,
-//                                    factor.observation_.observation_orientation_));
+                    ceres::CostFunction *cost_function =
+                            pose_graph.createMovableObjectCostFunctor(movable_object_kde, factor, cost_function_params);
 
                     std::pair<double*, double*> raw_pointers_for_node_data = pose_graph.getPointersToUnderlyingData(pose_vars_);
 

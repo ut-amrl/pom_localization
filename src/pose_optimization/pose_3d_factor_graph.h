@@ -12,6 +12,7 @@
 #include <pose_optimization/sample_based_movable_observation_gp_cost_functor_3d.h>
 #include <pose_optimization/odometry_2d_cost_functor.h>
 #include <pose_optimization/odometry_3d_cost_functor.h>
+#include <util/random.h>
 
 namespace pose_graph {
 
@@ -315,12 +316,25 @@ namespace pose_graph {
         }
 
         ceres::CostFunction *createMovableObjectCostFunctor(const std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> &movable_object_kde,
-                                                            const MovableObservationFactor<3, Eigen::Quaterniond, 6> &factor) const override {
+                                                            const MovableObservationFactor<3, Eigen::Quaterniond, 6> &factor,
+                                                            const pose_optimization::CostFunctionParameters &cost_function_params) const override {
+            std::vector<std::pair<Eigen::Vector3d, Eigen::Quaterniond>> observation_samples;
+//            util_random::Random random_generator;
+//            Eigen::Matrix<double, 6, 6> obs_cov = factor.observation_.observation_covariance_;
+            for (int i = 0; i < cost_function_params.num_samples_per_movable_obj_observation_; i++) {
+                // TODO need to sample here instead of just adding multiple MLEs
+                // Not exactly sure how to sample the orientation component though or how to sample without just
+                // sampling each component independently
+                std::pair<Eigen::Vector3d, Eigen::Quaterniond> sample = {
+                        factor.observation_.observation_transl_,
+                        factor.observation_.observation_orientation_};
+                observation_samples.emplace_back(sample);
+            }
+
             return new ceres::AutoDiffCostFunction<pose_optimization::SampleBasedMovableObservationCostFunctor3D, 1, 3, 4>(
                     new pose_optimization::SampleBasedMovableObservationCostFunctor3D(
                             movable_object_kde,
-                            {{factor.observation_.observation_transl_,
-                                     factor.observation_.observation_orientation_}}));
+                            observation_samples));
         }
 
         ceres::CostFunction *createGaussianBinaryCostFunctor(
@@ -344,12 +358,27 @@ namespace pose_graph {
         }
 
         ceres::CostFunction *createMovableObjectCostFunctor(const std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> &movable_object_kde,
-                                                            const MovableObservationFactor<2, double, 3> &factor) const override {
+                                                            const MovableObservationFactor<2, double, 3> &factor,
+                                                            const pose_optimization::CostFunctionParameters &cost_function_params) const override {
+            std::vector<std::pair<Eigen::Vector2d, double>> observation_samples;
+            util_random::Random rand_gen;
+            Eigen::Matrix<double, 3, 3> obs_cov = factor.observation_.observation_covariance_;
+            for (int i = 0; i < cost_function_params.num_samples_per_movable_obj_observation_; i++) {
+                // TODO can this instead sample from the whole covariance matrix instead of sampling each dimension independently.
+                double x_std_dev = sqrt(obs_cov(0, 0));
+                double y_std_dev = sqrt(obs_cov(1, 1));
+                double yaw_std_dev = sqrt(obs_cov(2, 2));
+                std::pair<Eigen::Vector2d, double> sample = {
+                        Eigen::Vector2d(rand_gen.Gaussian(factor.observation_.observation_transl_.x(), x_std_dev),
+                                        rand_gen.Gaussian(factor.observation_.observation_transl_.y(), y_std_dev)),
+                                        rand_gen.Gaussian(factor.observation_.observation_orientation_, yaw_std_dev)};
+                observation_samples.emplace_back(sample);
+            }
+
             return new ceres::AutoDiffCostFunction<pose_optimization::SampleBasedMovableObservationCostFunctor2D, 1, 2, 1>(
                     new pose_optimization::SampleBasedMovableObservationCostFunctor2D(
                             movable_object_kde,
-                            {{factor.observation_.observation_transl_,
-                                     factor.observation_.observation_orientation_}}));
+                            observation_samples));
         }
 
         ceres::CostFunction *createGaussianBinaryCostFunctor(

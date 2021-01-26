@@ -31,6 +31,8 @@ namespace pose_optimization {
         SampleBasedMovableObservationCostFunctor3D(
                 const std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde,
                 const std::vector<std::pair<Eigen::Vector3d, Eigen::Quaterniond>> &observation_samples) :kde_(kde) {
+            num_samples_ = observation_samples.size();
+            CHECK_GT(num_samples_, 0);
             for (const std::pair<Eigen::Vector3d, Eigen::Quaterniond> &observation_sample : observation_samples) {
                 observation_transforms_.emplace_back(convertTranslationAndRotationToMatrix(observation_sample.first,
                                                                                            observation_sample.second));
@@ -69,6 +71,7 @@ namespace pose_optimization {
 
             // TODO Do we need to divide by length scale or are we relying on KDE to do that?
             // TODO Do we need to multiply by 1/<number of samples> - shouldn't change overall result, but perhaps would allow probability to exceed 1 (BAD)
+            cumulative_probability = cumulative_probability / T(num_samples_);
             // Dividing by number of observations in KDE is already done by KDE
 
             residuals[0] = sqrt(T(-2.0) * log(cumulative_probability));
@@ -94,6 +97,8 @@ namespace pose_optimization {
          * Contains one for each observation sample to estimate.
          */
         std::vector<Eigen::Affine3f> observation_transforms_;
+
+        int num_samples_;
     };
 } // end pose_optimization
 
