@@ -32,15 +32,15 @@ namespace pose_graph {
      * Pose Graph containing all factors that constrain the robot's pose and the nodes representing the robot's pose.
      */
     template<int MeasurementTranslationDim, typename MeasurementRotationType, int CovDim>
-    class PoseGraphXdHeatMap2d : public PoseGraph<gp_kernel::Pose2dKernel, MeasurementTranslationDim, MeasurementRotationType, CovDim, 2, double, 3> {
+    class PoseGraphXdMovObjDistribution2d : public PoseGraph<gp_kernel::Pose2dKernel, MeasurementTranslationDim, MeasurementRotationType, CovDim, 2, double, 3> {
     public:
 
-        PoseGraphXdHeatMap2d(const std::function<ceres::LocalParameterization*()> &rotation_local_parameterization_creator,
+        PoseGraphXdMovObjDistribution2d(const std::function<ceres::LocalParameterization*()> &rotation_local_parameterization_creator,
                              gp_kernel::Pose2dKernel &kernel) : PoseGraph<
                                      gp_kernel::Pose2dKernel, MeasurementTranslationDim, MeasurementRotationType,
                                      CovDim, 2, double, 3>(rotation_local_parameterization_creator, kernel) {}
 
-        ~PoseGraphXdHeatMap2d() override {}
+        ~PoseGraphXdMovObjDistribution2d() override {}
 
 //        /**
 //         * Create the pose graph.
@@ -305,9 +305,9 @@ namespace pose_graph {
         }
     };
 
-    class PoseGraph3dHeatMap2d : public PoseGraphXdHeatMap2d<3, Eigen::Quaterniond, 6> {
+    class PoseGraph3dMovObjDistribution2d : public PoseGraphXdMovObjDistribution2d<3, Eigen::Quaterniond, 6> {
     public:
-        PoseGraph3dHeatMap2d(gp_kernel::Pose2dKernel &kernel) : PoseGraphXdHeatMap2d<3, Eigen::Quaterniond, 6>(
+        PoseGraph3dMovObjDistribution2d(gp_kernel::Pose2dKernel &kernel) : PoseGraphXdMovObjDistribution2d<3, Eigen::Quaterniond, 6>(
                 createQuaternionParameterization, kernel) {
         }
 
@@ -351,9 +351,9 @@ namespace pose_graph {
         };
     };
 
-    class PoseGraph2dHeatMap2d : public PoseGraphXdHeatMap2d<2, double, 3> {
+    class PoseGraph2dMovObjDistribution2d : public PoseGraphXdMovObjDistribution2d<2, double, 3> {
     public:
-        PoseGraph2dHeatMap2d(gp_kernel::Pose2dKernel &kernel) : PoseGraphXdHeatMap2d<2, double, 3>(
+        PoseGraph2dMovObjDistribution2d(gp_kernel::Pose2dKernel &kernel) : PoseGraphXdMovObjDistribution2d<2, double, 3>(
                 pose_optimization::AngleLocalParameterization::create, kernel) {
         }
 

@@ -11,6 +11,9 @@ namespace pose {
     typedef std::pair<Eigen::Vector2d, double> Pose2d;
     typedef std::pair<Eigen::Vector3d, Eigen::Quaterniond> Pose3d;
 
+    Pose2d createPose2d(const double &x, const double &y, const double &theta) {
+        return std::make_pair(Eigen::Vector2d(x, y), theta);
+    }
 
     Eigen::Affine3d convertPoseToAffine(Pose3d &pose) {
         Eigen::Affine3d mat;

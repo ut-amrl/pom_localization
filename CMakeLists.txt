@@ -52,7 +52,7 @@ TARGET_LINK_LIBRARIES(autodiff_gp ${libs})
 ROSBUILD_ADD_EXECUTABLE(momo_pose_optimization src/pose_optimization/pose_optimization_main.cc)
 TARGET_LINK_LIBRARIES(momo_pose_optimization ${libs})
 
-ROSBUILD_ADD_EXECUTABLE(momo_pose_optimization_test src/pose_optimization/movable_pose_optimization_test_main.cc)
+ROSBUILD_ADD_EXECUTABLE(momo_pose_optimization_test src/synthetic_problem/movable_pose_optimization_test_main.cc)
 TARGET_LINK_LIBRARIES(momo_pose_optimization_test ${libs})
 
 #IF(TESTING)

@@ -181,7 +181,7 @@ namespace pose_graph {
      * to a dimension.
      */
     template<typename MovObjKernelType, int MeasurementTranslationDim, typename MeasurementRotationType, int CovDim,
-            int MovableHeatMapTranslationDim, typename MovableHeatMapRotationType, int KernelDim>
+            int MovObjDistributionTranslationDim, typename MovObjDistributionRotationType, int KernelDim>
     class PoseGraph {
     public:
 
@@ -189,8 +189,8 @@ namespace pose_graph {
         typedef MovableObservation<MeasurementTranslationDim, MeasurementRotationType, CovDim> MovableObservationType;
         typedef MovableObservationFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> MovableObservationFactorType;
         typedef GaussianBinaryFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> GaussianBinaryFactorType;
-        typedef MapObjectObservation<MovableHeatMapTranslationDim, MovableHeatMapRotationType> MapObjectObservationType;
-        typedef NegativeMapObjectObservation<MovableHeatMapTranslationDim> NegativeMapObjectObservationType;
+        typedef MapObjectObservation<MovObjDistributionTranslationDim, MovObjDistributionRotationType> MapObjectObservationType;
+        typedef NegativeMapObjectObservation<MovObjDistributionTranslationDim> NegativeMapObjectObservationType;
         typedef gp_regression::KernelDensityEstimator<KernelDim, MovObjKernelType> KdeType;
 
         /**
@@ -226,6 +226,10 @@ namespace pose_graph {
             for (const MovableObservationType &observation : observations_at_node) {
                 observation_factors_.emplace_back(node_id, observation);
             }
+        }
+
+        void addMovableObservationFactors(const std::vector<MovableObservationFactorType> &movable_observation_factors) {
+            observation_factors_.insert(observation_factors_.end(), movable_observation_factors.begin(), movable_observation_factors.end());
         }
 
         /**

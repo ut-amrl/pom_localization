@@ -20,10 +20,10 @@ namespace pose_optimization {
         PoseGraphOptimizer() = default;
 
         template<typename MovObjKernelType, int MeasurementTranslationDim, typename MeasurementRotationType, int CovDim,
-                int MovableHeatMapTranslationDim, typename MovableHeatMapRotationType, int KernelDim>
+                int MovObjDistributionTranslationDim, typename MovObjDistributionRotationType, int KernelDim>
         void buildPoseGraphOptimizationProblem(
                 pose_graph::PoseGraph<MovObjKernelType, MeasurementTranslationDim, MeasurementRotationType, CovDim,
-                MovableHeatMapTranslationDim, MovableHeatMapRotationType, KernelDim> &pose_graph,
+                MovObjDistributionTranslationDim, MovObjDistributionRotationType, KernelDim> &pose_graph,
                 const std::unordered_set<pose_graph::NodeId> &nodes_to_optimize,
                 const CostFunctionParameters &cost_function_params, ceres::Problem *problem) {
 
@@ -49,7 +49,6 @@ namespace pose_optimization {
                         pose_graph.getMovableObjKde(factor.observation_.semantic_class_);
                 if (movable_object_kde) {
 
-                    // TODO  need to replace this with something that is generic for 2D vs 3D
                     ceres::CostFunction *cost_function =
                             pose_graph.createMovableObjectCostFunctor(movable_object_kde, factor, cost_function_params);
 
@@ -92,14 +91,7 @@ namespace pose_optimization {
                     LOG(ERROR) << "To node " << factor.to_node_ << " did not exist in the pose graph. Skipping odometry observation";
                     continue;
                 }
-//                LOG(INFO) << "Odom factor " << factor.from_node_ << " to " << factor.to_node_ << ": " <<
-//                factor.translation_change_ << ", " << factor.orientation_change_.w() << ", " <<
-//                factor.orientation_change_.x() << ", " << factor.orientation_change_.y() << ", " <<
-//                factor.orientation_change_.z();
-//                // TODO replace with non-dimension specific form
-//                ceres::CostFunction *cost_function = new ceres::AutoDiffCostFunction<pose_optimization::Odometry3dCostFunctor, 6, 3, 4, 3, 4>(
-//                        new pose_optimization::Odometry3dCostFunctor(
-//                                factor.translation_change_, factor.orientation_change_, factor.sqrt_information_));
+
                 ceres::CostFunction *cost_function = pose_graph.createGaussianBinaryCostFunctor(factor);
 
                 std::pair<double*, double*> raw_pointers_for_from_node_data = pose_graph.getPointersToUnderlyingData(from_pose_vars_);
