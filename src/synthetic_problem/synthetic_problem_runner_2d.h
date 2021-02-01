@@ -14,15 +14,6 @@
 
 namespace synthetic_problem {
 
-
-    pose::Pose2d addGaussianNoise(const pose::Pose2d &original_pose_2d, const double &x_std_dev,
-                                  const double &y_std_dev, const double &theta_std_dev,
-                                  util_random::Random &rand_gen) {
-        return std::make_pair(Eigen::Vector2d(rand_gen.Gaussian(original_pose_2d.first.x(), x_std_dev),
-                                              rand_gen.Gaussian(original_pose_2d.first.y(), y_std_dev)),
-                              rand_gen.Gaussian(original_pose_2d.second, theta_std_dev));
-    }
-
     class SyntheticProblemRunner2d {
     public:
 
@@ -36,7 +27,7 @@ namespace synthetic_problem {
             gp_kernel::GaussianKernel<2> position_kernel(cost_function_params.position_kernel_len_,
                                                          cost_function_params.position_kernel_var_);
             gp_kernel::PeriodicGaussianKernel<1> orientation_kernel(M_PI * 2, cost_function_params.orientation_kernel_var_,
-                                                                    cost_function_params.orientation_kernel_var_);
+                                                                    cost_function_params.orientation_kernel_len_);
             gp_kernel::Pose2dKernel pose_2d_kernel(position_kernel, orientation_kernel);
             return std::make_shared<pose_graph::PoseGraph2dMovObjDistribution2d>(pose_2d_kernel);
         }
@@ -79,6 +70,11 @@ namespace synthetic_problem {
                     break;
                 case offline_optimization::VisualizationTypeEnum::AFTER_ALL_OPTIMIZATION:
                     // Optionally display distribution intensity map (either over robot poses or over object poses)
+                {
+//                    std::string car_class = "car_class";
+//                    vis_manager_->displayMaxGpRegressorOutput(pose_graph->getMovableObjKde(car_class), 0.1, -10.0, 15,
+//                                                              -5, 20);
+                }
                     break;
                 default:
                     break;
@@ -112,7 +108,7 @@ namespace synthetic_problem {
             util_random::Random random_generator;
             std::vector<pose::Pose2d> noisy_odometry;
             for (const pose::Pose2d &true_odom : true_odometry) {
-                noisy_odometry.emplace_back(addGaussianNoise(true_odom, noise_config.odometry_x_std_dev_,
+                noisy_odometry.emplace_back(pose::addGaussianNoise(true_odom, noise_config.odometry_x_std_dev_,
                                                              noise_config.odometry_y_std_dev_,
                                                              noise_config.odometry_yaw_std_dev_,
                                                              random_generator));
@@ -144,7 +140,7 @@ namespace synthetic_problem {
             for (const pose::Pose2d &odom_to_next_pos : noisy_odometry) {
                 pose::Pose2d odom_for_initial_node_pose = odom_to_next_pos;
                 if (noise_config.add_additional_initial_noise_) {
-                    odom_for_initial_node_pose = addGaussianNoise(odom_to_next_pos,
+                    odom_for_initial_node_pose = pose::addGaussianNoise(odom_to_next_pos,
                                                                   noise_config.init_pose_gaussian_noise_x_,
                                                                   noise_config.init_pose_gaussian_noise_y_,
                                                                   noise_config.init_pose_gaussian_noise_yaw_,
@@ -193,7 +189,7 @@ namespace synthetic_problem {
                 for (const std::vector<pose::Pose2d> &true_observations : true_transforms_for_type.second) {
                     std::vector<pose::Pose2d> noisy_at_pose;
                     for (const pose::Pose2d &true_obs : true_observations) {
-                        pose::Pose2d noisy_obs = addGaussianNoise(true_obs, noise_config.movable_observation_x_std_dev_,
+                        pose::Pose2d noisy_obs = pose::addGaussianNoise(true_obs, noise_config.movable_observation_x_std_dev_,
                                                                   noise_config.movable_observation_y_std_dev_,
                                                                   noise_config.movable_observation_yaw_std_dev_,
                                                                   random_generator);

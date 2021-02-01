@@ -31,13 +31,14 @@ namespace offline_optimization {
             pose_graph_->getNodePoses(node_poses);
             std::vector<pose::Pose2d> node_poses_list;
 
-            for (int32_t i = 1; i < num_poses_; i++) {
+            for (int32_t i = 0; i <= num_poses_; i++) {
                 pose::Pose2d optimized_pose = node_poses[i];
                 node_poses_list.emplace_back(optimized_pose);
             }
+            vis_manager_->displayEstTrajectory(node_poses_list);
             vis_manager_->displayNoisyCarPosesFromEstTrajectory(node_poses_list, observed_objs_);
 
-//         ros::Duration(0.001).sleep();
+//         ros::Duration(0.1).sleep();
 
             return ceres::SOLVER_CONTINUE;
         }

@@ -84,5 +84,13 @@ namespace pose {
         Eigen::Affine2d combined_affine = affine_1 * affine_2;
         return convertAffineToPose(combined_affine);
     }
+
+    pose::Pose2d addGaussianNoise(const pose::Pose2d &original_pose_2d, const double &x_std_dev,
+                                  const double &y_std_dev, const double &theta_std_dev,
+                                  util_random::Random &rand_gen) {
+        return std::make_pair(Eigen::Vector2d(rand_gen.Gaussian(original_pose_2d.first.x(), x_std_dev),
+                                              rand_gen.Gaussian(original_pose_2d.first.y(), y_std_dev)),
+                              rand_gen.Gaussian(original_pose_2d.second, theta_std_dev));
+    }
 }
 #endif //AUTODIFF_GP_POSE_REPS_H

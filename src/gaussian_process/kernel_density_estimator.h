@@ -67,6 +67,7 @@ namespace gp_regression {
          */
         template<typename T>
         Eigen::Matrix<T, 1, Eigen::Dynamic> Inference(const Eigen::Matrix<T, N, Eigen::Dynamic>& x) {
+            // TODO need to figure out how to deal with 0 data points
 //            LOG(INFO) << "O " << O;
 
             int input_size = x.cols();

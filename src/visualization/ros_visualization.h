@@ -222,11 +222,11 @@ namespace visualization {
                         LOG(INFO) << "Inf val " << inf_val;
                     }
 
-
                     nav_msgs::OccupancyGrid occ_grid_for_angle = occ_grids_by_angle[j];
 //                    LOG(INFO) << "Double val " << inf_val;
 //                    LOG(INFO) << std::to_string(((int8_t) (100 * inf_val)));
-                    occ_grid_for_angle.data[i] = (int8_t) (100 * inf_val);
+//                    occ_grid_for_angle.data[i] = (int8_t) (100 * inf_val);
+                    occ_grid_for_angle.data[i] = (int8_t) (1000 * inf_val);
 //                    LOG(INFO) << std::to_string(occ_grid_for_angle.data[i]);
                     occ_grids_by_angle[j] = occ_grid_for_angle;
                 }
