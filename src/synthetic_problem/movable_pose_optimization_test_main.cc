@@ -336,13 +336,19 @@ void runSyntheticProblemWithConfigVariations(const std::shared_ptr<visualization
 //    std::vector<double> parking_spot_transl_std_dev_opts = {1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
 //    std::vector<double> parking_spot_rot_std_dev_opts = {1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
 
-    std::vector<double> odom_transl_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005};
-    std::vector<double> odom_rot_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005};
-    std::vector<double> obs_transl_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
-    std::vector<double> obs_rot_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
-    std::vector<double> parking_spot_transl_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
-    std::vector<double> parking_spot_rot_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
+//    std::vector<double> odom_transl_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005};
+//    std::vector<double> odom_rot_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005};
+//    std::vector<double> obs_transl_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
+//    std::vector<double> obs_rot_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
+//    std::vector<double> parking_spot_transl_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
+//    std::vector<double> parking_spot_rot_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
 
+    std::vector<double> odom_transl_std_dev_opts = {0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005};
+    std::vector<double> odom_rot_std_dev_opts = {0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005};
+    std::vector<double> obs_transl_std_dev_opts = {0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
+    std::vector<double> obs_rot_std_dev_opts = {0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
+    std::vector<double> parking_spot_transl_std_dev_opts = {0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
+    std::vector<double> parking_spot_rot_std_dev_opts = {0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
 
     std::vector<double> percent_spots_filled_opts = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
 
