@@ -123,8 +123,8 @@ namespace pose_optimization {
             ceres::Solver::Options options;
 //            options.max_num_iterations = 100000;
 
-            options.max_num_iterations = 10000;
-            options.minimizer_progress_to_stdout = true;
+            options.max_num_iterations = 1000;
+//            options.minimizer_progress_to_stdout = true;
 //            options.function_tolerance = 1e-10;
             options.function_tolerance = 1e-20;
             options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
@@ -139,7 +139,7 @@ namespace pose_optimization {
 //            options.line_search_direction_type = ceres::NONLINEAR_CONJUGATE_GRADIENT;
             ceres::Solver::Summary summary;
             ceres::Solve(options, problem, &summary);
-            std::cout << summary.FullReport() << '\n';
+//            std::cout << summary.FullReport() << '\n';
 
             return summary.IsSolutionUsable();
         }

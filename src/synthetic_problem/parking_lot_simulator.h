@@ -10,6 +10,15 @@
 
 namespace synthetic_problem {
 
+    struct ParkingLotConfigurationParams {
+        std::vector<std::pair<pose::Pose2d, unsigned int>> parking_spots_and_relative_frequency_;
+        double parking_lot_std_dev_x_;
+        double parking_lot_std_dev_y_;
+        double parking_lot_std_dev_yaw_;
+        int32_t num_samples_multiplier_;
+        double parking_lot_percent_filled_; // 0 to 1
+    };
+
     void createPastAndPresentObservations(
             const std::vector<std::pair<pose::Pose2d, unsigned int>> &poses_and_relative_frequncy,
             const double &parking_lot_std_dev_x, const double &parking_lot_std_dev_y,

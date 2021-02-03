@@ -563,7 +563,7 @@ namespace visualization {
                 point.z = traj_pose.first.z();
                 marker_msg.points.emplace_back(point);
             }
-            LOG(INFO) << "Trajectory len " << marker_msg.points.size();
+//            LOG(INFO) << "Trajectory len " << marker_msg.points.size();
 
             marker_msg.pose.orientation.w = 1.0;
 

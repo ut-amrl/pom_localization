@@ -92,5 +92,17 @@ namespace pose {
                                               rand_gen.Gaussian(original_pose_2d.first.y(), y_std_dev)),
                               rand_gen.Gaussian(original_pose_2d.second, theta_std_dev));
     }
+
+
+    pose::Pose2d addRelativeGaussianNoise(const pose::Pose2d &original_pose_2d, const double &x_std_dev,
+                                          const double &y_std_dev, const double &theta_std_dev,
+                                          util_random::Random &rand_gen) {
+        double scaled_x_std_dev = original_pose_2d.first.x() * x_std_dev;
+        double scaled_y_std_dev = original_pose_2d.first.y() * y_std_dev;
+        double scaled_yaw_std_dev = original_pose_2d.second * theta_std_dev;
+
+        return addGaussianNoise(original_pose_2d, scaled_x_std_dev, scaled_y_std_dev, scaled_yaw_std_dev,
+                                rand_gen);
+    }
 }
 #endif //AUTODIFF_GP_POSE_REPS_H

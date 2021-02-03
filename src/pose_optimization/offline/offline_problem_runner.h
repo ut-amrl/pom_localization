@@ -30,12 +30,14 @@ namespace offline_optimization {
         typedef pose_graph::GaussianBinaryFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> GaussianBinaryFactorType;
         typedef pose_graph::MovableObservationFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> MovableObservationFactorType;
         typedef pose_graph::MapObjectObservation<MovObjDistributionTranslationDim, MovObjDistributionRotationType> MapObjectObservationType;
+        typedef Eigen::Matrix<double, MeasurementTranslationDim, 1> TranslType;
+        typedef std::pair<TranslType, MeasurementRotationType> PoseType;
 
 
         OfflinePoseOptimizer() {
         }
 
-        void runOfflineOptimization(const OfflineProblemDataType &problem_data,
+        std::unordered_map<pose_graph::NodeId, PoseType> runOfflineOptimization(const OfflineProblemDataType &problem_data,
                                     const pose_optimization::CostFunctionParameters &cost_func_params,
                                     const pose_optimization::PoseOptimizationParameters &optimization_params,
                                     const std::function<std::shared_ptr<PoseGraphType> (const pose_optimization::CostFunctionParameters &)> pose_graph_creator,
@@ -129,6 +131,10 @@ namespace offline_optimization {
 
             // Run any final visualization
             visualization_callback(max_node_id, pose_graph, VisualizationTypeEnum::AFTER_ALL_OPTIMIZATION);
+
+            std::unordered_map<pose_graph::NodeId, PoseType> optimized_trajectory;
+            pose_graph->getNodePoses(optimized_trajectory);
+            return optimized_trajectory;
         }
     };
 }

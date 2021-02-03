@@ -19,9 +19,12 @@
 
 #include <synthetic_problem/parking_lot_simulator.h>
 
+#include <iostream>
+#include <iomanip>
+#include <ctime>
+#include <fstream>
+
 using namespace pose;
-
-
 
 pose::Pose2d addGaussianNoise(const pose::Pose2d &original_pose_2d, const double &x_std_dev,
                               const double &y_std_dev, const double &theta_std_dev,
@@ -154,37 +157,73 @@ std::vector<Eigen::Vector2d> createNegativeObservations() {
     return negative_observations;
 }
 
-void outputToCsv(const std::string &file_name, const std::vector<Pose2d> &poses) {
-// TODO
-}
+//void outputToCsv(const std::string &file_name, const std::vector<Pose2d> &poses) {
+//// TODO
+//}
 
-void callSyntheticProblem(const std::shared_ptr<visualization::VisualizationManager> &vis_manager) {
+std::unordered_map<pose_graph::NodeId, pose::Pose2d> callSyntheticProblem(
+        const std::shared_ptr<visualization::VisualizationManager> &vis_manager,
+        const synthetic_problem::ParkingLotConfigurationParams &parking_lot_configuration_params,
+        const synthetic_problem::SyntheticProblemNoiseConfig2d &noise_config,
+        const std::vector<pose::Pose2d> &ground_truth_trajectory,
+        bool show_visualization,
+        const pose_optimization::CostFunctionParameters &cost_function_params,
+        const pose_optimization::PoseOptimizationParameters &optimization_params) {
 
-    LOG(INFO) << "Setting up synthetic problem";
-    synthetic_problem::SyntheticProblemRunner2d synthetic_prob_runner(vis_manager);
+//    LOG(INFO) << "Setting up synthetic problem";
+    synthetic_problem::SyntheticProblemRunner2d synthetic_prob_runner(vis_manager, show_visualization);
 
-
-    std::vector<pose::Pose2d> ground_truth_trajectory = createGroundTruthPoses();
-//    std::vector<pose::Pose2d> car_poses = createParkedCarPoses();
     std::vector<pose::Pose2d> past_car_poses;
     std::vector<pose::Pose2d> current_car_poses;
-    double parking_lot_std_dev_x = 0.2;
-    double parking_lot_std_dev_y = 0.2;
-    double parking_lot_std_dev_yaw = 0.075;
-    int32_t num_samples_multiplier = 4;
-    double percent_parking_lot_filled = 0.6;
-//    const double &parking_lot_std_dev_x, const double &parking_lot_std_dev_y,
-//    const double &parking_lot_std_dev_yaw,
-//    const double &percent_filled,
-//    std::vector<pose::Pose2d> &past_observations,
-//    std::vector<pose::Pose2d> &current_placements
-    synthetic_problem::createPastAndPresentObservations(createParkedCarPosesWithFrequency(), parking_lot_std_dev_x,
-                                                        parking_lot_std_dev_y, parking_lot_std_dev_yaw, num_samples_multiplier,
-                                                        percent_parking_lot_filled, past_car_poses, current_car_poses);
+    synthetic_problem::createPastAndPresentObservations(
+            parking_lot_configuration_params.parking_spots_and_relative_frequency_,
+            parking_lot_configuration_params.parking_lot_std_dev_x_,
+            parking_lot_configuration_params.parking_lot_std_dev_y_,
+            parking_lot_configuration_params.parking_lot_std_dev_yaw_,
+            parking_lot_configuration_params.num_samples_multiplier_,
+            parking_lot_configuration_params.parking_lot_percent_filled_,
+            past_car_poses, current_car_poses);
+
     std::string car_class = "car_class";
-//    std::unordered_map<std::string, std::vector<pose::Pose2d>> mov_obj_positions_by_class = {{car_class, car_poses}};
     std::unordered_map<std::string, std::vector<pose::Pose2d>> past_mov_obj_positions_by_class = {{car_class, past_car_poses}};
     std::unordered_map<std::string, std::vector<pose::Pose2d>> curr_mov_obj_positions_by_class = {{car_class, current_car_poses}};
+    return synthetic_prob_runner.runSyntheticProblem(
+            ground_truth_trajectory,
+            curr_mov_obj_positions_by_class, //mov_obj_positions_by_class, // TODO make this different
+            past_mov_obj_positions_by_class, //mov_obj_positions_by_class,
+            noise_config,
+            cost_function_params,
+            optimization_params);
+}
+
+double computeATE(const std::unordered_map<pose_graph::NodeId, pose::Pose2d> &ground_truth_trajectory,
+                  const std::unordered_map<pose_graph::NodeId, pose::Pose2d> &optimized_trajectory) {
+    int num_poses = 0;
+    double squared_error_sum = 0;
+    for (const auto &ground_truth_info : ground_truth_trajectory) {
+        if (optimized_trajectory.find(ground_truth_info.first) != optimized_trajectory.end()) {
+            pose::Pose2d optimized = optimized_trajectory.at(ground_truth_info.first);
+            pose::Pose2d ground_truth = ground_truth_info.second;
+            squared_error_sum += (optimized.first - ground_truth.first).squaredNorm();
+            num_poses++;
+        } else {
+            LOG(INFO) << "Node " << ground_truth_info.first << " in ground truth not in optimized trajectory";
+        }
+    }
+    if (num_poses == 0) {
+        return 0;
+    }
+    return squared_error_sum / num_poses;
+}
+
+double runSingleSyntheticProblem(const std::shared_ptr<visualization::VisualizationManager> &vis_manager) {
+    synthetic_problem::ParkingLotConfigurationParams parking_lot_config;
+    parking_lot_config.parking_lot_std_dev_x_ = 0.2;
+    parking_lot_config.parking_lot_std_dev_y_ = 0.2;
+    parking_lot_config.parking_lot_std_dev_yaw_ = 0.075;
+    parking_lot_config.num_samples_multiplier_ = 4;
+    parking_lot_config.parking_lot_percent_filled_ = 0.6;
+    parking_lot_config.parking_spots_and_relative_frequency_ = createParkedCarPosesWithFrequency();
 
     synthetic_problem::SyntheticProblemNoiseConfig2d noise_config;
     noise_config.add_additional_initial_noise_ = false;
@@ -196,16 +235,169 @@ void callSyntheticProblem(const std::shared_ptr<visualization::VisualizationMana
     noise_config.movable_observation_y_std_dev_ = 0.00005;
     noise_config.movable_observation_yaw_std_dev_ = 0.00005;
 
+    const pose_optimization::CostFunctionParameters cost_function_params;
+    const pose_optimization::PoseOptimizationParameters optimization_params;
+
+    std::vector<pose::Pose2d> ground_truth_poses = createGroundTruthPoses();
+    std::unordered_map<pose_graph::NodeId, pose::Pose2d> ground_truth_poses_as_map;
+    for (size_t i = 0; i < ground_truth_poses.size(); i++) {
+        ground_truth_poses_as_map[i] = ground_truth_poses[i];
+    }
+    std::unordered_map<pose_graph::NodeId, pose::Pose2d> optimization_results = callSyntheticProblem(
+            vis_manager, parking_lot_config, noise_config, ground_truth_poses, true,
+            cost_function_params, optimization_params);
+    return computeATE(ground_truth_poses_as_map, optimization_results);
+}
+
+
+void outputResultsHeader(const std::string &file_name) {
+    std::ofstream csv_file(file_name, std::ios::app);
+    csv_file << "position_kernel_len" << ", " << "orientation_kernel_len"
+             << ", " << "odometry_x_std_dev" << ", " << "odometry_y_std_dev" << ", "
+            << "max_observable_moving_obj_distance" << ", "
+             << "odometry_yaw_std_dev" << ", " << "movable_observation_x_std_dev" << ", "
+             << "movable_observation_y_std_dev" << ", "
+             << "movable_observation_yaw_std_dev" << ", "
+             << "parking_lot_std_dev_x" << ", "
+             << "parking_lot_std_dev_y" << ", "
+             << "parking_lot_std_dev_yaw" << ", "
+             << "parking_lot_percent_filled" << ", "  << "absolute_trajectory_error" << "\n";
+    csv_file.close();
+}
+
+void outputResults(const std::string &file_name, const synthetic_problem::ParkingLotConfigurationParams &parking_lot_configuration_params,
+                   const synthetic_problem::SyntheticProblemNoiseConfig2d &noise_config,
+                   const pose_optimization::CostFunctionParameters &cost_function_params,
+                   const pose_optimization::PoseOptimizationParameters &optimization_params,
+                   const double &absolute_trajectory_error) {
+    // TODO
+    std::ofstream csv_file(file_name, std::ios::app);
+    csv_file << cost_function_params.position_kernel_len_ << ", " << cost_function_params.orientation_kernel_len_
+    << ", " << noise_config.odometry_x_std_dev_ << ", " << noise_config.odometry_y_std_dev_ << ", "
+            << noise_config.max_observable_moving_obj_distance_ << ", "
+             << noise_config.odometry_yaw_std_dev_ << ", " << noise_config.movable_observation_x_std_dev_ << ", "
+             << noise_config.movable_observation_y_std_dev_ << ", "
+             << noise_config.movable_observation_yaw_std_dev_ << ", "
+             << parking_lot_configuration_params.parking_lot_std_dev_x_ << ", "
+             << parking_lot_configuration_params.parking_lot_std_dev_y_ << ", "
+             << parking_lot_configuration_params.parking_lot_std_dev_yaw_ << ", "
+             << parking_lot_configuration_params.parking_lot_percent_filled_ << ", "  << absolute_trajectory_error << "\n";
+    csv_file.close();
+}
+
+void runSyntheticProblemAndOutputResults(
+        const std::string &results_file_name,
+        const std::shared_ptr<visualization::VisualizationManager> &vis_manager,
+        const synthetic_problem::ParkingLotConfigurationParams &parking_lot_configuration_params,
+        const synthetic_problem::SyntheticProblemNoiseConfig2d &noise_config,
+        const std::vector<pose::Pose2d> &ground_truth_trajectory,
+        const pose_optimization::CostFunctionParameters &cost_function_params,
+        const pose_optimization::PoseOptimizationParameters &optimization_params) {
+    std::unordered_map<pose_graph::NodeId, pose::Pose2d> optimization_results = callSyntheticProblem(
+            vis_manager, parking_lot_configuration_params, noise_config, ground_truth_trajectory, false,
+            cost_function_params, optimization_params);
+    std::unordered_map<pose_graph::NodeId, pose::Pose2d> ground_truth_poses_as_map;
+    for (size_t i = 0; i < ground_truth_trajectory.size(); i++) {
+        ground_truth_poses_as_map[i] = ground_truth_trajectory[i];
+    }
+    double absolute_trajectory_error = computeATE(ground_truth_poses_as_map, optimization_results);
+    outputResults(results_file_name, parking_lot_configuration_params, noise_config,
+                  cost_function_params, optimization_params, absolute_trajectory_error);
+}
+
+
+
+void runSyntheticProblemWithConfigVariations(const std::shared_ptr<visualization::VisualizationManager> &vis_manager,
+                                             const std::vector<std::pair<pose::Pose2d, unsigned int>> &parking_spots_and_relative_frequency,
+                                             const std::vector<pose::Pose2d> &ground_truth_trajectory,
+                                             const std::string &results_file_name) {
+
+    outputResultsHeader(results_file_name);
+
+    synthetic_problem::ParkingLotConfigurationParams parking_lot_configuration_params;
+    parking_lot_configuration_params.parking_spots_and_relative_frequency_ = parking_spots_and_relative_frequency;
+
+    synthetic_problem::SyntheticProblemNoiseConfig2d noise_config;
     pose_optimization::CostFunctionParameters cost_function_params;
     pose_optimization::PoseOptimizationParameters optimization_params;
-    LOG(INFO) << "Calling run synthetic problem";
-    synthetic_prob_runner.runSyntheticProblem(
-            ground_truth_trajectory,
-            curr_mov_obj_positions_by_class, //mov_obj_positions_by_class, // TODO make this different
-            past_mov_obj_positions_by_class, //mov_obj_positions_by_class,
-            noise_config,
-            cost_function_params,
-            optimization_params);
+
+
+    noise_config.max_observable_moving_obj_distance_ = 8.0;
+    parking_lot_configuration_params.num_samples_multiplier_ = 5.0;
+    noise_config.add_additional_initial_noise_ = false;
+
+    std::vector<double> position_kernel_len_opts = {cost_function_params.position_kernel_len_};
+    std::vector<double> orientation_kernel_len_opts = {cost_function_params.orientation_kernel_len_};
+
+//    std::vector<double> odom_transl_std_dev_opts = {1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005};
+//    std::vector<double> odom_rot_std_dev_opts = {1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005};
+//    std::vector<double> obs_transl_std_dev_opts = {1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
+//    std::vector<double> obs_rot_std_dev_opts = {1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
+//    std::vector<double> parking_spot_transl_std_dev_opts = {1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
+//    std::vector<double> parking_spot_rot_std_dev_opts = {1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
+
+    std::vector<double> odom_transl_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005};
+    std::vector<double> odom_rot_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005};
+    std::vector<double> obs_transl_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
+    std::vector<double> obs_rot_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
+    std::vector<double> parking_spot_transl_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
+    std::vector<double> parking_spot_rot_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
+
+
+    std::vector<double> percent_spots_filled_opts = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
+
+    for (const double &position_kernel_len : position_kernel_len_opts) {
+        LOG(INFO) << "Setting position_kernel_len to " << position_kernel_len;
+        cost_function_params.position_kernel_len_ = position_kernel_len;
+        for (const double &orientation_kernel_len : position_kernel_len_opts) {
+            LOG(INFO) << "Setting orientation_kernel_len to " << orientation_kernel_len;
+            cost_function_params.orientation_kernel_len_ = orientation_kernel_len;
+            for (const double &odom_transl_std_dev : odom_transl_std_dev_opts) {
+                LOG(INFO) << "Setting odom_transl_std_dev to " << odom_transl_std_dev;
+                noise_config.odometry_x_std_dev_ = odom_transl_std_dev;
+                noise_config.odometry_y_std_dev_ = odom_transl_std_dev;
+                for (const double &odom_rot_std_dev : odom_rot_std_dev_opts) {
+                    LOG(INFO) << "Setting odom_rot_std_dev to " << odom_rot_std_dev;
+                    noise_config.odometry_yaw_std_dev_ = odom_rot_std_dev;
+                    for (const double &obs_transl_std_dev : obs_transl_std_dev_opts) {
+                        LOG(INFO) << "Setting obs_transl_std_dev to " << obs_transl_std_dev;
+                        noise_config.movable_observation_x_std_dev_ = obs_transl_std_dev;
+                        noise_config.movable_observation_y_std_dev_ = obs_transl_std_dev;
+                        for (const double &obs_rot_std_dev : obs_rot_std_dev_opts) {
+                            LOG(INFO) << "Setting obs_rot_std_dev to " << obs_rot_std_dev;
+                            noise_config.movable_observation_yaw_std_dev_ = obs_rot_std_dev;
+                            for (const double &parking_spot_transl_std_dev : parking_spot_transl_std_dev_opts) {
+                                LOG(INFO) << "Setting parking_spot_transl_std_dev to " << parking_spot_transl_std_dev;
+                                parking_lot_configuration_params.parking_lot_std_dev_x_ = parking_spot_transl_std_dev;
+                                parking_lot_configuration_params.parking_lot_std_dev_y_ = parking_spot_transl_std_dev;
+                                for (const double &parking_spot_rot_std_dev : parking_spot_rot_std_dev_opts) {
+                                    LOG(INFO) << "Setting parking_spot_rot_std_dev to " << parking_spot_rot_std_dev;
+                                    parking_lot_configuration_params.parking_lot_std_dev_yaw_ = parking_spot_rot_std_dev;
+                                    for (const double &percent_spots_filled : percent_spots_filled_opts) {
+                                        LOG(INFO) << "Setting percent_spots_filled to " << percent_spots_filled;
+                                        parking_lot_configuration_params.parking_lot_percent_filled_ = percent_spots_filled;
+                                        runSyntheticProblemAndOutputResults(
+                                                results_file_name, vis_manager, parking_lot_configuration_params,
+                                                noise_config, ground_truth_trajectory, cost_function_params,
+                                                optimization_params);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+//    void runSyntheticProblemAndOutputResults(
+//            const std::string &results_file_name,
+//            const std::shared_ptr<visualization::VisualizationManager> &vis_manager,
+//            const synthetic_problem::ParkingLotConfigurationParams &parking_lot_configuration_params,
+//            const synthetic_problem::SyntheticProblemNoiseConfig2d &noise_config,
+//            const std::vector<pose::Pose2d> &ground_truth_trajectory,
+//            const pose_optimization::CostFunctionParameters &cost_function_params,
+//            const pose_optimization::PoseOptimizationParameters &optimization_params) {
 }
 
 int main(int argc, char** argv) {
@@ -217,7 +409,17 @@ int main(int argc, char** argv) {
     google::InitGoogleLogging(argv[0]);
     FLAGS_logtostderr = true;
 
-    callSyntheticProblem(manager);
+
+    auto t = std::time(nullptr);
+    auto tm = *std::localtime(&t);
+    std::ostringstream oss;
+    oss << std::put_time(&tm, "%d-%m-%Y_%H:%M:%S");
+    std::string time_str = oss.str();
+    std::string csv_file_name = "results/noise_eval_" + time_str + ".csv";
+
+//    LOG(INFO) << runSingleSyntheticProblem(manager);
+    runSyntheticProblemWithConfigVariations(manager, createParkedCarPosesWithFrequency(), createGroundTruthPoses(),
+                                            csv_file_name);
 
     return 0;
 }
