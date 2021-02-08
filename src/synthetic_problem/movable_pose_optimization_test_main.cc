@@ -294,7 +294,7 @@ void runSyntheticProblemAndOutputResults(
         const pose_optimization::CostFunctionParameters &cost_function_params,
         const pose_optimization::PoseOptimizationParameters &optimization_params) {
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> optimization_results = callSyntheticProblem(
-            vis_manager, parking_lot_configuration_params, noise_config, ground_truth_trajectory, false,
+            vis_manager, parking_lot_configuration_params, noise_config, ground_truth_trajectory, true,
             cost_function_params, optimization_params);
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> ground_truth_poses_as_map;
     for (size_t i = 0; i < ground_truth_trajectory.size(); i++) {
@@ -343,13 +343,20 @@ void runSyntheticProblemWithConfigVariations(const std::shared_ptr<visualization
 //    std::vector<double> parking_spot_transl_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
 //    std::vector<double> parking_spot_rot_std_dev_opts = {0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
 
-    std::vector<double> odom_transl_std_dev_opts = {0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005};
-    std::vector<double> odom_rot_std_dev_opts = {0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005};
-    std::vector<double> obs_transl_std_dev_opts = {0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
-    std::vector<double> obs_rot_std_dev_opts = {0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
-    std::vector<double> parking_spot_transl_std_dev_opts = {0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
-    std::vector<double> parking_spot_rot_std_dev_opts = {0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005, 0.001};
+//    std::vector<double> odom_transl_std_dev_opts = {0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.2, 0.3};
+//    std::vector<double> odom_rot_std_dev_opts = {0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.2, 0.3};
+//    std::vector<double> obs_transl_std_dev_opts = {0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.2, 0.3};
+//    std::vector<double> obs_rot_std_dev_opts = {0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.2, 0.3};
+//    std::vector<double> parking_spot_transl_std_dev_opts = {0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.2, 0.3};
+//    std::vector<double> parking_spot_rot_std_dev_opts = {0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.2, 0.3};
 
+
+    std::vector<double> odom_transl_std_dev_opts = {0.1};
+    std::vector<double> odom_rot_std_dev_opts = {0.15};
+    std::vector<double> obs_transl_std_dev_opts = {0.01};
+    std::vector<double> obs_rot_std_dev_opts = {0.01};
+    std::vector<double> parking_spot_transl_std_dev_opts = {0.1};
+    std::vector<double> parking_spot_rot_std_dev_opts = {0.05};
     std::vector<double> percent_spots_filled_opts = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
 
     for (const double &position_kernel_len : position_kernel_len_opts) {
@@ -408,7 +415,7 @@ void runSyntheticProblemWithConfigVariations(const std::shared_ptr<visualization
 
 int main(int argc, char** argv) {
     ros::init(argc, argv,
-              "momo_demo");
+              "momo_demo_2");
     ros::NodeHandle n;
     std::shared_ptr<visualization::VisualizationManager> manager = std::make_shared<visualization::VisualizationManager>(n);
 

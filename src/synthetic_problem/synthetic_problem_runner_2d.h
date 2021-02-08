@@ -113,7 +113,8 @@ namespace synthetic_problem {
                                                                         ground_truth_trajectory[i-1]));
             }
 
-            util_random::Random random_generator;
+//            util_random::Random random_generator;
+            util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
             std::vector<pose::Pose2d> noisy_odometry;
             for (const pose::Pose2d &true_odom : true_odometry) {
                 noisy_odometry.emplace_back(pose::addRelativeGaussianNoise(true_odom, noise_config.odometry_x_std_dev_,

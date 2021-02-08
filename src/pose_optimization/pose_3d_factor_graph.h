@@ -13,6 +13,7 @@
 #include <pose_optimization/odometry_2d_cost_functor.h>
 #include <pose_optimization/odometry_3d_cost_functor.h>
 #include <util/random.h>
+#include <chrono>
 
 namespace pose_graph {
 
@@ -361,7 +362,7 @@ namespace pose_graph {
                                                             const MovableObservationFactor<2, double, 3> &factor,
                                                             const pose_optimization::CostFunctionParameters &cost_function_params) const override {
             std::vector<std::pair<Eigen::Vector2d, double>> observation_samples;
-            util_random::Random rand_gen;
+            util_random::Random rand_gen(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
             Eigen::Matrix<double, 3, 3> obs_cov = factor.observation_.observation_covariance_;
             for (int i = 0; i < cost_function_params.num_samples_per_movable_obj_observation_; i++) {
                 // TODO can this instead sample from the whole covariance matrix instead of sampling each dimension independently.

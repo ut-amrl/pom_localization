@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <base_lib/pose_reps.h>
+#include <chrono>
 
 namespace synthetic_problem {
 
@@ -28,7 +29,8 @@ namespace synthetic_problem {
             std::vector<pose::Pose2d> &past_observations,
             std::vector<pose::Pose2d> &current_placements) {
 
-        util_random::Random random_generator;
+//        util_random::Random random_generator;
+        util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
 
         for (const std::pair<pose::Pose2d, unsigned int> &pose_and_relative_count : poses_and_relative_frequncy) {
             for (unsigned int i = 0; i < pose_and_relative_count.second; i++) {
