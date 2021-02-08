@@ -226,7 +226,7 @@ namespace visualization {
 //                    LOG(INFO) << "Double val " << inf_val;
 //                    LOG(INFO) << std::to_string(((int8_t) (100 * inf_val)));
 //                    occ_grid_for_angle.data[i] = (int8_t) (100 * inf_val);
-                    occ_grid_for_angle.data[i] = (int8_t) (1000 * inf_val);
+                    occ_grid_for_angle.data[i] = (int8_t) ((1e10) * inf_val);
 //                    LOG(INFO) << std::to_string(occ_grid_for_angle.data[i]);
                     occ_grids_by_angle[j] = occ_grid_for_angle;
                 }
@@ -390,6 +390,11 @@ namespace visualization {
         }
 
         void displayTrueCarPoses(const std::vector<pose::Pose2d> &true_car_poses) {
+            LOG(INFO) << "Showing true car poses, count " << true_car_poses.size();
+            for (pose::Pose2d true_pose : true_car_poses) {
+                LOG(INFO) << true_pose.first.x() << ", " << true_pose.first.y();
+
+            }
             std_msgs::ColorRGBA color;
             color.a = 1.0;
             color.g = 1.0;

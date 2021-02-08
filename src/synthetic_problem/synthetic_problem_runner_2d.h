@@ -74,9 +74,9 @@ namespace synthetic_problem {
                     case offline_optimization::VisualizationTypeEnum::AFTER_ALL_OPTIMIZATION:
                         // Optionally display distribution intensity map (either over robot poses or over object poses)
                     {
-//                    std::string car_class = "car_class";
-//                    vis_manager_->displayMaxGpRegressorOutput(pose_graph->getMovableObjKde(car_class), 0.1, -10.0, 15,
-//                                                              -5, 20);
+                    std::string car_class = "car_class";
+                    vis_manager_->displayMaxGpRegressorOutput(pose_graph->getMovableObjKde(car_class), 0.3, -20.0, 20,
+                                                              -30, 30);
                     }
                         break;
                     default:
@@ -144,7 +144,8 @@ namespace synthetic_problem {
             }
 
             std::vector<pose::Pose2d> initial_node_positions;
-            pose::Pose2d prev_pose = pose::createPose2d(0, 0, 0);
+            pose::Pose2d prev_pose = ground_truth_trajectory[0];
+//            pose::Pose2d prev_pose = pose::createPose2d(0, 0, 0);
             initial_node_positions.emplace_back(prev_pose);
             for (const pose::Pose2d &odom_to_next_pos : noisy_odometry) {
                 pose::Pose2d odom_for_initial_node_pose = odom_to_next_pos;

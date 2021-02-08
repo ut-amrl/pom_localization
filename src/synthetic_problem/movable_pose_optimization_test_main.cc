@@ -92,6 +92,109 @@ std::vector<Pose2d> createGroundTruthPoses() {
     return poses;
 }
 
+std::vector<Pose2d> createHighLevelTrajectory() {
+    std::vector<Pose2d> poses;
+////    poses.emplace_back(pose::createPose2d(-18, -31, 3.0 * M_PI / 4.0 ));
+//    poses.emplace_back(pose::createPose2d(-18, -25,  M_PI / 2.0));
+//    poses.emplace_back(pose::createPose2d(-18, 25,  M_PI / 2.0));
+////    poses.emplace_back(pose::createPose2d(-18, 31, M_PI / 4.0 ));
+//    poses.emplace_back(pose::createPose2d(-15, 31, 0 ));
+//    poses.emplace_back(pose::createPose2d(15, 31, 0 ));
+////    poses.emplace_back(pose::createPose2d(18, 31, - M_PI / 4.0 ));
+//    poses.emplace_back(pose::createPose2d(18, 25,  -M_PI / 2.0));
+//    poses.emplace_back(pose::createPose2d(18, -25,  -M_PI / 2.0));
+////    poses.emplace_back(pose::createPose2d(18, -31, -3.0 * M_PI / 4.0 ));
+//    poses.emplace_back(pose::createPose2d(15, -31, -M_PI ));
+//    poses.emplace_back(pose::createPose2d(-15, -31, -M_PI));
+
+//    poses.emplace_back(pose::createPose2d(-18, -31, 3.0 * M_PI / 4.0 ));
+    poses.emplace_back(pose::createPose2d(0, 0, 0));
+    poses.emplace_back(pose::createPose2d(0, -5, -M_PI_2));
+    poses.emplace_back(pose::createPose2d(0, -25, -M_PI_2));
+    poses.emplace_back(pose::createPose2d(-5, -31, -M_PI));
+    poses.emplace_back(pose::createPose2d(-18, -25,  M_PI / 2.0));
+    poses.emplace_back(pose::createPose2d(-18, -25,  M_PI / 2.0));
+    poses.emplace_back(pose::createPose2d(-18, 25,  M_PI / 2.0));
+//    poses.emplace_back(pose::createPose2d(-18, 31, M_PI / 4.0 ));
+    poses.emplace_back(pose::createPose2d(-15, 31, 0 ));
+    poses.emplace_back(pose::createPose2d(15, 31, 0 ));
+//    poses.emplace_back(pose::createPose2d(18, 31, - M_PI / 4.0 ));
+    poses.emplace_back(pose::createPose2d(18, 25,  -M_PI / 2.0));
+    poses.emplace_back(pose::createPose2d(18, -25,  -M_PI / 2.0));
+//    poses.emplace_back(pose::createPose2d(18, -31, -3.0 * M_PI / 4.0 ));
+    poses.emplace_back(pose::createPose2d(15, -31, -M_PI ));
+    poses.emplace_back(pose::createPose2d(-15, -31, -M_PI));
+    return poses;
+}
+
+std::vector<Pose2d> createIntermediateTrajectory(std::vector<Pose2d> high_level_trajectory, double min_dist_between_nodes, double max_transl_variation, double max_rot_variation) {
+    std::vector<Pose2d> poses;
+//    poses.emplace_back(high_level_trajectory[0]);
+
+    Pose2d last_added_pose;
+    double remaining_dist = 0;
+    util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+    for (size_t i = 0; i < high_level_trajectory.size(); i++) {
+        // Pseudocode:
+        // Get previous pose and next pose
+        Pose2d prev_pose = high_level_trajectory[i];
+        Pose2d next_pose;
+        if (i == (high_level_trajectory.size() - 1)) {
+            next_pose = high_level_trajectory[0];
+        } else {
+            next_pose = high_level_trajectory[i+1];
+        }
+
+        // Using remaining distance from prev iter, construct a node that uses up what's left
+        Eigen::Vector2d vector_to_second = next_pose.first - prev_pose.first;
+        double vector_to_second_dist = vector_to_second.norm();
+        Eigen::Vector2d unit_vector = vector_to_second / vector_to_second_dist;
+
+        Eigen::Vector2d next_position = prev_pose.first + (remaining_dist * unit_vector);
+
+        double angle_diff_prev_to_next = math_util::AngleDiff(next_pose.second, prev_pose.second);
+        double angle_diff_for_next_pos = angle_diff_prev_to_next * (remaining_dist / vector_to_second_dist);
+        double new_angle = math_util::AngleMod(prev_pose.second + angle_diff_for_next_pos);
+        last_added_pose = createPose2d(next_position.x(), next_position.y(), new_angle);
+
+//        LOG(INFO) << "Adding pose " << last_added_pose.first.x() << ", " << last_added_pose.first.y() << ", " << last_added_pose.second;
+        pose::Pose2d imperfect_pose = createPose2d(last_added_pose.first.x() + random_generator.UniformRandom(-max_transl_variation, max_transl_variation),
+                                                   last_added_pose.first.y() + random_generator.UniformRandom(-max_transl_variation, max_transl_variation),
+                                                   last_added_pose.second + random_generator.UniformRandom(-max_rot_variation, max_rot_variation));
+        poses.emplace_back(imperfect_pose);
+
+        // Get the distance, vector, and angle change from that node to the next higher level trajectory node
+        Eigen::Vector2d vector_from_last_added = next_pose.first - last_added_pose.first;
+        double dist = vector_from_last_added.norm();
+        Eigen::Vector2d unit_vector_to_second = vector_from_last_added / dist;
+        double angle_diff_last_to_next = math_util::AngleDiff(next_pose.second, last_added_pose.second);
+
+        // Determine how many full trajectory steps can fit
+        int num_nodes = dist / min_dist_between_nodes;
+
+        // Add the full trajectory steps, adding the distance specified in the direction of the unit vector to the last
+        // added node
+        // On the last full node, get the distance remaining to the next high level node.
+        for (int j = 0; j < num_nodes; j++) {
+            double angle_change = angle_diff_last_to_next * (min_dist_between_nodes / dist);
+            double interpolated_angle = math_util::AngleMod(last_added_pose.second + angle_change);
+            Pose2d new_pose = std::make_pair(last_added_pose.first + (unit_vector_to_second * min_dist_between_nodes), interpolated_angle);
+            last_added_pose = new_pose;
+            LOG(INFO) << "Adding pose " << last_added_pose.first.x() << ", " << last_added_pose.first.y() << ", " << last_added_pose.second;
+            imperfect_pose = createPose2d(last_added_pose.first.x() + random_generator.UniformRandom(-max_transl_variation, max_transl_variation),
+                                                       last_added_pose.first.y() + random_generator.UniformRandom(-max_transl_variation, max_transl_variation),
+                                                       last_added_pose.second + random_generator.UniformRandom(-max_rot_variation, max_rot_variation));
+            poses.emplace_back(imperfect_pose);
+            if (j == (num_nodes - 1)) {
+                remaining_dist = min_dist_between_nodes - (next_pose.first - new_pose.first).norm();
+            }
+        }
+    }
+    LOG(INFO) << "Pose count"  << poses.size();
+    return createGroundTruthPoses();
+//    return poses;
+}
+
 std::vector<Pose2d> createParkedCarPoses() {
     std::vector<Pose2d> poses;
     poses.emplace_back(createPose2d(-3, 2, -(M_PI * 5.0/6.0)));
@@ -217,19 +320,36 @@ double computeATE(const std::unordered_map<pose_graph::NodeId, pose::Pose2d> &gr
 }
 
 double runSingleSyntheticProblem(const std::shared_ptr<visualization::VisualizationManager> &vis_manager) {
+    synthetic_problem::ParkingLotSpacingConfigurationParams parking_lot_spacing_config;
+    parking_lot_spacing_config.seed_spot_x = 3.0;
+    parking_lot_spacing_config.seed_spot_y = 3.0;
+    parking_lot_spacing_config.min_x = -20;
+    parking_lot_spacing_config.max_x = 20;
+    parking_lot_spacing_config.min_y = -30;
+    parking_lot_spacing_config.max_y = 30;
+    parking_lot_spacing_config.parking_lot_spacing_x = 4;
+    parking_lot_spacing_config.parking_lot_spacing_y = 3;
+    parking_lot_spacing_config.parking_lot_aisle_gap_x = 8;
+    parking_lot_spacing_config.parking_lot_aisle_gap_y = 6;
+    parking_lot_spacing_config.spots_between_gaps_y = 5;
+    parking_lot_spacing_config.right_parking_angle = -(M_PI /6.0);
+    parking_lot_spacing_config.left_parking_angle = -(5.0 * M_PI /6.0);
+    parking_lot_spacing_config.max_frequency_ratio = 10;
+
     synthetic_problem::ParkingLotConfigurationParams parking_lot_config;
-    parking_lot_config.parking_lot_std_dev_x_ = 0.2;
-    parking_lot_config.parking_lot_std_dev_y_ = 0.2;
-    parking_lot_config.parking_lot_std_dev_yaw_ = 0.075;
+    parking_lot_config.parking_lot_std_dev_x_ = 0.4;
+    parking_lot_config.parking_lot_std_dev_y_ = 0.4;
+    parking_lot_config.parking_lot_std_dev_yaw_ = 0.15;
     parking_lot_config.num_samples_multiplier_ = 4;
     parking_lot_config.parking_lot_percent_filled_ = 0.6;
-    parking_lot_config.parking_spots_and_relative_frequency_ = createParkedCarPosesWithFrequency();
+//    parking_lot_config.parking_spots_and_relative_frequency_ = createParkedCarPosesWithFrequency();
+    parking_lot_config.parking_spots_and_relative_frequency_ = synthetic_problem::generateParkingSpotsAndFrequency(parking_lot_spacing_config);
 
     synthetic_problem::SyntheticProblemNoiseConfig2d noise_config;
     noise_config.add_additional_initial_noise_ = false;
-    noise_config.odometry_x_std_dev_ = 0.6;
-    noise_config.odometry_y_std_dev_ = 0.6;
-    noise_config.odometry_yaw_std_dev_ = 0.2;
+    noise_config.odometry_x_std_dev_ = 0.15;
+    noise_config.odometry_y_std_dev_ = 0.15;
+    noise_config.odometry_yaw_std_dev_ = 0.15;
     noise_config.max_observable_moving_obj_distance_ = 8.0;
     noise_config.movable_observation_x_std_dev_ = 0.00005;
     noise_config.movable_observation_y_std_dev_ = 0.00005;
@@ -238,7 +358,10 @@ double runSingleSyntheticProblem(const std::shared_ptr<visualization::Visualizat
     const pose_optimization::CostFunctionParameters cost_function_params;
     const pose_optimization::PoseOptimizationParameters optimization_params;
 
-    std::vector<pose::Pose2d> ground_truth_poses = createGroundTruthPoses();
+//    std::vector<pose::Pose2d> ground_truth_poses = createGroundTruthPoses();
+    std::vector<pose::Pose2d> high_level_trajectory = createHighLevelTrajectory();
+    LOG(INFO) << "High level trajectory size " << high_level_trajectory.size();
+    std::vector<pose::Pose2d> ground_truth_poses = createIntermediateTrajectory(high_level_trajectory, 3.0, 0.1, 0.1);
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> ground_truth_poses_as_map;
     for (size_t i = 0; i < ground_truth_poses.size(); i++) {
         ground_truth_poses_as_map[i] = ground_truth_poses[i];
@@ -430,9 +553,9 @@ int main(int argc, char** argv) {
     std::string time_str = oss.str();
     std::string csv_file_name = "results/noise_eval_" + time_str + ".csv";
 
-//    LOG(INFO) << runSingleSyntheticProblem(manager);
-    runSyntheticProblemWithConfigVariations(manager, createParkedCarPosesWithFrequency(), createGroundTruthPoses(),
-                                            csv_file_name);
+    LOG(INFO) << runSingleSyntheticProblem(manager);
+//    runSyntheticProblemWithConfigVariations(manager, createParkedCarPosesWithFrequency(), createGroundTruthPoses(),
+//                                            csv_file_name);
 
     return 0;
 }
