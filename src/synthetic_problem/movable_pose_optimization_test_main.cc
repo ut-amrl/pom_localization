@@ -94,7 +94,26 @@ std::vector<Pose2d> createGroundTruthPoses() {
 
 std::vector<Pose2d> createHighLevelTrajectory() {
     std::vector<Pose2d> poses;
+//    poses.emplace_back(pose::createPose2d(-18, -31, 3.0 * M_PI / 4.0 ));
+
+    poses.emplace_back(pose::createPose2d(-12, -31, -M_PI));
+    poses.emplace_back(pose::createPose2d(-15, -25,  M_PI / 2.0));
+    poses.emplace_back(pose::createPose2d(-15, 25,  M_PI / 2.0));
+//    poses.emplace_back(pose::createPose2d(-18, 31, M_PI / 4.0 ));
+    poses.emplace_back(pose::createPose2d(-12, 31, 0 ));
+    poses.emplace_back(pose::createPose2d(10, 31, 0 ));
+//    poses.emplace_back(pose::createPose2d(18, 31, - M_PI / 4.0 ));
+    poses.emplace_back(pose::createPose2d(12, 25,  -M_PI / 2.0));
+    poses.emplace_back(pose::createPose2d(12, -25,  -M_PI / 2.0));
+//    poses.emplace_back(pose::createPose2d(18, -31, -3.0 * M_PI / 4.0 ));
+    poses.emplace_back(pose::createPose2d(10, -31, -M_PI ));
+
 ////    poses.emplace_back(pose::createPose2d(-18, -31, 3.0 * M_PI / 4.0 ));
+//    poses.emplace_back(pose::createPose2d(0, 0, 0));
+//    poses.emplace_back(pose::createPose2d(0, -5, -M_PI_2));
+//    poses.emplace_back(pose::createPose2d(0, -25, -M_PI_2));
+//    poses.emplace_back(pose::createPose2d(-5, -31, -M_PI));
+//    poses.emplace_back(pose::createPose2d(-18, -25,  M_PI / 2.0));
 //    poses.emplace_back(pose::createPose2d(-18, -25,  M_PI / 2.0));
 //    poses.emplace_back(pose::createPose2d(-18, 25,  M_PI / 2.0));
 ////    poses.emplace_back(pose::createPose2d(-18, 31, M_PI / 4.0 ));
@@ -106,24 +125,6 @@ std::vector<Pose2d> createHighLevelTrajectory() {
 ////    poses.emplace_back(pose::createPose2d(18, -31, -3.0 * M_PI / 4.0 ));
 //    poses.emplace_back(pose::createPose2d(15, -31, -M_PI ));
 //    poses.emplace_back(pose::createPose2d(-15, -31, -M_PI));
-
-//    poses.emplace_back(pose::createPose2d(-18, -31, 3.0 * M_PI / 4.0 ));
-    poses.emplace_back(pose::createPose2d(0, 0, 0));
-    poses.emplace_back(pose::createPose2d(0, -5, -M_PI_2));
-    poses.emplace_back(pose::createPose2d(0, -25, -M_PI_2));
-    poses.emplace_back(pose::createPose2d(-5, -31, -M_PI));
-    poses.emplace_back(pose::createPose2d(-18, -25,  M_PI / 2.0));
-    poses.emplace_back(pose::createPose2d(-18, -25,  M_PI / 2.0));
-    poses.emplace_back(pose::createPose2d(-18, 25,  M_PI / 2.0));
-//    poses.emplace_back(pose::createPose2d(-18, 31, M_PI / 4.0 ));
-    poses.emplace_back(pose::createPose2d(-15, 31, 0 ));
-    poses.emplace_back(pose::createPose2d(15, 31, 0 ));
-//    poses.emplace_back(pose::createPose2d(18, 31, - M_PI / 4.0 ));
-    poses.emplace_back(pose::createPose2d(18, 25,  -M_PI / 2.0));
-    poses.emplace_back(pose::createPose2d(18, -25,  -M_PI / 2.0));
-//    poses.emplace_back(pose::createPose2d(18, -31, -3.0 * M_PI / 4.0 ));
-    poses.emplace_back(pose::createPose2d(15, -31, -M_PI ));
-    poses.emplace_back(pose::createPose2d(-15, -31, -M_PI));
     return poses;
 }
 
@@ -190,9 +191,7 @@ std::vector<Pose2d> createIntermediateTrajectory(std::vector<Pose2d> high_level_
             }
         }
     }
-    LOG(INFO) << "Pose count"  << poses.size();
-    return createGroundTruthPoses();
-//    return poses;
+    return poses;
 }
 
 std::vector<Pose2d> createParkedCarPoses() {
@@ -351,9 +350,9 @@ double runSingleSyntheticProblem(const std::shared_ptr<visualization::Visualizat
     noise_config.odometry_y_std_dev_ = 0.15;
     noise_config.odometry_yaw_std_dev_ = 0.15;
     noise_config.max_observable_moving_obj_distance_ = 8.0;
-    noise_config.movable_observation_x_std_dev_ = 0.00005;
-    noise_config.movable_observation_y_std_dev_ = 0.00005;
-    noise_config.movable_observation_yaw_std_dev_ = 0.00005;
+    noise_config.movable_observation_x_std_dev_ = 0.1;
+    noise_config.movable_observation_y_std_dev_ = 0.1;
+    noise_config.movable_observation_yaw_std_dev_ = 0.1;
 
     const pose_optimization::CostFunctionParameters cost_function_params;
     const pose_optimization::PoseOptimizationParameters optimization_params;
@@ -361,7 +360,9 @@ double runSingleSyntheticProblem(const std::shared_ptr<visualization::Visualizat
 //    std::vector<pose::Pose2d> ground_truth_poses = createGroundTruthPoses();
     std::vector<pose::Pose2d> high_level_trajectory = createHighLevelTrajectory();
     LOG(INFO) << "High level trajectory size " << high_level_trajectory.size();
-    std::vector<pose::Pose2d> ground_truth_poses = createIntermediateTrajectory(high_level_trajectory, 3.0, 0.1, 0.1);
+//    std::vector<pose::Pose2d> ground_truth_poses = createIntermediateTrajectory(high_level_trajectory, 1, 0.125, 0.125);
+
+    std::vector<pose::Pose2d> ground_truth_poses = createIntermediateTrajectory(high_level_trajectory, 1, 0.2, 0.4);
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> ground_truth_poses_as_map;
     for (size_t i = 0; i < ground_truth_poses.size(); i++) {
         ground_truth_poses_as_map[i] = ground_truth_poses[i];

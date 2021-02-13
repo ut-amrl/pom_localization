@@ -103,6 +103,35 @@ namespace offline_optimization {
             nodes_to_optimize.insert(0);
             for (pose_graph::NodeId next_pose_to_optimize = 1;
                  next_pose_to_optimize <= max_node_id; next_pose_to_optimize++) {
+
+                // Recompute the initial pose for this node based on the
+                std::pair<std::shared_ptr<TranslType>, std::shared_ptr<MeasurementRotationType>> pose_vars;
+                if (!pose_graph->getNodePosePointers(next_pose_to_optimize, pose_vars)) {
+                    LOG(ERROR) << "Node " << next_pose_to_optimize << " did not exist in the pose graph.This shouldn't happen";
+                    continue;
+                }
+                LOG(INFO) << "Initial initial pose " << *(pose_vars.first) << ", " << *(pose_vars.second);
+                for (pose_graph::GaussianBinaryFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> &factor
+                        : pose_graph->getBinaryFactors()) {
+                    if (factor.to_node_ == next_pose_to_optimize) {
+                        std::pair<std::shared_ptr<TranslType>, std::shared_ptr<MeasurementRotationType>> from_pose_vars;
+                        if ((pose_graph->getNodePosePointers(factor.from_node_, from_pose_vars)) && (nodes_to_optimize.find(factor.from_node_) != nodes_to_optimize.end())) {
+                            PoseType updated_init_est = pose::combinePoses(std::make_pair(*(from_pose_vars.first), *(from_pose_vars.second)),
+                            std::make_pair(factor.translation_change_, factor.orientation_change_));
+                            *(pose_vars.first) = updated_init_est.first;
+                            *(pose_vars.second) = updated_init_est.second;
+                            break;
+                        }
+                    }
+                }
+                std::pair<std::shared_ptr<TranslType>, std::shared_ptr<MeasurementRotationType>> updated_pose_vars;
+                if (!pose_graph->getNodePosePointers(next_pose_to_optimize, updated_pose_vars)) {
+                    LOG(ERROR) << "Node " << next_pose_to_optimize << " did not exist in the pose graph.This shouldn't happen";
+                    continue;
+                } else {
+                    LOG(INFO) << "Revised initial pose " << *(updated_pose_vars.first) << ", " << *(updated_pose_vars.second);
+                }
+
                 nodes_to_optimize.insert(next_pose_to_optimize);
 
                 // Run any per-pose pre-solving visualization

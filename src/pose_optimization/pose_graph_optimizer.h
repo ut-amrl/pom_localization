@@ -128,8 +128,8 @@ namespace pose_optimization {
 //            options.function_tolerance = 1e-10;
             options.function_tolerance = 1e-20;
             options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-            options.gradient_tolerance = 1e-15;
-            options.parameter_tolerance = 1e-20;
+//            options.gradient_tolerance = 1e-15;
+//            options.parameter_tolerance = 1e-20;
             options.callbacks = callbacks;
             if (!callbacks.empty()) {
                 options.update_state_every_iteration = true;

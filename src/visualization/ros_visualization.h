@@ -19,9 +19,9 @@ namespace visualization {
     public:
 
         VisualizationManager(ros::NodeHandle &node_handle) : node_handle_(node_handle) {
-            gt_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("gt_visualization_marker", 250);
-            est_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("est_pos_marker", 250);
-            odom_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("odom_pos_marker", 250);
+            gt_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("gt_visualization_marker", 1000);
+            est_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("est_pos_marker", 1000);
+            odom_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("odom_pos_marker", 1000);
             regressor_max_val_for_pos_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>("regressor_max_val_for_pos", 2);
             robot_pose_max_val_pub_  = node_handle_.advertise<nav_msgs::OccupancyGrid>("robot_pose_max_val", 2);
             for (int i = -5; i <= 6; i++) {
@@ -196,6 +196,9 @@ namespace visualization {
                 }
             }
 
+
+            double min_value = std::numeric_limits<double>::infinity();
+            double max_value = -std::numeric_limits<double>::infinity();
             std::unordered_map<int, Eigen::Matrix<double, 1, Eigen::Dynamic>> output_mats;
             for (int i = -5; i <= 6; i++) {
                 LOG(INFO) << "Getting regression value for angle index " << i;
@@ -203,34 +206,39 @@ namespace visualization {
                 LOG(INFO) << "Input size " << mats_by_angle[i].rows() << ", " << mats_by_angle[i].cols();
 //                output_mats[i] = regressor->Inference(mats_by_angle[i]);
                 output_mats[i] = kde->Inference(mats_by_angle[i]);
+                max_value = std::max(max_value, output_mats[i].maxCoeff());
+                min_value = std::min(min_value, output_mats[i].minCoeff());
                 LOG(INFO) << "Output size " << output_mats[i].rows() << ", " << output_mats[i].cols();
                 LOG(INFO) << "Output " << output_mats[i];
             }
 
             LOG(INFO) << "Setting occupancy grid data";
 
+
             for (int i = 0; i < size; i++) {
-                double best_val = 0.0;
+                int8_t best_val = 0.0;
                 for (int j = -5; j <= 6; j++) {
                     ros::Publisher pub_for_angle = pub_for_angle_mult_[i];
                     double inf_val = output_mats[j](0, i);
-                    if (inf_val > best_val) {
-                        best_val = inf_val;
-                    }
+
 
                     if (inf_val > 1) {
                         LOG(INFO) << "Inf val " << inf_val;
+                    }
+                    int8_t value = (int8_t) (100) * ((inf_val - min_value) / (max_value - min_value));
+                    if (value > best_val) {
+                        best_val = value;
                     }
 
                     nav_msgs::OccupancyGrid occ_grid_for_angle = occ_grids_by_angle[j];
 //                    LOG(INFO) << "Double val " << inf_val;
 //                    LOG(INFO) << std::to_string(((int8_t) (100 * inf_val)));
 //                    occ_grid_for_angle.data[i] = (int8_t) (100 * inf_val);
-                    occ_grid_for_angle.data[i] = (int8_t) ((1e10) * inf_val);
+                    occ_grid_for_angle.data[i] = value; // ((1e210) * ((1e300) * inf_val));
 //                    LOG(INFO) << std::to_string(occ_grid_for_angle.data[i]);
                     occ_grids_by_angle[j] = occ_grid_for_angle;
                 }
-                best_occ_grid.data[i] = (int8_t) (100 * best_val);
+                best_occ_grid.data[i] = (int8_t) best_val;
             }
 
             LOG(INFO) << "Publishing occ grid data";
