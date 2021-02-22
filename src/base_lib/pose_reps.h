@@ -6,6 +6,7 @@
 #define AUTODIFF_GP_POSE_REPS_H
 
 #include <eigen3/Eigen/Dense>
+#include <shared/util/random.h>
 
 namespace pose {
     typedef std::pair<Eigen::Vector2d, double> Pose2d;

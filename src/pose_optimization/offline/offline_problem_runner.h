@@ -5,7 +5,10 @@
 #ifndef AUTODIFF_GP_OFFLINE_PROBLEM_RUNNER_H
 #define AUTODIFF_GP_OFFLINE_PROBLEM_RUNNER_H
 
+#include <ceres/iteration_callback.h>
+
 #include <pose_optimization/offline/offline_problem_data.h>
+#include <pose_optimization/pose_graph_optimizer.h>
 
 namespace offline_optimization {
 

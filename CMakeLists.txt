@@ -7,7 +7,7 @@ MESSAGE(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 MESSAGE(STATUS "Arch: ${CMAKE_SYSTEM_PROCESSOR}")
 
 #SET(CMAKE_CXX_FLAGS "-std=c++11 -Wall")
-SET(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Werror -O2")
+SET(CMAKE_CXX_FLAGS "-std=c++17 -lstdc++fs -Wall -Werror -O2")
 
 IF(${CMAKE_BUILD_TYPE} MATCHES "Release")
   MESSAGE(STATUS "Additional Flags for Release mode")
@@ -28,6 +28,7 @@ MESSAGE(STATUS "CXX Flags: ${CMAKE_CXX_FLAGS}")
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 SET(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
+find_package(PCL 1.3 REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_search_module(EIGEN REQUIRED eigen3)
 
@@ -41,6 +42,10 @@ SET(libs roslib roscpp rosbag glog gflags amrl_shared_lib lua5.1 ceres
     pthread)
 
 INCLUDE_DIRECTORIES(src/shared)
+INCLUDE_DIRECTORIES(${PCL_INCLUDE_DIRS})
+LINK_DIRECTORIES(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
+
 ADD_SUBDIRECTORY(src/shared)
 INCLUDE_DIRECTORIES(src)
 
@@ -54,6 +59,13 @@ TARGET_LINK_LIBRARIES(momo_pose_optimization ${libs})
 
 ROSBUILD_ADD_EXECUTABLE(momo_pose_optimization_test src/synthetic_problem/movable_pose_optimization_test_main.cc)
 TARGET_LINK_LIBRARIES(momo_pose_optimization_test ${libs})
+
+ROSBUILD_ADD_EXECUTABLE(read_h3d_point_cloud src/h3d_dataset/read_h3d_point_cloud.cc)
+TARGET_LINK_LIBRARIES(read_h3d_point_cloud ${libs} ${PCL_LIBRARIES} stdc++fs)
+
+ROSBUILD_ADD_EXECUTABLE(run_on_h3d_detections src/h3d_dataset/run_on_h3d_detections.cc)
+TARGET_LINK_LIBRARIES(run_on_h3d_detections ${libs} ${PCL_LIBRARIES} stdc++fs)
+
 
 #IF(TESTING)
 #  enable_testing()
