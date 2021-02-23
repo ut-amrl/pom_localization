@@ -6,6 +6,7 @@
 #define AUTODIFF_GP_GPS_H
 
 #include <string>
+#include <math/math_util.h>
 
 namespace h3d {
 
@@ -55,9 +56,9 @@ namespace h3d {
         gps_data.long_rel_ = data[1];
         gps_data.lat_rel_ = data[2];
         gps_data.in_height_ = data[3];
-        gps_data.tilt_roll_ = data[4];
-        gps_data.tilt_pitch_ = data[5];
-        gps_data.tilt_yaw_ = data[6];
+        gps_data.tilt_roll_ = math_util::DegToRad(data[4]);
+        gps_data.tilt_pitch_ = math_util::DegToRad(data[5]);
+        gps_data.tilt_yaw_ = math_util::DegToRad(data[6]);
         gps_data.vel_x_ = data[7];
         gps_data.vel_y_ = data[8];
         gps_data.vel_z_ = data[9];
@@ -89,9 +90,9 @@ namespace h3d {
         gps_data.long_rel_ = data[index++];
         gps_data.lat_rel_ = data[index++];
         gps_data.in_height_ = data[index++];
-        gps_data.tilt_roll_ = data[index++];
-        gps_data.tilt_pitch_ = data[index++];
-        gps_data.tilt_yaw_ = data[index++];
+        gps_data.tilt_roll_ = math_util::DegToRad(data[index++]);
+        gps_data.tilt_pitch_ = math_util::DegToRad(data[index++]);
+        gps_data.tilt_yaw_ = math_util::DegToRad(data[index++]);
         gps_data.vel_x_ = data[index++];
         gps_data.vel_y_ = data[index++];
         gps_data.vel_z_ = data[index++];

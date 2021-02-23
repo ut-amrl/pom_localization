@@ -27,18 +27,13 @@ namespace h3d {
         int max_file_num = -1;
         for (const auto &entry : std::experimental::filesystem::directory_iterator(scenario_directory)) {
             std::string filename = entry.path().filename();
-            LOG(INFO) << "filename " << filename;
             bool starts_with_prefix = filename.size() >= filetype_prefix.size() && (0 == filename.compare(0, filetype_prefix.size(), filetype_prefix));
             if (starts_with_prefix) {
-                LOG(INFO) << "starts with prefix!";
                 std::string num_str = filename.substr(filetype_prefix.size(), 3);
-                LOG(INFO) << "Num str " << num_str;
                 int num = std::stoi(num_str);
-                LOG(INFO) << "Num " << num;
                 max_file_num = std::max(num, max_file_num);
             }
         }
-        LOG(INFO) << "Max file num " << max_file_num;
         return max_file_num;
     }
 

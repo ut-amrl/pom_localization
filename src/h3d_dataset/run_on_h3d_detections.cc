@@ -77,9 +77,9 @@ namespace h3d {
             case offline_optimization::VisualizationTypeEnum::AFTER_ALL_OPTIMIZATION:
                 // Optionally display distribution intensity map (either over robot poses or over object poses)
             {
-//                std::string car_class = "car_class";
-//                vis_manager->displayMaxGpRegressorOutput(pose_graph->getMovableObjKde(car_class), 0.3, -20.0, 20,
-//                                                          -30, 30);
+                std::string car_class = "car_class";
+                vis_manager->displayMaxGpRegressorOutput(pose_graph->getMovableObjKde(car_class), 0.3, -20.0, 20,
+                                                          -30, 30);
             }
                 break;
             default:
@@ -107,6 +107,9 @@ int main(int argc, char** argv) {
 
     double obj_detection_variance_for_transl_per_dist = 0.1; // TODO is this reasonable?
     double obj_detection_yaw_variance = 0.1; // TODO is this reasonable?
+
+    // TODO this is a guess and may not be right
+    pose::Pose2d velodyne_pose_rel_gps = pose::createPose2d(0, 0, M_PI_2);
 
     std::unordered_map<pose_graph::NodeId, double> timestamps_by_node_id;
     std::vector<h3d::GaussianBinaryFactor2d> lidar_odom_factors;
@@ -155,9 +158,10 @@ int main(int argc, char** argv) {
                 preprocessed_scenario_dir_str, filenum_str_for_node);
 
         // Use the first entry as the "true pose"
-        true_poses[node_num] = pose::createPose2d(preprocessed_gps_at_filenum_str[0].rel_x_,
+        true_poses[node_num] = pose::combinePoses(pose::createPose2d(preprocessed_gps_at_filenum_str[0].rel_x_,
                                                   preprocessed_gps_at_filenum_str[0].rel_y_,
-                                                  preprocessed_gps_at_filenum_str[0].orig_gps_data_.tilt_yaw_);
+                                                  preprocessed_gps_at_filenum_str[0].orig_gps_data_.tilt_yaw_), velodyne_pose_rel_gps);
+        LOG(INFO) << "true pose " << true_poses[node_num].second;
 
         std::vector<h3d::RawObjectDetection> full_obj_detection = h3d::readObjDetectionDataFromFile(
                 scenario_dir_str, filenum_str_for_node);
@@ -174,11 +178,14 @@ int main(int argc, char** argv) {
             observation.observation_orientation_ = obj_detection.yaw_;
             observation.semantic_class_ = obj_detection.label_;
 
-            obs_at_pose.emplace_back(std::make_pair(observation.observation_transl_, observation.observation_orientation_));
+            if (obs_at_pose.size() < 5) {
+                obs_at_pose.emplace_back(
+                        std::make_pair(observation.observation_transl_, observation.observation_orientation_));
+            }
 
             Eigen::Matrix<double, 3, 3> obs_cov_mat = Eigen::Matrix<double, 3, 3>::Zero();
-            obs_cov_mat(0, 0) = obj_detection_variance_for_transl_per_dist * observation.observation_transl_.x();
-            obs_cov_mat(1, 1) = obj_detection_variance_for_transl_per_dist * observation.observation_transl_.y();
+            obs_cov_mat(0, 0) = obj_detection_variance_for_transl_per_dist * abs(observation.observation_transl_.x());
+            obs_cov_mat(1, 1) = obj_detection_variance_for_transl_per_dist * abs(observation.observation_transl_.y());
             obs_cov_mat(2, 2) = obj_detection_yaw_variance;
 
             observation.observation_covariance_ = obs_cov_mat;
@@ -213,12 +220,13 @@ int main(int argc, char** argv) {
     std::vector<pose_graph::Node<2, double>> initial_node_positions;
 
     pose_graph::Node<2, double> prev_node;
+    pose::Pose2d prev_node_pose = true_poses.at(0);
     prev_node.id_ = 0;
-    prev_node.est_position_ = std::make_shared<Eigen::Vector2d>(true_poses.at(0).first);
-    prev_node.est_orientation_ = std::make_shared<double>(true_poses.at(0).second);
+    prev_node.est_position_ = std::make_shared<Eigen::Vector2d>(prev_node_pose.first);
+    prev_node.est_orientation_ = std::make_shared<double>(prev_node_pose.second);
     initial_node_positions.emplace_back(prev_node);
     std::vector<pose::Pose2d> simple_init_trajectory;
-    simple_init_trajectory.emplace_back(true_poses.at(0));
+    simple_init_trajectory.emplace_back(prev_node_pose);
 
     for (pose_graph::NodeId i = 1; i < timestamps_by_node_id.size(); i++) {
         // Relying on these being in order
@@ -226,13 +234,14 @@ int main(int argc, char** argv) {
 
         pose_graph::Node<2, double> new_node;
         new_node.id_ = i;
-        pose::Pose2d est_pose = pose::combinePoses(std::make_pair(*(prev_node.est_position_), *(prev_node.est_orientation_)),
-                                                   std::make_pair(lidar_odom_factor.translation_change_, lidar_odom_factor.orientation_change_));
-
+        pose::Pose2d est_pose = pose::combinePoses(
+                std::make_pair(*(prev_node.est_position_), *(prev_node.est_orientation_)),
+                std::make_pair(lidar_odom_factor.translation_change_, lidar_odom_factor.orientation_change_));
         new_node.est_position_ = std::make_shared<Eigen::Vector2d>(est_pose.first);
         new_node.est_orientation_ = std::make_shared<double>(est_pose.second);
 
         simple_init_trajectory.emplace_back(est_pose);
+        LOG(INFO) << "Init pos: Node " << i << ": " << simple_init_trajectory.back().first << ", " << simple_init_trajectory.back().second;
         initial_node_positions.emplace_back(new_node);
         prev_node = new_node;
     }
@@ -248,13 +257,17 @@ int main(int argc, char** argv) {
     std::vector<pose::Pose2d> gt_vec;
     for (size_t node_num = 0; node_num < true_poses.size(); node_num++) {
         gt_vec.emplace_back(true_poses.at(node_num));
+        LOG(INFO) << "GT: Node " << node_num << ": " << gt_vec.back().first << ", " << gt_vec.back().second;
     }
 
 
     std::shared_ptr<visualization::VisualizationManager> vis_manager = std::make_shared<visualization::VisualizationManager>(n);
     pose_optimization::CostFunctionParameters cost_function_params;
+//    cost_function_params.orientation_kernel_len_ = 100000;
+//    cost_function_params.position_kernel_len_ = 10000000;
     pose_optimization::PoseOptimizationParameters pose_optimization_params;
     offline_optimization::OfflinePoseOptimizer<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3> offline_optimizer;
+
     LOG(INFO) << offline_optimizer.runOfflineOptimization(
             offline_problem_data, cost_function_params, pose_optimization_params,
             h3d::createPoseGraph,

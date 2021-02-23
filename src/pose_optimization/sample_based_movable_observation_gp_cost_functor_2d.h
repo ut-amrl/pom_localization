@@ -76,6 +76,7 @@ namespace pose_optimization {
 
             T cumulative_probability = T(0.0);
 
+
             for (const Eigen::Affine2f &obs_sample_tf : observation_transforms_) {
                 Eigen::Transform<T, 2, Eigen::Affine> world_frame_obj_tf = robot_tf * obs_sample_tf.cast<T>();
                 Eigen::Matrix<T, 3, 1> obj_pose_vector;
