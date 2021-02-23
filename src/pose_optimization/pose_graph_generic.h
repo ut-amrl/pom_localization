@@ -8,6 +8,7 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include <glog/logging.h>
 
 #include <ceres/autodiff_local_parameterization.h>
 #include <ceres/autodiff_cost_function.h>
@@ -322,6 +323,7 @@ namespace pose_graph {
             if (regressor_iter != movable_object_2d_kdes_by_class_.end()) {
                 return regressor_iter->second;
             }
+            LOG(WARNING) << "No KDE found for class " << class_label;
             return nullptr;
         }
 

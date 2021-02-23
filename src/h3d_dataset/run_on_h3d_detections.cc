@@ -77,9 +77,9 @@ namespace h3d {
             case offline_optimization::VisualizationTypeEnum::AFTER_ALL_OPTIMIZATION:
                 // Optionally display distribution intensity map (either over robot poses or over object poses)
             {
-                std::string car_class = "car_class";
-                vis_manager->displayMaxGpRegressorOutput(pose_graph->getMovableObjKde(car_class), 0.3, -20.0, 20,
-                                                          -30, 30);
+                std::string car_class = "car";
+                vis_manager->displayMaxGpRegressorOutput(pose_graph->getMovableObjKde(car_class), 0.3, -150.0, 70,
+                                                          -60, 30);
             }
                 break;
             default:
@@ -178,10 +178,10 @@ int main(int argc, char** argv) {
             observation.observation_orientation_ = obj_detection.yaw_;
             observation.semantic_class_ = obj_detection.label_;
 
-            if (obs_at_pose.size() < 5) {
+//            if (obs_at_pose.size() < 5) {
                 obs_at_pose.emplace_back(
                         std::make_pair(observation.observation_transl_, observation.observation_orientation_));
-            }
+//            }
 
             Eigen::Matrix<double, 3, 3> obs_cov_mat = Eigen::Matrix<double, 3, 3>::Zero();
             obs_cov_mat(0, 0) = obj_detection_variance_for_transl_per_dist * abs(observation.observation_transl_.x());
@@ -277,6 +277,7 @@ int main(int argc, char** argv) {
                       std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
                       gt_vec, simple_init_trajectory,
                       obs_at_poses)).size();
+
 
 }
 

@@ -71,28 +71,17 @@ namespace gp_regression {
         template<typename T>
         Eigen::Matrix<T, 1, Eigen::Dynamic> Inference(const Eigen::Matrix<T, N, Eigen::Dynamic>& x) {
             // TODO need to figure out how to deal with 0 data points
-//            LOG(INFO) << "O " << O;
 
-            LOG(INFO) << "Here!";
             int input_size = x.cols();
-            LOG(INFO) << "Here 2 " << input_size;
             Eigen::Matrix<T, 1, Eigen::Dynamic> output = Eigen::Matrix<T, 1, Eigen::Dynamic>::Zero(1, input_size);
-            LOG(INFO) << "Here 3";
-            LOG(INFO) << "Num data points " << num_datapoints_;
             for (int i = 0; i < num_datapoints_; i++) {
-                LOG(INFO) << "Casting data point";
                 Eigen::Matrix<T, N, 1> input_i = inputs_.col(i).cast<T>();
                 for (int j = 0; j < x.cols(); j++) {
                     Eigen::Matrix<T, N, 1> eval_input = x.col(j);
-                    LOG(INFO)<< "Evaling kernel";
                     output(0, j) += kernel_->evaluateKernel(input_i, eval_input);
-                    LOG(INFO) << output(0, j);
                 }
-//                LOG(INFO) << "Output for iteration i=" << i << ": " << output;
             }
-            LOG(INFO) << "Predivision output from KDE: " << output;
             T num_obs(num_datapoints_);
-//            LOG(INFO) << "Undivided output " << output;
             return output / num_obs;
 //
 //            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> k_x_transp(x.cols(), num_datapoints_);

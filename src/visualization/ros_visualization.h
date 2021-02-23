@@ -66,7 +66,7 @@ namespace visualization {
 
         void displayNoisyCarPosesFromGt(const std::vector<pose::Pose3d> &gt_trajectory, const std::vector<std::vector<pose::Pose3d>> &relative_car_poses) {
             std_msgs::ColorRGBA color;
-            color.a = 0.5;
+            color.a = 0.15;
             color.g = 1.0;
             color.b = 1.0;
 
@@ -77,7 +77,7 @@ namespace visualization {
 
         void displayNoisyCarPosesFromEstTrajectory(const std::vector<pose::Pose3d> &est_trajectory, const std::vector<std::vector<pose::Pose3d>> &relative_car_poses) {
             std_msgs::ColorRGBA color;
-            color.a = 0.5;
+            color.a = 0.15;
             color.r = 1.0;
             color.b = 0.7;
 
@@ -89,7 +89,7 @@ namespace visualization {
         void displayNoisyCarPosesFromOdomTrajectory(const std::vector<pose::Pose3d> &odom_trajectory, const std::vector<std::vector<pose::Pose3d>> &relative_car_poses) {
 
             std_msgs::ColorRGBA color;
-            color.a = 0.5;
+            color.a = 0.15;
             color.b = 1.0;
             color.g = 0.7;
 
@@ -420,7 +420,7 @@ namespace visualization {
 
         void displayNoisyCarPosesFromGt(const std::vector<pose::Pose2d> &gt_trajectory, const std::vector<std::vector<pose::Pose2d>> &relative_car_poses) {
             std_msgs::ColorRGBA color;
-            color.a = 1.0;
+            color.a = 0.5;
             color.g = 1.0;
             color.b = 1.0;
 
@@ -436,7 +436,7 @@ namespace visualization {
 
         void displayNoisyCarPosesFromEstTrajectory(const std::vector<pose::Pose2d> &est_trajectory, const std::vector<std::vector<pose::Pose2d>> &relative_car_poses) {
             std_msgs::ColorRGBA color;
-            color.a = 1.0;
+            color.a = 0.5;
             color.r = 1.0;
             color.b = 0.7;
 
@@ -455,7 +455,7 @@ namespace visualization {
         void displayNoisyCarPosesFromOdomTrajectory(const std::vector<pose::Pose2d> &odom_trajectory, const std::vector<std::vector<pose::Pose2d>> &relative_car_poses) {
 
             std_msgs::ColorRGBA color;
-            color.a = 1.0;
+            color.a = 0.5;
             color.b = 1.0;
             color.g = 0.7;
 

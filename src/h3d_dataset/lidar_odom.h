@@ -89,7 +89,7 @@ namespace h3d {
         readRawLidarOdomFromFile(file_name, odom_ests_map_frame_3d);
 
 //        for (size_t i = 0; i < odom_ests_map_frame_3d.size(); i++) {
-        for (size_t i = 0; i < 5; i++) {
+        for (size_t i = 0; i < 25; i++) {
             RawAbsoluteLidarOdomNode3D odom_est = odom_ests_map_frame_3d[i];
             timestamps_by_node_id[i] = odom_est.timestamp_;
         }
@@ -100,7 +100,7 @@ namespace h3d {
                 Eigen::Quaterniond(prev_est.quat_w_, prev_est.quat_x_, prev_est.quat_y_, prev_est.quat_z_));
 
 //        for (size_t i = 1; i < odom_ests_map_frame_3d.size(); i++) {
-        for (size_t i = 1; i < 5; i++) {
+        for (size_t i = 1; i < 25; i++) {
             LOG(INFO) << prev_pose_3d.second.w() << ", " << prev_pose_3d.second.x() << ", " << prev_pose_3d.second.y() << ", " << prev_pose_3d.second.z();
             RawAbsoluteLidarOdomNode3D curr_est = odom_ests_map_frame_3d[i];
 
