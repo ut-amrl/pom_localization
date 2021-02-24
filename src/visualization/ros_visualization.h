@@ -113,7 +113,8 @@ namespace visualization {
             std_msgs::ColorRGBA color;
             color.a = 0.5;
             color.b = 1.0;
-            color.r = 0.5;
+            color.r = 0.7;
+            color.g = 0.35;
 
             ros::Publisher pub;
             getOrCreatePublisherForTrajTypeAndClass(ODOM_ONLY, obj_class, pub);
@@ -494,7 +495,9 @@ namespace visualization {
             std_msgs::ColorRGBA color;
             color.a = 0.5;
             color.b = 1.0;
-            color.r = 0.5;
+            color.r = 0.7;
+            color.g = 0.35;
+
 
             ros::Publisher pub;
             getOrCreatePublisherForTrajTypeAndClass(ODOM_ONLY, obj_class, pub);
