@@ -33,9 +33,9 @@ namespace h3d {
             const std::shared_ptr<visualization::VisualizationManager> &vis_manager,
             const pose_graph::NodeId &node_id,
             const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>> &pose_graph,
-            const std::vector<std::vector<pose::Pose2d>> noisy_observations) {
+            const std::unordered_map<std::string, std::vector<std::vector<pose::Pose2d>>> noisy_observations_by_class) {
         return new offline_optimization::CeresVisualizationCallback2d(
-                    pose_graph, vis_manager, node_id, noisy_observations);
+                    pose_graph, vis_manager, node_id, noisy_observations_by_class);
     }
 
     void runOptimizationVisualization(
@@ -46,13 +46,16 @@ namespace h3d {
             const std::vector<pose::Pose2d> &ground_truth_trajectory,
             const std::vector<pose::Pose2d> &unoptimized_trajectory,
             const std::vector<std::vector<pose::Pose2d>> &noisy_obj_observations) {
+
+        // TODO make this more generic (not specifically car class)
+        std::string car_class = "car";
         switch (vis_stage) {
             case offline_optimization::VisualizationTypeEnum::BEFORE_ANY_OPTIMIZATION:
                 vis_manager->displayTrueTrajectory(ground_truth_trajectory);
-                vis_manager->displayNoisyCarPosesFromGt(ground_truth_trajectory, noisy_obj_observations);
+                vis_manager->displayObjObservationsFromGtTrajectory(ground_truth_trajectory, noisy_obj_observations, car_class);
                 vis_manager->displayOdomTrajectory(unoptimized_trajectory);
-                vis_manager->displayNoisyCarPosesFromOdomTrajectory(unoptimized_trajectory,
-                                                                     noisy_obj_observations);
+                vis_manager->displayObjObservationsFromOdomTrajectory(unoptimized_trajectory,
+                                                                     noisy_obj_observations, car_class);
 
                 // Display true trajectory
                 // Display true object poses
@@ -70,14 +73,19 @@ namespace h3d {
                     node_poses_list.emplace_back(node_poses[node_id]);
                 }
                 vis_manager->displayEstTrajectory(node_poses_list);
-                vis_manager->displayNoisyCarPosesFromEstTrajectory(node_poses_list, noisy_obj_observations);
+                vis_manager->displayObjObservationsFromEstTrajectory(node_poses_list, noisy_obj_observations, car_class);
+
+                vis_manager->displayTrueTrajectory(ground_truth_trajectory);
+                vis_manager->displayObjObservationsFromGtTrajectory(ground_truth_trajectory, noisy_obj_observations, car_class);
+                vis_manager->displayOdomTrajectory(unoptimized_trajectory);
+                vis_manager->displayObjObservationsFromOdomTrajectory(unoptimized_trajectory,
+                                                                      noisy_obj_observations, car_class);
 //                        ros::Duration(2).sleep();
             }
                 break;
             case offline_optimization::VisualizationTypeEnum::AFTER_ALL_OPTIMIZATION:
                 // Optionally display distribution intensity map (either over robot poses or over object poses)
             {
-                std::string car_class = "car";
                 vis_manager->displayMaxGpRegressorOutput(pose_graph->getMovableObjKde(car_class), 0.3, -150.0, 70,
                                                           -60, 30);
             }
@@ -144,7 +152,9 @@ int main(int argc, char** argv) {
     }
 
     std::vector<pose_graph::MovableObservationFactor<2, double, 3>> movable_observation_factors;
-    std::unordered_set<std::string> obj_types = {"car"};
+
+    std::string car_class = "car";
+    std::unordered_set<std::string> obj_types = {car_class};
 
 
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> true_poses;
@@ -268,11 +278,12 @@ int main(int argc, char** argv) {
     pose_optimization::PoseOptimizationParameters pose_optimization_params;
     offline_optimization::OfflinePoseOptimizer<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3> offline_optimizer;
 
+    std::unordered_map<std::string, std::vector<std::vector<pose::Pose2d>>> object_detections_by_type = {{car_class, obs_at_poses}};
     LOG(INFO) << offline_optimizer.runOfflineOptimization(
             offline_problem_data, cost_function_params, pose_optimization_params,
             h3d::createPoseGraph,
             std::bind(h3d::createCeresIterationCallback, vis_manager, std::placeholders::_1,
-                      std::placeholders::_2, obs_at_poses),
+                      std::placeholders::_2, object_detections_by_type),
             std::bind(h3d::runOptimizationVisualization, vis_manager,
                       std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
                       gt_vec, simple_init_trajectory,

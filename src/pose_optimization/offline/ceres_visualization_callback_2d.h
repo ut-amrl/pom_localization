@@ -16,10 +16,10 @@ namespace offline_optimization {
         explicit CeresVisualizationCallback2d(
                 const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>> &pose_graph,
                 const std::shared_ptr<visualization::VisualizationManager> &vis_manager,
-                const int32_t &num_poses, const std::vector<std::vector<pose::Pose2d>> &observed_objs) :
+                const int32_t &num_poses, const std::unordered_map<std::string, std::vector<std::vector<pose::Pose2d>>> &observed_objs_by_class) :
                 pose_graph_(pose_graph),
                 vis_manager_(vis_manager), num_poses_(num_poses),
-                observed_objs_(observed_objs) {
+                observed_objs_by_class_(observed_objs_by_class) {
 
         }
 
@@ -36,7 +36,10 @@ namespace offline_optimization {
                 node_poses_list.emplace_back(optimized_pose);
             }
             vis_manager_->displayEstTrajectory(node_poses_list);
-            vis_manager_->displayNoisyCarPosesFromEstTrajectory(node_poses_list, observed_objs_);
+
+            for (const auto &objs_and_class : observed_objs_by_class_) {
+                vis_manager_->displayObjObservationsFromEstTrajectory(node_poses_list, objs_and_class.second, objs_and_class.first);
+            }
 
 //         ros::Duration(0.1).sleep();
 
@@ -50,7 +53,7 @@ namespace offline_optimization {
 
         int32_t num_poses_;
 
-        std::vector<std::vector<pose::Pose2d>> observed_objs_;
+        std::unordered_map<std::string, std::vector<std::vector<pose::Pose2d>>> observed_objs_by_class_;
     };
 }
 

@@ -15,6 +15,12 @@
 
 namespace visualization {
 
+    enum TrajectoryType {
+        GROUND_TRUTH,
+        ODOM_ONLY,
+        ESTIMATED
+    };
+
     class VisualizationManager {
     public:
 
@@ -37,6 +43,7 @@ namespace visualization {
                 robot_pose_pub_for_angle_mult_[i] = node_handle_.advertise<nav_msgs::OccupancyGrid>(robot_pose_topic_name, 2);
             }
             ros::Duration(5).sleep();
+            // TODO consider removing all existing markers trajectory topics
         }
 
         void displayTrueTrajectory(const std::vector<pose::Pose3d> &true_trajectory) {
@@ -45,56 +52,74 @@ namespace visualization {
             color.a = 1.0;
             color.g = 1.0;
 
-            publishTrajectory(gt_marker_pub_, color, true_trajectory, kGtTrajectoryId);
+            publishTrajectory(gt_marker_pub_, color, true_trajectory, kGtTrajectoryId, kRobotGtPosesMin, kRobotGtPosesMax);
         }
 
-        void displayTrueCarPoses(const std::vector<pose::Pose3d> &true_car_poses) {
+        void displayTrueObjPoses(const std::vector<pose::Pose3d> &true_car_poses, const std::string &obj_class) {
             std_msgs::ColorRGBA color;
             color.a = 1.0;
             color.g = 1.0;
 
+            ros::Publisher pub;
+            getOrCreatePublisherForTrajTypeAndClass(GROUND_TRUTH, obj_class, pub);
+
             int32_t car_poses_count = true_car_poses.size();
             for (int32_t i = 0; i < car_poses_count; i++) {
                 pose::Pose3d pose = true_car_poses[i];
-                publishCarPoses(gt_marker_pub_, pose, color, kCarGtPosesMin + i);
+                publishCarPoses(pub, pose, color, kCarGtPosesMin + i);
             }
 
 //            for (int32_t i = kCarGtPosesMin + car_poses_count; i <= kCarGtPosesMax; i++) {
-//                removeMarker(i, gt_marker_pub_);
+//                removeMarker(i, pub);
 //            }
         }
 
-        void displayNoisyCarPosesFromGt(const std::vector<pose::Pose3d> &gt_trajectory, const std::vector<std::vector<pose::Pose3d>> &relative_car_poses) {
+        void displayObjObservationsFromGtTrajectory(const std::vector<pose::Pose3d> &gt_trajectory,
+                                        const std::vector<std::vector<pose::Pose3d>> &relative_car_poses,
+                                        const std::string &obj_class) {
             std_msgs::ColorRGBA color;
-            color.a = 0.15;
+            color.a = 0.5;
             color.g = 1.0;
             color.b = 1.0;
 
-            publishLinesToCarDetections(gt_marker_pub_, gt_trajectory, relative_car_poses, color, kObservedFromGtCarDetectionLines);
-            publishCarDetectionsRelToRobotPoses(gt_marker_pub_, gt_trajectory, relative_car_poses, color,
+            ros::Publisher pub;
+            getOrCreatePublisherForTrajTypeAndClass(GROUND_TRUTH, obj_class, pub);
+
+            publishLinesToCarDetections(pub, gt_trajectory, relative_car_poses, color, kObservedFromGtCarDetectionLines);
+            publishObjDetectionsRelToRobotPoses(pub, gt_trajectory, relative_car_poses, color,
                                                 kObservedFromGtCarDetectionsMin, kObservedFromGtCarDetectionsMax);
         }
 
-        void displayNoisyCarPosesFromEstTrajectory(const std::vector<pose::Pose3d> &est_trajectory, const std::vector<std::vector<pose::Pose3d>> &relative_car_poses) {
+        void displayObjObservationsFromEstTrajectory(const std::vector<pose::Pose3d> &est_trajectory,
+                                                   const std::vector<std::vector<pose::Pose3d>> &relative_car_poses,
+                                                   const std::string &obj_class) {
             std_msgs::ColorRGBA color;
-            color.a = 0.15;
+            color.a = 0.5;
             color.r = 1.0;
             color.b = 0.7;
 
-            publishLinesToCarDetections(est_marker_pub_, est_trajectory, relative_car_poses, color, kObservedFromEstCarDetectionLines);
-            publishCarDetectionsRelToRobotPoses(est_marker_pub_, est_trajectory, relative_car_poses, color,
+            ros::Publisher pub;
+            getOrCreatePublisherForTrajTypeAndClass(ESTIMATED, obj_class, pub);
+
+            publishLinesToCarDetections(pub, est_trajectory, relative_car_poses, color, kObservedFromEstCarDetectionLines);
+            publishObjDetectionsRelToRobotPoses(pub, est_trajectory, relative_car_poses, color,
                                                 kObservedFromEstCarDetectionsMin, kObservedFromEstCarDetectionsMax);
         }
 
-        void displayNoisyCarPosesFromOdomTrajectory(const std::vector<pose::Pose3d> &odom_trajectory, const std::vector<std::vector<pose::Pose3d>> &relative_car_poses) {
+        void displayObjObservationsFromOdomTrajectory(const std::vector<pose::Pose3d> &odom_trajectory,
+                                                    const std::vector<std::vector<pose::Pose3d>> &relative_car_poses,
+                                                    const std::string &obj_class) {
 
             std_msgs::ColorRGBA color;
-            color.a = 0.15;
+            color.a = 0.5;
             color.b = 1.0;
-            color.g = 0.7;
+            color.r = 0.5;
 
-            publishLinesToCarDetections(odom_marker_pub_, odom_trajectory, relative_car_poses, color, kObservedFromOdomCarDetectionLines);
-            publishCarDetectionsRelToRobotPoses(odom_marker_pub_, odom_trajectory, relative_car_poses, color,
+            ros::Publisher pub;
+            getOrCreatePublisherForTrajTypeAndClass(ODOM_ONLY, obj_class, pub);
+
+            publishLinesToCarDetections(pub, odom_trajectory, relative_car_poses, color, kObservedFromOdomCarDetectionLines);
+            publishObjDetectionsRelToRobotPoses(pub, odom_trajectory, relative_car_poses, color,
                                                 kObservedFromOdomCarDetectionsMin, kObservedFromOdomCarDetectionsMax);
         }
 
@@ -104,7 +129,7 @@ namespace visualization {
             color.a = 1.0;
             color.b = 1.0;
 
-            publishTrajectory(odom_marker_pub_, color, odom_trajectory, kOdomTrajectoryId);
+            publishTrajectory(odom_marker_pub_, color, odom_trajectory, kOdomTrajectoryId, kRobotOdomPosesMin, kRobotOdomPosesMax);
         }
 
         void displayEstTrajectory(const std::vector<pose::Pose3d> &est_trajectory) {
@@ -113,7 +138,7 @@ namespace visualization {
             color.a = 1.0;
             color.r = 1.0;
 
-            publishTrajectory(est_marker_pub_, color, est_trajectory, kEstTrajectoryId);
+            publishTrajectory(est_marker_pub_, color, est_trajectory, kEstTrajectoryId, kRobotEstPosesMin, kRobotEstPosesMax);
         }
         //        void displayMaxGpRegressorOutput(
 //                std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> regressor,
@@ -394,23 +419,22 @@ namespace visualization {
             color.a = 1.0;
             color.g = 1.0;
 
-            publishTrajectory(gt_marker_pub_, color, convert2DPosesTo3D(true_trajectory), kGtTrajectoryId);
+            publishTrajectory(gt_marker_pub_, color, convert2DPosesTo3D(true_trajectory), kGtTrajectoryId, kRobotGtPosesMin, kRobotGtPosesMax);
         }
 
-        void displayTrueCarPoses(const std::vector<pose::Pose2d> &true_car_poses) {
-            LOG(INFO) << "Showing true car poses, count " << true_car_poses.size();
-            for (pose::Pose2d true_pose : true_car_poses) {
-                LOG(INFO) << true_pose.first.x() << ", " << true_pose.first.y();
+        void displayTrueObjPoses(const std::vector<pose::Pose2d> &true_car_poses, const std::string &obj_class) {
 
-            }
             std_msgs::ColorRGBA color;
             color.a = 1.0;
             color.g = 1.0;
 
+            ros::Publisher pub;
+            getOrCreatePublisherForTrajTypeAndClass(GROUND_TRUTH, obj_class, pub);
+
             int32_t car_poses_count = true_car_poses.size();
             for (int32_t i = 0; i < car_poses_count; i++) {
                 pose::Pose3d pose = pose::toPose3d(true_car_poses[i]);
-                publishCarPoses(gt_marker_pub_, pose, color, kCarGtPosesMin + i);
+                publishCarPoses(pub, pose, color, kCarGtPosesMin + i);
             }
 
 //            for (int32_t i = kCarGtPosesMin + car_poses_count; i <= kCarGtPosesMax; i++) {
@@ -418,54 +442,70 @@ namespace visualization {
 //            }
         }
 
-        void displayNoisyCarPosesFromGt(const std::vector<pose::Pose2d> &gt_trajectory, const std::vector<std::vector<pose::Pose2d>> &relative_car_poses) {
+        void displayObjObservationsFromGtTrajectory(const std::vector<pose::Pose2d> &gt_trajectory,
+                                        const std::vector<std::vector<pose::Pose2d>> &relative_car_poses,
+                                        const std::string &obj_class) {
             std_msgs::ColorRGBA color;
             color.a = 0.5;
             color.g = 1.0;
             color.b = 1.0;
 
+            ros::Publisher pub;
+            getOrCreatePublisherForTrajTypeAndClass(GROUND_TRUTH, obj_class, pub);
+
             std::vector<std::vector<pose::Pose3d>> relative_car_poses_3d;
             for (const std::vector<pose::Pose2d> &relative_car_pose_list : relative_car_poses) {
                 relative_car_poses_3d.emplace_back(convert2DPosesTo3D(relative_car_pose_list));
             }
 
-            publishLinesToCarDetections(gt_marker_pub_, convert2DPosesTo3D(gt_trajectory), relative_car_poses_3d, color, kObservedFromGtCarDetectionLines);
-            publishCarDetectionsRelToRobotPoses(gt_marker_pub_, convert2DPosesTo3D(gt_trajectory), relative_car_poses_3d, color,
+            publishLinesToCarDetections(pub, convert2DPosesTo3D(gt_trajectory), relative_car_poses_3d, color, kObservedFromGtCarDetectionLines);
+            publishObjDetectionsRelToRobotPoses(pub, convert2DPosesTo3D(gt_trajectory),
+                                                relative_car_poses_3d, color,
                                                 kObservedFromGtCarDetectionsMin, kObservedFromGtCarDetectionsMax);
         }
 
-        void displayNoisyCarPosesFromEstTrajectory(const std::vector<pose::Pose2d> &est_trajectory, const std::vector<std::vector<pose::Pose2d>> &relative_car_poses) {
+        void displayObjObservationsFromEstTrajectory(const std::vector<pose::Pose2d> &est_trajectory,
+                                                   const std::vector<std::vector<pose::Pose2d>> &relative_car_poses,
+                                                   const std::string &obj_class) {
             std_msgs::ColorRGBA color;
             color.a = 0.5;
             color.r = 1.0;
             color.b = 0.7;
 
+            ros::Publisher pub;
+            getOrCreatePublisherForTrajTypeAndClass(ESTIMATED, obj_class, pub);
+
             std::vector<std::vector<pose::Pose3d>> relative_car_poses_3d;
             for (const std::vector<pose::Pose2d> &relative_car_pose_list : relative_car_poses) {
                 relative_car_poses_3d.emplace_back(convert2DPosesTo3D(relative_car_pose_list));
             }
 
-            publishLinesToCarDetections(est_marker_pub_, convert2DPosesTo3D(est_trajectory),
+            publishLinesToCarDetections(pub, convert2DPosesTo3D(est_trajectory),
                                         relative_car_poses_3d, color, kObservedFromEstCarDetectionLines);
-            publishCarDetectionsRelToRobotPoses(est_marker_pub_, convert2DPosesTo3D(est_trajectory),
+            publishObjDetectionsRelToRobotPoses(pub, convert2DPosesTo3D(est_trajectory),
                                                 relative_car_poses_3d, color,
                                                 kObservedFromEstCarDetectionsMin, kObservedFromEstCarDetectionsMax);
         }
 
-        void displayNoisyCarPosesFromOdomTrajectory(const std::vector<pose::Pose2d> &odom_trajectory, const std::vector<std::vector<pose::Pose2d>> &relative_car_poses) {
+        void displayObjObservationsFromOdomTrajectory(const std::vector<pose::Pose2d> &odom_trajectory,
+                                                    const std::vector<std::vector<pose::Pose2d>> &relative_car_poses,
+                                                    const std::string &obj_class) {
 
             std_msgs::ColorRGBA color;
             color.a = 0.5;
             color.b = 1.0;
-            color.g = 0.7;
+            color.r = 0.5;
+
+            ros::Publisher pub;
+            getOrCreatePublisherForTrajTypeAndClass(ODOM_ONLY, obj_class, pub);
 
             std::vector<std::vector<pose::Pose3d>> relative_car_poses_3d;
             for (const std::vector<pose::Pose2d> &relative_car_pose_list : relative_car_poses) {
                 relative_car_poses_3d.emplace_back(convert2DPosesTo3D(relative_car_pose_list));
             }
 
-            publishLinesToCarDetections(odom_marker_pub_, convert2DPosesTo3D(odom_trajectory), relative_car_poses_3d, color, kObservedFromOdomCarDetectionLines);
-            publishCarDetectionsRelToRobotPoses(odom_marker_pub_, convert2DPosesTo3D(odom_trajectory), relative_car_poses_3d, color,
+            publishLinesToCarDetections(pub, convert2DPosesTo3D(odom_trajectory), relative_car_poses_3d, color, kObservedFromOdomCarDetectionLines);
+            publishObjDetectionsRelToRobotPoses(pub, convert2DPosesTo3D(odom_trajectory), relative_car_poses_3d, color,
                                                 kObservedFromOdomCarDetectionsMin, kObservedFromOdomCarDetectionsMax);
         }
 
@@ -475,7 +515,7 @@ namespace visualization {
             color.a = 1.0;
             color.b = 1.0;
 
-            publishTrajectory(odom_marker_pub_, color, convert2DPosesTo3D(odom_trajectory), kOdomTrajectoryId);
+            publishTrajectory(odom_marker_pub_, color, convert2DPosesTo3D(odom_trajectory), kOdomTrajectoryId, kRobotOdomPosesMin, kRobotOdomPosesMax);
         }
 
         void displayEstTrajectory(const std::vector<pose::Pose2d> &est_trajectory) {
@@ -484,12 +524,14 @@ namespace visualization {
             color.a = 1.0;
             color.r = 1.0;
 
-            publishTrajectory(est_marker_pub_, color, convert2DPosesTo3D(est_trajectory), kEstTrajectoryId);
+            publishTrajectory(est_marker_pub_, color, convert2DPosesTo3D(est_trajectory), kEstTrajectoryId, kRobotEstPosesMin, kRobotEstPosesMax);
         }
 
     private:
 
         const std::string kVizFrame = "map";
+
+        const uint32_t kObservationPubQueueSize = 1000;
 
         const double kTrajectoryScaleX = 0.05;
 
@@ -504,16 +546,24 @@ namespace visualization {
         const int32_t kObservedFromEstCarDetectionLines = 6;
 
         // TODO might need to increase these
-        const int32_t kMaxObservationsToDisplay = 200;
+        const int32_t kMaxObservationsToDisplay = 2000;
+        const int32_t kMaxTrajectoryLen = 500;
         const int32_t kObservedFromGtCarDetectionsMin = 100;
         const int32_t kObservedFromOdomCarDetectionsMin = kObservedFromGtCarDetectionsMin + kMaxObservationsToDisplay;
         const int32_t kObservedFromEstCarDetectionsMin = kObservedFromOdomCarDetectionsMin + kMaxObservationsToDisplay;
         const int32_t kCarGtPosesMin = kObservedFromEstCarDetectionsMin + kMaxObservationsToDisplay;
+        const int32_t kRobotGtPosesMin = kCarGtPosesMin + kMaxObservationsToDisplay;
+        const int32_t kRobotOdomPosesMin = kRobotGtPosesMin + kMaxTrajectoryLen;
+        const int32_t kRobotEstPosesMin = kRobotOdomPosesMin + kMaxTrajectoryLen;
 
         const int32_t kObservedFromGtCarDetectionsMax = kObservedFromOdomCarDetectionsMin - 1;
         const int32_t kObservedFromOdomCarDetectionsMax = kObservedFromEstCarDetectionsMin - 1;
         const int32_t kObservedFromEstCarDetectionsMax = kCarGtPosesMin - 1;
-        const int32_t kCarGtPosesMax = kCarGtPosesMin + kMaxObservationsToDisplay - 1;
+        const int32_t kCarGtPosesMax = kRobotGtPosesMin - 1;
+        const int32_t kRobotGtPosesMax = kRobotOdomPosesMin - 1;
+        const int32_t kRobotOdomPosesMax = kRobotEstPosesMin - 1;
+        const int32_t kRobotEstPosesMax = kRobotEstPosesMin + kMaxTrajectoryLen - 1;
+
 
         /**
          * Node handle.
@@ -524,6 +574,7 @@ namespace visualization {
         ros::Publisher est_marker_pub_;
         ros::Publisher odom_marker_pub_;
 
+        std::unordered_map<TrajectoryType, std::unordered_map<std::string, ros::Publisher>> obs_marker_pubs_by_class_by_traj_type_;
 
         std::unordered_map<int32_t, ros::Publisher> pub_for_angle_mult_;
         std::unordered_map<int32_t, ros::Publisher> robot_pose_pub_for_angle_mult_;
@@ -531,6 +582,38 @@ namespace visualization {
         ros::Publisher robot_pose_max_val_pub_;
 
         ros::Publisher regressor_max_val_for_pos_pub_;
+
+        std::string getStringRepForTrajType(const TrajectoryType &trajectory_type) {
+            switch (trajectory_type) {
+                case ODOM_ONLY:
+                    return "odom";
+                case GROUND_TRUTH:
+                    return "gt";
+                case ESTIMATED:
+                    return "est";
+                default:
+                    LOG(WARNING) << "Invalid trajectory type " << trajectory_type;
+                    return "";
+            }
+        }
+
+        void getOrCreatePublisherForTrajTypeAndClass(const TrajectoryType &trajectory_type, const std::string &obj_class, ros::Publisher &pub) {
+            std::unordered_map<std::string, ros::Publisher> pubs_for_traj_type_;
+            if (obs_marker_pubs_by_class_by_traj_type_.find(trajectory_type) != obs_marker_pubs_by_class_by_traj_type_.end()) {
+                pubs_for_traj_type_ = obs_marker_pubs_by_class_by_traj_type_[trajectory_type];
+            }
+
+            if (pubs_for_traj_type_.find(obj_class) == pubs_for_traj_type_.end()) {
+                std::string topic_name = getStringRepForTrajType(trajectory_type) + "_" + obj_class + "_obs_marker";
+                ros::Publisher new_pub_for_class = node_handle_.advertise<visualization_msgs::Marker>(topic_name, kObservationPubQueueSize);
+                pubs_for_traj_type_[obj_class] = new_pub_for_class;
+                obs_marker_pubs_by_class_by_traj_type_[trajectory_type] = pubs_for_traj_type_;
+                ros::Duration(2).sleep();
+                // TODO consider removing all existing markers on this topic
+            }
+
+            pub = obs_marker_pubs_by_class_by_traj_type_[trajectory_type][obj_class];
+        }
 
         std::vector<pose::Pose3d> convert2DPosesTo3D(const std::vector<pose::Pose2d> &poses_2d) {
             std::vector<pose::Pose3d> poses_3d;
@@ -562,9 +645,9 @@ namespace visualization {
         }
 
         void publishTrajectory(ros::Publisher &marker_pub, const std_msgs::ColorRGBA &color, const std::vector<pose::Pose3d> &trajectory_poses,
-                               const int32_t &id) {
+                               const int32_t &trajectory_id, const int32_t &min_pose_id, const int32_t &max_pose_id) {
             visualization_msgs::Marker marker_msg;
-            marker_msg.id = id;
+            marker_msg.id = trajectory_id;
             marker_msg.color = color;
 
             marker_msg.type = visualization_msgs::Marker::LINE_STRIP;
@@ -579,6 +662,48 @@ namespace visualization {
 //            LOG(INFO) << "Trajectory len " << marker_msg.points.size();
 
             marker_msg.pose.orientation.w = 1.0;
+
+            publishMarker(marker_msg, marker_pub);
+
+            // Also publish box for each pose in the trajectory
+            publishRobotPoses(marker_pub, trajectory_poses, color, min_pose_id, max_pose_id);
+        }
+
+        void publishRobotPoses(ros::Publisher &marker_pub, const std::vector<pose::Pose3d> &robot_poses,
+                               const std_msgs::ColorRGBA &color, const int32_t min_id, const int32_t max_id) {
+
+            for (size_t i = 0; i < robot_poses.size(); i++) {
+                pose::Pose3d robot_pose = robot_poses[i];
+                publishRobotPose(marker_pub, robot_pose, color, min_id + i);
+            }
+
+
+//            for (int32_t i = robot_poses.size() + min_id; i <= max_id; i++) {
+//                removeMarker(i, marker_pub);
+//            }
+        }
+
+        void publishRobotPose(ros::Publisher &marker_pub, pose::Pose3d &robot_pose, const std_msgs::ColorRGBA &color, const int32_t id) {
+
+            visualization_msgs::Marker marker_msg;
+
+            marker_msg.scale.x = 0.6;
+            marker_msg.scale.y = 0.4;
+            marker_msg.scale.z = 0.15;
+
+            marker_msg.pose.position.x = robot_pose.first.x();
+            marker_msg.pose.position.y = robot_pose.first.y();
+            marker_msg.pose.position.z = robot_pose.first.z();
+
+            marker_msg.pose.orientation.w = robot_pose.second.w();
+            marker_msg.pose.orientation.x = robot_pose.second.x();
+            marker_msg.pose.orientation.y = robot_pose.second.y();
+            marker_msg.pose.orientation.z = robot_pose.second.z();
+
+            marker_msg.type = visualization_msgs::Marker::CUBE;
+
+            marker_msg.color = color;
+            marker_msg.id = id;
 
             publishMarker(marker_msg, marker_pub);
         }
@@ -608,15 +733,19 @@ namespace visualization {
             publishMarker(marker_msg, marker_pub);
         }
 
-        void publishCarDetectionsRelToRobotPoses(ros::Publisher &marker_pub, const std::vector<pose::Pose3d> &robot_poses,
+        void publishObjDetectionsRelToRobotPoses(ros::Publisher &marker_pub, const std::vector<pose::Pose3d> &robot_poses,
                                                  const std::vector<std::vector<pose::Pose3d>> &car_detections,
                                                  const std_msgs::ColorRGBA &color, const int32_t min_id, const int32_t max_id) {
 
+            int marker_num = min_id;
             for (size_t i = 0; i < robot_poses.size(); i++) {
                 pose::Pose3d robot_pose = robot_poses[i];
                 for (const pose::Pose3d &car_detection : car_detections[i]) {
+                    if (marker_num > max_id) {
+                        break;
+                    }
                     pose::Pose3d car_pose = pose::combinePoses(robot_pose, car_detection);
-                    publishCarPoses(marker_pub, car_pose, color, min_id + i);
+                    publishCarPoses(marker_pub, car_pose, color, marker_num++);
                 }
             }
 

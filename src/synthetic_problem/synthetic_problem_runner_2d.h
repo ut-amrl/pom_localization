@@ -40,16 +40,24 @@ namespace synthetic_problem {
                 const std::vector<pose::Pose2d> &ground_truth_trajectory,
                 const std::vector<pose::Pose2d> &unoptimized_trajectory,
                 const std::vector<pose::Pose2d> &ground_truth_obj_poses,
-                const std::vector<std::vector<pose::Pose2d>> &noisy_obj_observations) {
+                const std::unordered_map<std::string, std::vector<std::vector<pose::Pose2d>>> &noisy_obj_observations_by_type) {
             if (run_visualization_) {
+
                 switch (vis_stage) {
                     case offline_optimization::VisualizationTypeEnum::BEFORE_ANY_OPTIMIZATION:
                         vis_manager_->displayTrueTrajectory(ground_truth_trajectory);
-                        vis_manager_->displayTrueCarPoses(ground_truth_obj_poses);
-                        vis_manager_->displayNoisyCarPosesFromGt(ground_truth_trajectory, noisy_obj_observations);
                         vis_manager_->displayOdomTrajectory(unoptimized_trajectory);
-                        vis_manager_->displayNoisyCarPosesFromOdomTrajectory(unoptimized_trajectory,
-                                                                             noisy_obj_observations);
+
+                        // TODO make this more generic (not specific to car class)
+                        vis_manager_->displayTrueObjPoses(ground_truth_obj_poses, kCarClass);
+
+                        for (const auto &noisy_obs_with_type : noisy_obj_observations_by_type) {
+                            vis_manager_->displayObjObservationsFromGtTrajectory(ground_truth_trajectory, noisy_obs_with_type.second,
+                                                                     noisy_obs_with_type.first);
+                            vis_manager_->displayObjObservationsFromOdomTrajectory(unoptimized_trajectory,
+                                                                                 noisy_obs_with_type.second,
+                                                                                 noisy_obs_with_type.first);
+                        }
 
                         // Display true trajectory
                         // Display true object poses
@@ -67,16 +75,35 @@ namespace synthetic_problem {
                             node_poses_list.emplace_back(node_poses[node_id]);
                         }
                         vis_manager_->displayEstTrajectory(node_poses_list);
-                        vis_manager_->displayNoisyCarPosesFromEstTrajectory(node_poses_list, noisy_obj_observations);
+
+                        for (const auto &noisy_obs_with_type : noisy_obj_observations_by_type) {
+                            vis_manager_->displayObjObservationsFromEstTrajectory(node_poses_list, noisy_obs_with_type.second,
+                                                                                noisy_obs_with_type.first);
+                        }
+
+                        vis_manager_->displayTrueTrajectory(ground_truth_trajectory);
+                        vis_manager_->displayOdomTrajectory(unoptimized_trajectory);
+
+                        // TODO make this more generic (not specific to car class)
+                        vis_manager_->displayTrueObjPoses(ground_truth_obj_poses, kCarClass);
+
+                        for (const auto &noisy_obs_with_type : noisy_obj_observations_by_type) {
+                            vis_manager_->displayObjObservationsFromGtTrajectory(ground_truth_trajectory, noisy_obs_with_type.second,
+                                                                                 noisy_obs_with_type.first);
+                            vis_manager_->displayObjObservationsFromOdomTrajectory(unoptimized_trajectory,
+                                                                                   noisy_obs_with_type.second,
+                                                                                   noisy_obs_with_type.first);
+                        }
+
 //                        ros::Duration(2).sleep();
                     }
                         break;
                     case offline_optimization::VisualizationTypeEnum::AFTER_ALL_OPTIMIZATION:
                         // Optionally display distribution intensity map (either over robot poses or over object poses)
                     {
-                    std::string car_class = "car_class";
-                    vis_manager_->displayMaxGpRegressorOutput(pose_graph->getMovableObjKde(car_class), 0.3, -20.0, 20,
-                                                              -30, 30);
+                        // TODO make this not specific to car class
+                        vis_manager_->displayMaxGpRegressorOutput(pose_graph->getMovableObjKde(kCarClass),
+                                                                  0.3, -20.0, 20,-30, 30);
                     }
                         break;
                     default:
@@ -88,10 +115,10 @@ namespace synthetic_problem {
         ceres::IterationCallback* createCeresIterationCallback(
                 const pose_graph::NodeId &node_id,
                 const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>> &pose_graph,
-                const std::vector<std::vector<pose::Pose2d>> noisy_observations) {
+                const std::unordered_map<std::string, std::vector<std::vector<pose::Pose2d>>> noisy_observations_by_class) {
             if (run_visualization_) {
                 return new offline_optimization::CeresVisualizationCallback2d(
-                        pose_graph, vis_manager_, node_id, noisy_observations);
+                        pose_graph, vis_manager_, node_id, noisy_observations_by_class);
             } else {
                 return nullptr;
             }
@@ -240,30 +267,23 @@ namespace synthetic_problem {
                 }
             }
 
-            std::vector<std::vector<pose::Pose2d>> noisy_observations_for_all_types;
-            for (pose_graph::NodeId node_num = 0; node_num < initial_node_positions.size(); node_num++) {
-                std::vector<pose::Pose2d> noisy_observations_at_node;
-                for (const auto &noisy_obs_by_type : noisy_observations) {
-                    noisy_observations_at_node.insert(noisy_observations_at_node.end(),
-                                                      noisy_obs_by_type.second[node_num].begin(),
-                                                      noisy_obs_by_type.second[node_num].end());
-                }
-                noisy_observations_for_all_types.emplace_back(noisy_observations_at_node);
-            }
-
             offline_optimization::OfflinePoseOptimizer<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3> offline_optimizer;
             return offline_optimizer.runOfflineOptimization(
                     offline_problem_data, cost_function_params, pose_optimization_params,
                     SyntheticProblemRunner2d::createPoseGraph,
                     std::bind(&SyntheticProblemRunner2d::createCeresIterationCallback, this, std::placeholders::_1,
-                              std::placeholders::_2, noisy_observations_for_all_types),
+                              std::placeholders::_2, noisy_observations),
                     std::bind(&SyntheticProblemRunner2d::runOptimizationVisualization, this,
                               std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
                               ground_truth_trajectory, initial_node_positions, all_movable_obj_gt_poses,
-                              noisy_observations_for_all_types));
+                              noisy_observations));
         }
 
     private:
+
+
+        const std::string kCarClass = "car_class";
+
         std::shared_ptr<visualization::VisualizationManager> vis_manager_;
 
         bool run_visualization_;
