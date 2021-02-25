@@ -49,12 +49,12 @@ namespace h3d {
         lidar_odom_est_data.quat_x_ = data[5];
         lidar_odom_est_data.quat_y_ = data[6];
         lidar_odom_est_data.quat_z_ = data[7];
-        lidar_odom_est_data.noise_variance_1_ = 1e-4;
-        lidar_odom_est_data.noise_variance_2_ = 1e-4;
-        lidar_odom_est_data.noise_variance_3_ = 1e-4;
-        lidar_odom_est_data.noise_variance_4_ = 1e-4;
-        lidar_odom_est_data.noise_variance_5_ = 1e-4;
-        lidar_odom_est_data.noise_variance_6_ = 1e-4;
+        lidar_odom_est_data.noise_variance_1_ = 5e-1;
+        lidar_odom_est_data.noise_variance_2_ = 5e-1;
+        lidar_odom_est_data.noise_variance_3_ = 5e-1;
+        lidar_odom_est_data.noise_variance_4_ = 5e-1;
+        lidar_odom_est_data.noise_variance_5_ = 5e-1;
+        lidar_odom_est_data.noise_variance_6_ = 5e-1;
 //        lidar_odom_est_data.noise_variance_1_ = data[8];
 //        lidar_odom_est_data.noise_variance_2_ = data[9];
 //        lidar_odom_est_data.noise_variance_3_ = data[10];
@@ -89,7 +89,7 @@ namespace h3d {
         readRawLidarOdomFromFile(file_name, odom_ests_map_frame_3d);
 
 //        for (size_t i = 0; i < odom_ests_map_frame_3d.size(); i++) {
-        for (size_t i = 0; i < 25; i++) {
+        for (size_t i = 0; i < std::min((size_t) 25, odom_ests_map_frame_3d.size()); i++) {
             RawAbsoluteLidarOdomNode3D odom_est = odom_ests_map_frame_3d[i];
             timestamps_by_node_id[i] = odom_est.timestamp_;
         }
@@ -100,7 +100,7 @@ namespace h3d {
                 Eigen::Quaterniond(prev_est.quat_w_, prev_est.quat_x_, prev_est.quat_y_, prev_est.quat_z_));
 
 //        for (size_t i = 1; i < odom_ests_map_frame_3d.size(); i++) {
-        for (size_t i = 1; i < 25; i++) {
+        for (size_t i = 1; i < std::min((size_t) 25, odom_ests_map_frame_3d.size()); i++) {
             LOG(INFO) << prev_pose_3d.second.w() << ", " << prev_pose_3d.second.x() << ", " << prev_pose_3d.second.y() << ", " << prev_pose_3d.second.z();
             RawAbsoluteLidarOdomNode3D curr_est = odom_ests_map_frame_3d[i];
 

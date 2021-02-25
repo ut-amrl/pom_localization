@@ -16,6 +16,11 @@
 #include <visualization/ros_visualization.h>
 #include <pose_optimization/offline/ceres_visualization_callback_2d.h>
 
+#include <h3d_dataset/dataset_odom.h>
+
+
+DEFINE_string(scenario_num, "xxx", "3 digit scenario string to use");
+
 namespace h3d {
 
 
@@ -99,7 +104,8 @@ namespace h3d {
 
 int main(int argc, char** argv) {
 
-    std::cout<<"Here!";
+
+    google::ParseCommandLineFlags(&argc, &argv, false);
     google::InitGoogleLogging(argv[0]);
     FLAGS_logtostderr = true;
 
@@ -107,22 +113,24 @@ int main(int argc, char** argv) {
               "run_on_h3d_detections");
     ros::NodeHandle n;
 
+    std::string scenario_number_str = FLAGS_scenario_num;
+    LOG(INFO) << "Running for scenario " << scenario_number_str;
+
     std::string h3d_extracted_data_dir = "/home/amanda/momo_testing/h3d/";
-    std::string lidar_odom_file = "h3d_scenario_002_lego_loam_est_poses.csv";
     std::string h3d_dataset_directory = "/home/amanda/datasets/h3d/icra_benchmark_20200103_with_odom";
-    std::string gps_preprocessed_base_dir = h3d_dataset_directory + "/augmentation";
-    std::string scenario_number_str = "002";
+    std::string dataset_preprocessed_data_dir = h3d_dataset_directory + "/augmentation";
+    std::string lidar_odom_file = dataset_preprocessed_data_dir + "/scenario_" + scenario_number_str + "/legoloam_odom_output_file.csv";;
 
     double obj_detection_variance_for_transl_per_dist = 0.1; // TODO is this reasonable?
     double obj_detection_yaw_variance = 0.1; // TODO is this reasonable?
 
     // TODO this is a guess and may not be right
-    pose::Pose2d velodyne_pose_rel_gps = pose::createPose2d(0, 0, M_PI_2);
+//    pose::Pose2d velodyne_pose_rel_gps = pose::createPose2d(0, 0, M_PI_2);
 
     std::unordered_map<pose_graph::NodeId, double> timestamps_by_node_id;
     std::vector<h3d::GaussianBinaryFactor2d> lidar_odom_factors;
 
-    h3d::getLidar2dConstraintsFromLidarFile(h3d_extracted_data_dir + lidar_odom_file, timestamps_by_node_id,
+    h3d::getLidar2dConstraintsFromLidarFile(lidar_odom_file, timestamps_by_node_id,
                                             lidar_odom_factors);
 
     LOG(INFO) << "Num odom factors " << lidar_odom_factors.size();
@@ -136,7 +144,7 @@ int main(int argc, char** argv) {
 
     // For each timestamp in lidar odom, find relevant current observations
     std::string scenario_dir_str = h3d::getScenarioDirectory(h3d_dataset_directory, scenario_number_str);
-    std::string preprocessed_scenario_dir_str = h3d::getScenarioDirectory(gps_preprocessed_base_dir, scenario_number_str);
+    std::string preprocessed_scenario_dir_str = h3d::getScenarioDirectory(dataset_preprocessed_data_dir, scenario_number_str);
     std::vector<std::pair<std::string, double>> timestamps_by_filenum_str = h3d::getTimestampsForFileNums(scenario_dir_str);
 
     std::unordered_map<pose_graph::NodeId, std::string> filenum_str_for_node_id;
@@ -156,7 +164,6 @@ int main(int argc, char** argv) {
     std::string car_class = "car";
     std::unordered_set<std::string> obj_types = {car_class};
 
-
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> true_poses;
     std::unordered_map<pose_graph::NodeId, std::vector<h3d::RawObjectDetection>> object_detections_at_nodes;
     std::vector<std::vector<pose::Pose2d>> obs_at_poses;
@@ -164,14 +171,15 @@ int main(int argc, char** argv) {
     for (size_t node_num = 0; node_num < timestamps_by_node_id.size(); node_num++) {
         std::string filenum_str_for_node = filenum_str_for_node_id[node_num];
 
-        std::vector<h3d::PreprocessedGPSWithXY> preprocessed_gps_at_filenum_str = h3d::readPreprocessedGpsDataForFileNum(
-                preprocessed_scenario_dir_str, filenum_str_for_node);
+//        std::vector<h3d::PreprocessedGPSWithXY> preprocessed_gps_at_filenum_str = h3d::readPreprocessedGpsDataForFileNum(
+//                preprocessed_scenario_dir_str, filenum_str_for_node);
 
         // Use the first entry as the "true pose"
-        true_poses[node_num] = pose::combinePoses(pose::createPose2d(preprocessed_gps_at_filenum_str[0].rel_x_,
-                                                  preprocessed_gps_at_filenum_str[0].rel_y_,
-                                                  preprocessed_gps_at_filenum_str[0].orig_gps_data_.tilt_yaw_), velodyne_pose_rel_gps);
-        LOG(INFO) << "true pose " << true_poses[node_num].second;
+        std::vector<h3d::RawDatasetOdomData> dataset_odom_data = h3d::readRawDatasetOdomForFileNum(scenario_dir_str, filenum_str_for_node);
+        true_poses[node_num] = pose::createPose2d(dataset_odom_data[0].transl_x_, dataset_odom_data[0].transl_y_, dataset_odom_data[0].yaw_);
+//        true_poses[node_num] = pose::combinePoses(pose::createPose2d(preprocessed_gps_at_filenum_str[0].rel_x_,
+//                                                  preprocessed_gps_at_filenum_str[0].rel_y_,
+//                                                  preprocessed_gps_at_filenum_str[0].orig_gps_data_.tilt_yaw_), velodyne_pose_rel_gps);
 
         std::vector<h3d::RawObjectDetection> full_obj_detection = h3d::readObjDetectionDataFromFile(
                 scenario_dir_str, filenum_str_for_node);
@@ -188,10 +196,9 @@ int main(int argc, char** argv) {
             observation.observation_orientation_ = obj_detection.yaw_;
             observation.semantic_class_ = obj_detection.label_;
 
-//            if (obs_at_pose.size() < 5) {
-                obs_at_pose.emplace_back(
+
+            obs_at_pose.emplace_back(
                         std::make_pair(observation.observation_transl_, observation.observation_orientation_));
-//            }
 
             Eigen::Matrix<double, 3, 3> obs_cov_mat = Eigen::Matrix<double, 3, 3>::Zero();
             obs_cov_mat(0, 0) = obj_detection_variance_for_transl_per_dist * abs(observation.observation_transl_.x());
@@ -206,7 +213,6 @@ int main(int argc, char** argv) {
         obs_at_poses.emplace_back(obs_at_pose);
     }
     LOG(INFO) << "Num movable object observations " << movable_observation_factors.size();
-
 
     std::vector<pose_graph::MapObjectObservation<2, double>> map_object_observations;
     for (size_t node_num = 0; node_num < timestamps_by_node_id.size(); node_num++) {
@@ -251,7 +257,6 @@ int main(int argc, char** argv) {
         new_node.est_orientation_ = std::make_shared<double>(est_pose.second);
 
         simple_init_trajectory.emplace_back(est_pose);
-        LOG(INFO) << "Init pos: Node " << i << ": " << simple_init_trajectory.back().first << ", " << simple_init_trajectory.back().second;
         initial_node_positions.emplace_back(new_node);
         prev_node = new_node;
     }
@@ -267,7 +272,7 @@ int main(int argc, char** argv) {
     std::vector<pose::Pose2d> gt_vec;
     for (size_t node_num = 0; node_num < true_poses.size(); node_num++) {
         gt_vec.emplace_back(true_poses.at(node_num));
-        LOG(INFO) << "GT: Node " << node_num << ": " << gt_vec.back().first << ", " << gt_vec.back().second;
+//        LOG(INFO) << "GT: Node " << node_num << ": " << gt_vec.back().first << ", " << gt_vec.back().second;
     }
 
 

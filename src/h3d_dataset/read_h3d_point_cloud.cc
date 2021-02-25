@@ -15,13 +15,14 @@
 #include <glog/logging.h>
 #include <h3d_dataset/gps.h>
 
-namespace h3d {
+#include <gflags/gflags.h>
 
-}
+
+DEFINE_string(scenario_num, "xxx", "3 digit scenario string to use");
 
 int main(int argc, char** argv) {
 
-    std::cout<<"Here!";
+    google::ParseCommandLineFlags(&argc, &argv, false);
     google::InitGoogleLogging(argv[0]);
     FLAGS_logtostderr = true;
 
@@ -46,7 +47,8 @@ int main(int argc, char** argv) {
     LOG(INFO) << "Done sleeping";
 
     std::string h3d_dataset_directory = "/home/amanda/datasets/h3d/icra_benchmark_20200103_with_odom";
-    std::string scenario_number_str = "002";
+    std::string scenario_number_str = FLAGS_scenario_num;
+    LOG(INFO) << "Running for scenario " << scenario_number_str;
 
     std::string scenario_dir_str = h3d::getScenarioDirectory(h3d_dataset_directory, scenario_number_str);
 

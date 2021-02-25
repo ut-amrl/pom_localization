@@ -45,6 +45,13 @@ namespace synthetic_problem {
 
                 switch (vis_stage) {
                     case offline_optimization::VisualizationTypeEnum::BEFORE_ANY_OPTIMIZATION:
+                        // Optionally display distribution intensity map (either over robot poses or over object poses)
+
+                        // TODO make this not specific to car class
+                        vis_manager_->displayMaxGpRegressorOutput(pose_graph->getMovableObjKde(kCarClass),
+                                                                  0.3, -20.0, 20,-30, 30);
+
+
                         vis_manager_->displayTrueTrajectory(ground_truth_trajectory);
                         vis_manager_->displayOdomTrajectory(unoptimized_trajectory);
 
@@ -99,12 +106,6 @@ namespace synthetic_problem {
                     }
                         break;
                     case offline_optimization::VisualizationTypeEnum::AFTER_ALL_OPTIMIZATION:
-                        // Optionally display distribution intensity map (either over robot poses or over object poses)
-                    {
-                        // TODO make this not specific to car class
-                        vis_manager_->displayMaxGpRegressorOutput(pose_graph->getMovableObjKde(kCarClass),
-                                                                  0.3, -20.0, 20,-30, 30);
-                    }
                         break;
                     default:
                         break;
@@ -282,7 +283,7 @@ namespace synthetic_problem {
     private:
 
 
-        const std::string kCarClass = "car_class";
+        const std::string kCarClass = "car";
 
         std::shared_ptr<visualization::VisualizationManager> vis_manager_;
 

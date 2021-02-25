@@ -286,7 +286,7 @@ std::unordered_map<pose_graph::NodeId, pose::Pose2d> callSyntheticProblem(
             parking_lot_configuration_params.parking_lot_percent_filled_,
             past_car_poses, current_car_poses);
 
-    std::string car_class = "car_class";
+    std::string car_class = "car";
     std::unordered_map<std::string, std::vector<pose::Pose2d>> past_mov_obj_positions_by_class = {{car_class, past_car_poses}};
     std::unordered_map<std::string, std::vector<pose::Pose2d>> curr_mov_obj_positions_by_class = {{car_class, current_car_poses}};
     return synthetic_prob_runner.runSyntheticProblem(
@@ -354,8 +354,9 @@ double runSingleSyntheticProblem(const std::shared_ptr<visualization::Visualizat
     noise_config.movable_observation_y_std_dev_ = 0.1;
     noise_config.movable_observation_yaw_std_dev_ = 0.1;
 
-    const pose_optimization::CostFunctionParameters cost_function_params;
-    const pose_optimization::PoseOptimizationParameters optimization_params;
+    pose_optimization::CostFunctionParameters cost_function_params;
+
+    pose_optimization::PoseOptimizationParameters optimization_params;
 
 //    std::vector<pose::Pose2d> ground_truth_poses = createGroundTruthPoses();
     std::vector<pose::Pose2d> high_level_trajectory = createHighLevelTrajectory();

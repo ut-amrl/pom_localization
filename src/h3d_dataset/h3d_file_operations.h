@@ -18,6 +18,7 @@ namespace h3d {
     static const std::string kGpsFilePrefix = "gps_";
     static const std::string kPreprocessedGpsPrefix = "augmented_";
     static const std::string kObjDetectionFilePrefix = "labels_3d1_";
+    static const std::string kDatasetOdomFilePrefix = "odom_";
 
     static const std::string kPointCloudFileExt = ".ply";
     static const std::string kCsvFileSuffix = ".csv";

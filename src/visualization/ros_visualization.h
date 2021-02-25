@@ -96,7 +96,7 @@ namespace visualization {
             std_msgs::ColorRGBA color;
             color.a = 0.5;
             color.r = 1.0;
-            color.b = 0.7;
+            color.g = 0.7;
 
             ros::Publisher pub;
             getOrCreatePublisherForTrajTypeAndClass(ESTIMATED, obj_class, pub);
@@ -114,7 +114,7 @@ namespace visualization {
             color.a = 0.5;
             color.b = 1.0;
             color.r = 0.7;
-            color.g = 0.35;
+            color.g = 0.2;
 
             ros::Publisher pub;
             getOrCreatePublisherForTrajTypeAndClass(ODOM_ONLY, obj_class, pub);
@@ -174,6 +174,10 @@ namespace visualization {
             std::unordered_map<int, nav_msgs::OccupancyGrid> occ_grids_by_angle;
             LOG(INFO) << "Creating occ grids";
 
+            double min_value = std::numeric_limits<double>::infinity();
+            double max_value = -std::numeric_limits<double>::infinity();
+            std::unordered_map<int, Eigen::Matrix<double, 1, Eigen::Dynamic>> output_mats;
+
             for (int i = -5; i <= 6; i++) {
                 nav_msgs::OccupancyGrid occ_grid;
                 occ_grid.header.frame_id = kVizFrame;
@@ -187,66 +191,38 @@ namespace visualization {
                 occ_grid.info.height = y_max_unscaled - y_min_unscaled + 1;
                 occ_grid.data.resize(occ_grid.info.width * occ_grid.info.height);
                 occ_grids_by_angle[i] = occ_grid;
+                output_mats[i] = Eigen::Matrix<double, 1, Eigen::Dynamic>(1, best_occ_grid.info.width * best_occ_grid.info.height);
             }
 
             LOG(INFO) << "Looping through vals";
 
             int size = best_occ_grid.info.width * best_occ_grid.info.height;
 
-//            std::vector<double, grid
-
-            std::unordered_map<int, Eigen::Matrix<double, 3, Eigen::Dynamic>> mats_by_angle;
-            for (int i = -5; i <= 6; i++) {
-                mats_by_angle[i] = Eigen::Matrix<double, 3, Eigen::Dynamic>(3, size);
-            }
-
-
-
-            LOG(INFO) << "Creating input matrices for different angles";
             for (int y_val = y_min_unscaled; y_val <= y_max_unscaled; y_val++) {
                 for (int x_val = x_min_unscaled; x_val <= x_max_unscaled; x_val++) {
 
-                    long data_index = (best_occ_grid.info.width * (y_val - y_min_unscaled)) + x_val - x_min_unscaled; // Should I switch x and y?
-
-//                    long data_index = (best_occ_grid.info.height * (x_val - x_min_unscaled)) + y_val - y_min_unscaled; // Should I switch x and y?
-
+                    long data_index = (best_occ_grid.info.width * (y_val - y_min_unscaled)) + x_val -
+                                      x_min_unscaled; // Should I switch x and y?
                     for (int i = -5; i <= 6; i++) {
-                        Eigen::Matrix<double, 3, Eigen::Dynamic> mat_for_angle = mats_by_angle[i];
+
                         double yaw = i * M_PI / 6;
 
-                        Eigen::Matrix<double, 3, 1> object_pose_2d;
+                        Eigen::Matrix<double, 3, Eigen::Dynamic> object_pose_2d(3, 1);
                         object_pose_2d << (x_val * resolution), (y_val * resolution), yaw;
-                        mat_for_angle.col(data_index) = object_pose_2d;
-                        mats_by_angle[i] = mat_for_angle;
+                        Eigen::Matrix<double, 1, Eigen::Dynamic> kde_output = kde->Inference(object_pose_2d);
+                        output_mats[i].col(data_index) = kde_output;
+                        min_value = std::min(min_value, kde_output.minCoeff());
+                        max_value = std::max(max_value, kde_output.maxCoeff());
                     }
                 }
             }
 
-
-            double min_value = std::numeric_limits<double>::infinity();
-            double max_value = -std::numeric_limits<double>::infinity();
-            std::unordered_map<int, Eigen::Matrix<double, 1, Eigen::Dynamic>> output_mats;
-            for (int i = -5; i <= 6; i++) {
-                LOG(INFO) << "Getting regression value for angle index " << i;
-
-                LOG(INFO) << "Input size " << mats_by_angle[i].rows() << ", " << mats_by_angle[i].cols();
-//                output_mats[i] = regressor->Inference(mats_by_angle[i]);
-                output_mats[i] = kde->Inference(mats_by_angle[i]);
-                max_value = std::max(max_value, output_mats[i].maxCoeff());
-                min_value = std::min(min_value, output_mats[i].minCoeff());
-                LOG(INFO) << "Output size " << output_mats[i].rows() << ", " << output_mats[i].cols();
-                LOG(INFO) << "Output " << output_mats[i];
-            }
-
             LOG(INFO) << "Setting occupancy grid data";
-
-
             for (int i = 0; i < size; i++) {
                 int8_t best_val = 0.0;
                 for (int j = -5; j <= 6; j++) {
                     ros::Publisher pub_for_angle = pub_for_angle_mult_[i];
                     double inf_val = output_mats[j](0, i);
-
 
                     if (inf_val > 1) {
                         LOG(INFO) << "Inf val " << inf_val;
@@ -257,11 +233,7 @@ namespace visualization {
                     }
 
                     nav_msgs::OccupancyGrid occ_grid_for_angle = occ_grids_by_angle[j];
-//                    LOG(INFO) << "Double val " << inf_val;
-//                    LOG(INFO) << std::to_string(((int8_t) (100 * inf_val)));
-//                    occ_grid_for_angle.data[i] = (int8_t) (100 * inf_val);
-                    occ_grid_for_angle.data[i] = value; // ((1e210) * ((1e300) * inf_val));
-//                    LOG(INFO) << std::to_string(occ_grid_for_angle.data[i]);
+                    occ_grid_for_angle.data[i] = value;
                     occ_grids_by_angle[j] = occ_grid_for_angle;
                 }
                 best_occ_grid.data[i] = (int8_t) best_val;
@@ -471,7 +443,7 @@ namespace visualization {
             std_msgs::ColorRGBA color;
             color.a = 0.5;
             color.r = 1.0;
-            color.b = 0.7;
+            color.g = 0.7;
 
             ros::Publisher pub;
             getOrCreatePublisherForTrajTypeAndClass(ESTIMATED, obj_class, pub);
@@ -496,7 +468,7 @@ namespace visualization {
             color.a = 0.5;
             color.b = 1.0;
             color.r = 0.7;
-            color.g = 0.35;
+            color.g = 0.2;
 
 
             ros::Publisher pub;
