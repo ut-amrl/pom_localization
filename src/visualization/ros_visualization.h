@@ -502,9 +502,30 @@ namespace visualization {
             publishTrajectory(est_marker_pub_, color, convert2DPosesTo3D(est_trajectory), kEstTrajectoryId, kRobotEstPosesMin, kRobotEstPosesMax);
         }
 
+        static std::pair<Eigen::Vector2d, Eigen::Vector2d> getMinMaxCornersForDistributionVisualization(const std::vector<pose::Pose2d> &map_frame_obj_poses) {
+            double min_x = std::numeric_limits<double>::infinity();
+            double max_x = -std::numeric_limits<double>::infinity();
+            double min_y = std::numeric_limits<double>::infinity();
+            double max_y = -std::numeric_limits<double>::infinity();
+
+            for (const pose::Pose2d &pose_2d : map_frame_obj_poses) {
+                min_x = std::min(pose_2d.first.x(), min_x);
+                max_x = std::max(pose_2d.first.x(), max_x);
+                min_y = std::min(pose_2d.first.y(), min_y);
+                max_y = std::max(pose_2d.first.y(), max_y);
+            }
+
+            LOG(INFO) << "Min x, max x, min y, max y: " << min_x << ", "<< max_x << ", " << min_y << ", " << max_y;
+
+            return std::make_pair(Eigen::Vector2d(min_x - kExtraMarginDistribution, min_y - kExtraMarginDistribution),
+                                  Eigen::Vector2d(max_x + kExtraMarginDistribution, max_y + kExtraMarginDistribution));
+        }
+
     private:
 
         const std::string kVizFrame = "map";
+
+        static constexpr const double kExtraMarginDistribution = 2.5;
 
         const uint32_t kObservationPubQueueSize = 1000;
 

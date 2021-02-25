@@ -47,9 +47,26 @@ namespace synthetic_problem {
                     case offline_optimization::VisualizationTypeEnum::BEFORE_ANY_OPTIMIZATION:
                         // Optionally display distribution intensity map (either over robot poses or over object poses)
 
+                    {
                         // TODO make this not specific to car class
-                        vis_manager_->displayMaxGpRegressorOutput(pose_graph->getMovableObjKde(kCarClass),
-                                                                  0.3, -20.0, 20,-30, 30);
+                        std::vector<pose::Pose2d> poses_global_frame;
+                        for (size_t node = 0; node < ground_truth_trajectory.size(); node++) {
+                            pose::Pose2d robot_pose = ground_truth_trajectory[node];
+                            for (const pose::Pose2d &obj_pose : noisy_obj_observations_by_type.at(kCarClass)[node]) {
+                                poses_global_frame.emplace_back(pose::combinePoses(robot_pose, obj_pose));
+                            }
+                        }
+
+                        std::pair<Eigen::Vector2d, Eigen::Vector2d> min_max_points_to_display =
+                                visualization::VisualizationManager::getMinMaxCornersForDistributionVisualization(poses_global_frame);
+
+                        vis_manager_->displayMaxGpRegressorOutput(pose_graph->getMovableObjKde(kCarClass),0.3,
+                                                                  min_max_points_to_display.first.x(),
+                                                                  min_max_points_to_display.second.x(),
+                                                                  min_max_points_to_display.first.y(),
+                                                                  min_max_points_to_display.second.y());
+
+                    }
 
 
                         vis_manager_->displayTrueTrajectory(ground_truth_trajectory);
