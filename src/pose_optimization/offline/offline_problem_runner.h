@@ -41,14 +41,13 @@ namespace offline_optimization {
         }
 
         std::unordered_map<pose_graph::NodeId, PoseType> runOfflineOptimization(const OfflineProblemDataType &problem_data,
-                                    const pose_optimization::CostFunctionParameters &cost_func_params,
-                                    const pose_optimization::PoseOptimizationParameters &optimization_params,
+                                    const pose_optimization::PoseOptimizationParameters &problem_params,
                                     const std::function<std::shared_ptr<PoseGraphType> (const pose_optimization::CostFunctionParameters &)> pose_graph_creator,
                                     const std::function<ceres::IterationCallback*(const pose_graph::NodeId&, const std::shared_ptr<PoseGraphType>&)> callback_creator,
                                     const std::function<void(const pose_graph::NodeId&, const std::shared_ptr<PoseGraphType>&, const VisualizationTypeEnum&)> visualization_callback) {
 
             // Create pose graph
-            std::shared_ptr<PoseGraphType> pose_graph = pose_graph_creator(cost_func_params);
+            std::shared_ptr<PoseGraphType> pose_graph = pose_graph_creator(problem_params.cost_function_params_);
 
             // Add data to pose graph ---------------------------------------------------------------------------------
             // Add nodes
@@ -59,13 +58,13 @@ namespace offline_optimization {
             }
 
             // Add Gaussian factors (odometry)
-            if (cost_func_params.odometry_enabled_) {
+            if (problem_params.cost_function_params_.odometry_enabled_) {
                 for (const GaussianBinaryFactorType &odom_factor : problem_data.odometry_factors_) {
                     pose_graph->addGaussianBinaryFactor(odom_factor);
                 }
             }
 
-            if (cost_func_params.movable_obj_observations_enabled_) {
+            if (problem_params.cost_function_params_.movable_obj_observations_enabled_) {
 
                 // Add the map observations
                 std::unordered_map<std::string, std::pair<
@@ -145,7 +144,7 @@ namespace offline_optimization {
                 //  the ceres problem every time
 
                 ceres::Problem problem;
-                optimizer.buildPoseGraphOptimizationProblem(*(pose_graph.get()), nodes_to_optimize, cost_func_params, &problem);
+                optimizer.buildPoseGraphOptimizationProblem(*(pose_graph.get()), nodes_to_optimize, problem_params.cost_function_params_, &problem);
 
                 std::vector<ceres::IterationCallback *> ceres_callbacks;
                 ceres::IterationCallback *callback = callback_creator(next_pose_to_optimize, pose_graph);

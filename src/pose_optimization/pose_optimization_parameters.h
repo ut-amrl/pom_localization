@@ -26,9 +26,9 @@ namespace pose_optimization {
 
         }
 
-        const int kDefaultNumSamplesPerMovableObjObservation = 10;
-        const bool kDefaultOdometryEnabled = true;
-        const bool kDefaultMovableObjObservationsEnabled = true;
+        static const int kDefaultNumSamplesPerMovableObjObservation = 10;
+        static const bool kDefaultOdometryEnabled = true;
+        static const bool kDefaultMovableObjObservationsEnabled = true;
         int num_samples_per_movable_obj_observation_;
         bool odometry_enabled_;
         bool movable_obj_observations_enabled_;

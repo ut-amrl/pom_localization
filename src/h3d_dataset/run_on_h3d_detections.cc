@@ -292,14 +292,18 @@ int main(int argc, char** argv) {
 
     std::shared_ptr<visualization::VisualizationManager> vis_manager = std::make_shared<visualization::VisualizationManager>(n);
     pose_optimization::CostFunctionParameters cost_function_params;
+    cost_function_params.odometry_enabled_ = false;
+//    cost_function_params.position_kernel_len_ = cost_function_params.position_kernel_len_ / 5;
+//    cost_function_params.orientation_kernel_len_ = cost_function_params.orientation_kernel_len_ / 5;
 //    cost_function_params.orientation_kernel_len_ = 100000;
 //    cost_function_params.position_kernel_len_ = 10000000;
     pose_optimization::PoseOptimizationParameters pose_optimization_params;
+    pose_optimization_params.cost_function_params_ = cost_function_params;
     offline_optimization::OfflinePoseOptimizer<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3> offline_optimizer;
 
     std::unordered_map<std::string, std::vector<std::vector<pose::Pose2d>>> object_detections_by_type = {{car_class, obs_at_poses}};
     LOG(INFO) << offline_optimizer.runOfflineOptimization(
-            offline_problem_data, cost_function_params, pose_optimization_params,
+            offline_problem_data, pose_optimization_params,
             h3d::createPoseGraph,
             std::bind(h3d::createCeresIterationCallback, vis_manager, std::placeholders::_1,
                       std::placeholders::_2, object_detections_by_type),

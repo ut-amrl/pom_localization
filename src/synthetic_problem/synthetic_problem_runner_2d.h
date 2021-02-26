@@ -146,7 +146,6 @@ namespace synthetic_problem {
                 const std::unordered_map<std::string, std::vector<pose::Pose2d>> &movable_object_poses_by_class,
                 const std::unordered_map<std::string, std::vector<pose::Pose2d>> &past_movable_object_poses,
                 const SyntheticProblemNoiseConfig2d &noise_config,
-                const pose_optimization::CostFunctionParameters &cost_function_params,
                 const pose_optimization::PoseOptimizationParameters &pose_optimization_params) {
 
             OfflineProblemDataType offline_problem_data;
@@ -287,7 +286,7 @@ namespace synthetic_problem {
 
             offline_optimization::OfflinePoseOptimizer<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3> offline_optimizer;
             return offline_optimizer.runOfflineOptimization(
-                    offline_problem_data, cost_function_params, pose_optimization_params,
+                    offline_problem_data, pose_optimization_params,
                     SyntheticProblemRunner2d::createPoseGraph,
                     std::bind(&SyntheticProblemRunner2d::createCeresIterationCallback, this, std::placeholders::_1,
                               std::placeholders::_2, noisy_observations),

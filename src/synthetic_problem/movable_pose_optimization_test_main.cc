@@ -269,7 +269,6 @@ std::unordered_map<pose_graph::NodeId, pose::Pose2d> callSyntheticProblem(
         const synthetic_problem::SyntheticProblemNoiseConfig2d &noise_config,
         const std::vector<pose::Pose2d> &ground_truth_trajectory,
         bool show_visualization,
-        const pose_optimization::CostFunctionParameters &cost_function_params,
         const pose_optimization::PoseOptimizationParameters &optimization_params) {
 
 //    LOG(INFO) << "Setting up synthetic problem";
@@ -294,7 +293,6 @@ std::unordered_map<pose_graph::NodeId, pose::Pose2d> callSyntheticProblem(
             curr_mov_obj_positions_by_class, //mov_obj_positions_by_class, // TODO make this different
             past_mov_obj_positions_by_class, //mov_obj_positions_by_class,
             noise_config,
-            cost_function_params,
             optimization_params);
 }
 
@@ -357,6 +355,7 @@ double runSingleSyntheticProblem(const std::shared_ptr<visualization::Visualizat
     pose_optimization::CostFunctionParameters cost_function_params;
 
     pose_optimization::PoseOptimizationParameters optimization_params;
+    optimization_params.cost_function_params_ = cost_function_params;
 
 //    std::vector<pose::Pose2d> ground_truth_poses = createGroundTruthPoses();
     std::vector<pose::Pose2d> high_level_trajectory = createHighLevelTrajectory();
@@ -369,8 +368,7 @@ double runSingleSyntheticProblem(const std::shared_ptr<visualization::Visualizat
         ground_truth_poses_as_map[i] = ground_truth_poses[i];
     }
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> optimization_results = callSyntheticProblem(
-            vis_manager, parking_lot_config, noise_config, ground_truth_poses, true,
-            cost_function_params, optimization_params);
+            vis_manager, parking_lot_config, noise_config, ground_truth_poses, true, optimization_params);
     return computeATE(ground_truth_poses_as_map, optimization_results);
 }
 
@@ -392,12 +390,12 @@ void outputResultsHeader(const std::string &file_name) {
 
 void outputResults(const std::string &file_name, const synthetic_problem::ParkingLotConfigurationParams &parking_lot_configuration_params,
                    const synthetic_problem::SyntheticProblemNoiseConfig2d &noise_config,
-                   const pose_optimization::CostFunctionParameters &cost_function_params,
                    const pose_optimization::PoseOptimizationParameters &optimization_params,
                    const double &absolute_trajectory_error) {
     // TODO
     std::ofstream csv_file(file_name, std::ios::app);
-    csv_file << cost_function_params.position_kernel_len_ << ", " << cost_function_params.orientation_kernel_len_
+    csv_file << optimization_params.cost_function_params_.position_kernel_len_
+    << ", " << optimization_params.cost_function_params_.orientation_kernel_len_
     << ", " << noise_config.odometry_x_std_dev_ << ", " << noise_config.odometry_y_std_dev_ << ", "
             << noise_config.max_observable_moving_obj_distance_ << ", "
              << noise_config.odometry_yaw_std_dev_ << ", " << noise_config.movable_observation_x_std_dev_ << ", "
@@ -416,18 +414,17 @@ void runSyntheticProblemAndOutputResults(
         const synthetic_problem::ParkingLotConfigurationParams &parking_lot_configuration_params,
         const synthetic_problem::SyntheticProblemNoiseConfig2d &noise_config,
         const std::vector<pose::Pose2d> &ground_truth_trajectory,
-        const pose_optimization::CostFunctionParameters &cost_function_params,
         const pose_optimization::PoseOptimizationParameters &optimization_params) {
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> optimization_results = callSyntheticProblem(
             vis_manager, parking_lot_configuration_params, noise_config, ground_truth_trajectory, true,
-            cost_function_params, optimization_params);
+            optimization_params);
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> ground_truth_poses_as_map;
     for (size_t i = 0; i < ground_truth_trajectory.size(); i++) {
         ground_truth_poses_as_map[i] = ground_truth_trajectory[i];
     }
     double absolute_trajectory_error = computeATE(ground_truth_poses_as_map, optimization_results);
     outputResults(results_file_name, parking_lot_configuration_params, noise_config,
-                  cost_function_params, optimization_params, absolute_trajectory_error);
+                  optimization_params, absolute_trajectory_error);
 }
 
 
@@ -444,8 +441,6 @@ void runSyntheticProblemWithConfigVariations(const std::shared_ptr<visualization
 
     synthetic_problem::SyntheticProblemNoiseConfig2d noise_config;
     pose_optimization::CostFunctionParameters cost_function_params;
-    pose_optimization::PoseOptimizationParameters optimization_params;
-
 
     noise_config.max_observable_moving_obj_distance_ = 8.0;
     parking_lot_configuration_params.num_samples_multiplier_ = 5.0;
@@ -453,6 +448,9 @@ void runSyntheticProblemWithConfigVariations(const std::shared_ptr<visualization
 
     std::vector<double> position_kernel_len_opts = {cost_function_params.position_kernel_len_};
     std::vector<double> orientation_kernel_len_opts = {cost_function_params.orientation_kernel_len_};
+
+    pose_optimization::PoseOptimizationParameters optimization_params;
+    optimization_params.cost_function_params_ = cost_function_params;
 
 //    std::vector<double> odom_transl_std_dev_opts = {1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005};
 //    std::vector<double> odom_rot_std_dev_opts = {1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005};
@@ -516,8 +514,7 @@ void runSyntheticProblemWithConfigVariations(const std::shared_ptr<visualization
                                         parking_lot_configuration_params.parking_lot_percent_filled_ = percent_spots_filled;
                                         runSyntheticProblemAndOutputResults(
                                                 results_file_name, vis_manager, parking_lot_configuration_params,
-                                                noise_config, ground_truth_trajectory, cost_function_params,
-                                                optimization_params);
+                                                noise_config, ground_truth_trajectory,optimization_params);
                                     }
                                 }
                             }
