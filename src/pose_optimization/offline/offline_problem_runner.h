@@ -101,6 +101,8 @@ namespace offline_optimization {
 
             pose_optimization::PoseGraphOptimizer optimizer;
 
+            ceres::Problem problem;
+
             std::unordered_set<pose_graph::NodeId> nodes_to_optimize;
             nodes_to_optimize.insert(0);
             for (pose_graph::NodeId next_pose_to_optimize = 1;
@@ -143,8 +145,11 @@ namespace offline_optimization {
                 // TODO Modify the pose graph optimizer to incrementally add data instead of needing to rebuild
                 //  the ceres problem every time
 
-                ceres::Problem problem;
-                optimizer.buildPoseGraphOptimizationProblem(*(pose_graph.get()), nodes_to_optimize, problem_params.cost_function_params_, &problem);
+                std::unordered_set<pose_graph::NodeId> new_nodes_to_optimize = {next_pose_to_optimize};
+                if (next_pose_to_optimize == 1) {
+                    new_nodes_to_optimize.insert(0);
+                }
+                optimizer.buildPoseGraphOptimizationProblem(*(pose_graph.get()), nodes_to_optimize, new_nodes_to_optimize, problem_params.cost_function_params_, &problem);
 
                 std::vector<ceres::IterationCallback *> ceres_callbacks;
                 ceres::IterationCallback *callback = callback_creator(next_pose_to_optimize, pose_graph);

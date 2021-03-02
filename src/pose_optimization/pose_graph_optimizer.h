@@ -19,15 +19,41 @@ namespace pose_optimization {
     public:
         PoseGraphOptimizer() = default;
 
+        /**
+         *
+         * @tparam MovObjKernelType
+         * @tparam MeasurementTranslationDim
+         * @tparam MeasurementRotationType
+         * @tparam CovDim
+         * @tparam MovObjDistributionTranslationDim
+         * @tparam MovObjDistributionRotationType
+         * @tparam KernelDim
+         * @param pose_graph
+         * @param nodes_to_optimize                 Set of all nodes to optimize. New nodes to optimize should be a
+         *                                          subset of this. Nodes in this set that are not in new nodes to
+         *                                          optimize have already had their relevant constraints added in
+         *                                          previous iterations.
+         * @param new_nodes_to_optimize             Set of new nodes to optimize. Tse have not had any constraints with
+         *                                          them added in a previous iteration.
+         * @param cost_function_params
+         * @param problem
+         */
         template<typename MovObjKernelType, int MeasurementTranslationDim, typename MeasurementRotationType, int CovDim,
                 int MovObjDistributionTranslationDim, typename MovObjDistributionRotationType, int KernelDim>
         void buildPoseGraphOptimizationProblem(
                 pose_graph::PoseGraph<MovObjKernelType, MeasurementTranslationDim, MeasurementRotationType, CovDim,
                 MovObjDistributionTranslationDim, MovObjDistributionRotationType, KernelDim> &pose_graph,
                 const std::unordered_set<pose_graph::NodeId> &nodes_to_optimize,
+                const std::unordered_set<pose_graph::NodeId> &new_nodes_to_optimize,
                 const CostFunctionParameters &cost_function_params, ceres::Problem *problem) {
 
             ceres::LocalParameterization *rotation_parameterization = pose_graph.getRotationParameterization();
+
+            std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
+                    std::shared_ptr<MeasurementRotationType>> start_pose_vars_;
+            pose_graph.getNodePosePointers(0, start_pose_vars_);
+            std::pair<double *, double *> raw_pointers_for_start_node_data = pose_graph.getPointersToUnderlyingData(
+                    start_pose_vars_);
 
             // Add residuals from movable object observations
             for (pose_graph::MovableObservationFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim>
@@ -40,7 +66,7 @@ namespace pose_optimization {
                     continue;
                 }
 
-                if (nodes_to_optimize.find(factor.observed_at_node_) == nodes_to_optimize.end()) {
+                if (new_nodes_to_optimize.find(factor.observed_at_node_) == new_nodes_to_optimize.end()) {
                     continue;
                 }
 
@@ -70,6 +96,15 @@ namespace pose_optimization {
             // Add residuals from odometry (visual, lidar, or wheel) factors
             for (pose_graph::GaussianBinaryFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> &factor
             : pose_graph.getBinaryFactors()) {
+
+                bool from_node_new = (new_nodes_to_optimize.find(factor.from_node_) != new_nodes_to_optimize.end());
+                bool to_node_new = (new_nodes_to_optimize.find(factor.to_node_) != new_nodes_to_optimize.end());
+
+                // Either the to or from node has to be a new node
+                // The other node must be a node in nodes to optimize (new or not)
+                if (!(from_node_new || to_node_new)) {
+                    continue;
+                }
 
                 if (nodes_to_optimize.find(factor.to_node_) == nodes_to_optimize.end()) {
                     continue;
@@ -103,17 +138,28 @@ namespace pose_optimization {
                                           raw_pointers_for_to_node_data.second);
 
                 if (rotation_parameterization != nullptr) {
-                    problem->SetParameterization(raw_pointers_for_from_node_data.second,
-                                                 rotation_parameterization);
-                    problem->SetParameterization(raw_pointers_for_to_node_data.second,
-                                                 rotation_parameterization);
+                    if (from_node_new) {
+                        problem->SetParameterization(raw_pointers_for_from_node_data.second,
+                                                     rotation_parameterization);
+                    }
+                    if (to_node_new) {
+                        problem->SetParameterization(raw_pointers_for_to_node_data.second,
+                                                     rotation_parameterization);
+                    }
                 }
             }
 
-            std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
-                    std::shared_ptr<MeasurementRotationType>> start_pose_vars_;
-            pose_graph.getNodePosePointers(0, start_pose_vars_);
-            std::pair<double*, double*> raw_pointers_for_start_node_data = pose_graph.getPointersToUnderlyingData(start_pose_vars_);
+
+            if (new_nodes_to_optimize.find(0) != new_nodes_to_optimize.end()) {
+
+                problem->AddParameterBlock(raw_pointers_for_start_node_data.first, MeasurementTranslationDim);
+                problem->AddParameterBlock(raw_pointers_for_start_node_data.second, (CovDim - MeasurementTranslationDim));
+
+                if (rotation_parameterization != nullptr) {
+                    problem->SetParameterization(raw_pointers_for_start_node_data.second, rotation_parameterization);
+                }
+            }
+
             problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.first);
             problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.second);
         }

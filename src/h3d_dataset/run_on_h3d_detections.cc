@@ -134,9 +134,13 @@ int main(int argc, char** argv) {
     std::string h3d_dataset_directory = "/home/amanda/datasets/h3d/icra_benchmark_20200103_with_odom";
     std::string dataset_preprocessed_data_dir = h3d_dataset_directory + "/augmentation";
     std::string lidar_odom_file = dataset_preprocessed_data_dir + "/scenario_" + scenario_number_str + "/legoloam_odom_output_file.csv";;
+//
+//    double obj_detection_variance_for_transl_per_dist = 0.1; // TODO is this reasonable?
+//    double obj_detection_yaw_variance = 0.1; // TODO is this reasonable?
 
-    double obj_detection_variance_for_transl_per_dist = 0.1; // TODO is this reasonable?
-    double obj_detection_yaw_variance = 0.1; // TODO is this reasonable?
+
+    double obj_detection_variance_for_transl_per_dist = 1e-5; // TODO is this reasonable?
+    double obj_detection_yaw_variance = 1e-5; // TODO is this reasonable?
 
     // TODO this is a guess and may not be right
 //    pose::Pose2d velodyne_pose_rel_gps = pose::createPose2d(0, 0, M_PI_2);
@@ -292,7 +296,7 @@ int main(int argc, char** argv) {
 
     std::shared_ptr<visualization::VisualizationManager> vis_manager = std::make_shared<visualization::VisualizationManager>(n);
     pose_optimization::CostFunctionParameters cost_function_params;
-    cost_function_params.odometry_enabled_ = false;
+//    cost_function_params.odometry_enabled_ = false;
 //    cost_function_params.position_kernel_len_ = cost_function_params.position_kernel_len_ / 5;
 //    cost_function_params.orientation_kernel_len_ = cost_function_params.orientation_kernel_len_ / 5;
 //    cost_function_params.orientation_kernel_len_ = 100000;
