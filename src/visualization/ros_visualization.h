@@ -26,10 +26,22 @@ namespace visualization {
 
         VisualizationManager(ros::NodeHandle &node_handle) : node_handle_(node_handle) {
             gt_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("gt_visualization_marker", 1000);
+            other_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("other_visualization_marker", 1000);
             est_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("est_pos_marker", 1000);
             odom_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("odom_pos_marker", 1000);
             regressor_max_val_for_pos_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>("regressor_max_val_for_pos", 2);
             robot_pose_max_val_pub_  = node_handle_.advertise<nav_msgs::OccupancyGrid>("robot_pose_max_val", 2);
+
+            ros::Duration(5).sleep();
+            for (int id = 0; id < kRobotEstPosesMax; id++) {
+                removeMarker(id, gt_marker_pub_);
+                removeMarker(id, other_marker_pub_);
+                removeMarker(id, est_marker_pub_);
+                removeMarker(id, odom_marker_pub_);
+                ros::Duration(0.0001).sleep();
+            }
+            ros::Duration(1).sleep();
+
             for (int i = -5; i <= 6; i++) {
                 std::string angle_name;
                 if (i < 0) {
@@ -395,6 +407,17 @@ namespace visualization {
             publishTrajectory(gt_marker_pub_, color, convert2DPosesTo3D(true_trajectory), kGtTrajectoryId, kRobotGtPosesMin, kRobotGtPosesMax);
         }
 
+        void displayOtherTrajectory(const std::vector<pose::Pose2d> &other_trajectory) {
+
+            std_msgs::ColorRGBA color;
+            color.a = 1.0;
+            color.g = 1.0;
+            color.r = 1.0;
+
+            // TODO reconsider the id situations here since this isn't ground truth (getting around it now since
+            publishTrajectory(other_marker_pub_, color, convert2DPosesTo3D(other_trajectory), kGtTrajectoryId, kRobotGtPosesMin, kRobotGtPosesMax);
+        }
+
         void displayTrueObjPoses(const std::vector<pose::Pose2d> &true_car_poses, const std::string &obj_class) {
 
             std_msgs::ColorRGBA color;
@@ -566,6 +589,7 @@ namespace visualization {
          */
         ros::NodeHandle node_handle_;
 
+        ros::Publisher other_marker_pub_;
         ros::Publisher gt_marker_pub_;
         ros::Publisher est_marker_pub_;
         ros::Publisher odom_marker_pub_;
@@ -605,6 +629,11 @@ namespace visualization {
                 pubs_for_traj_type_[obj_class] = new_pub_for_class;
                 obs_marker_pubs_by_class_by_traj_type_[trajectory_type] = pubs_for_traj_type_;
                 ros::Duration(2).sleep();
+                for (int id = 0; id < kRobotEstPosesMax; id++) {
+                    removeMarker(id, new_pub_for_class);
+                    ros::Duration(0.0001).sleep();
+                }
+                ros::Duration(1).sleep();
                 // TODO consider removing all existing markers on this topic
             }
 

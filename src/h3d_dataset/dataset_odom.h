@@ -23,7 +23,6 @@ namespace h3d {
     };
 
     void readRawDatasetOdomLine(const std::string &line_in_file, RawDatasetOdomData &dataset_odom_data) {
-        LOG(INFO) << "Line in file: " << line_in_file;
         std::stringstream ss(line_in_file);
         std::vector<double> data;
         while(ss.good()) {
@@ -59,6 +58,10 @@ namespace h3d {
 
         readRawDatasetOdomFromFile(gps_filename, odom_data);
         return odom_data;
+    }
+
+    std::vector<RawDatasetOdomData> readRawDatasetOdomForFileNum(const std::string &scenario_dir, const int &file_num) {
+        return readRawDatasetOdomForFileNum(scenario_dir, convertFileNumToFileStrSuffix(file_num));
     }
 }
 

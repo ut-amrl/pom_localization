@@ -72,6 +72,19 @@ namespace h3d {
             }
         }
     }
+
+    std::vector<std::string> getAllScenarios(const std::string &dataset_dir) {
+        std::vector<std::string> scenario_nums;
+        for (const auto &entry : std::experimental::filesystem::directory_iterator(dataset_dir)) {
+            std::string filename = entry.path().filename();
+            bool starts_with_prefix = filename.size() >= kScenarioNameStr.size() && (0 == filename.compare(0, kScenarioNameStr.size(), kScenarioNameStr));
+            if (starts_with_prefix) {
+                std::string num_str = filename.substr(kScenarioNameStr.size(), 3);
+                scenario_nums.emplace_back(num_str);
+            }
+        }
+        return scenario_nums;
+    }
 }
 
 #endif //AUTODIFF_GP_H3D_FILE_OPERATIONS_H

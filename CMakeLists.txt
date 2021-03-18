@@ -66,6 +66,9 @@ TARGET_LINK_LIBRARIES(read_h3d_point_cloud ${libs} ${PCL_LIBRARIES} stdc++fs)
 ROSBUILD_ADD_EXECUTABLE(run_on_h3d_detections src/h3d_dataset/run_on_h3d_detections.cc)
 TARGET_LINK_LIBRARIES(run_on_h3d_detections ${libs} ${PCL_LIBRARIES} stdc++fs)
 
+ROSBUILD_ADD_EXECUTABLE(output_first_gps_entries src/h3d_dataset/output_first_gps_entries.cc)
+TARGET_LINK_LIBRARIES(output_first_gps_entries ${libs} stdc++fs)
+
 
 #IF(TESTING)
 #  enable_testing()

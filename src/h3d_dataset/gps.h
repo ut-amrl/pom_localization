@@ -10,6 +10,13 @@
 
 namespace h3d {
 
+    // Earth geoid parameters from WGS 84 system
+    // https://en.wikipedia.org/wiki/World_Geodetic_System#A_new_World_Geodetic_System:_WGS_84
+    // a = Semimajor (Equatorial) axis
+    static constexpr double wgs_84_a = 6378137.0;
+    // b = Semiminor (Polar) axis
+    static constexpr double wgs_84_b = 6356752.314245;
+
     struct GPSData {
         GPSData() = default;
         double timestamp_ = 0;
@@ -132,13 +139,17 @@ namespace h3d {
         return gps_data;
     }
 
-    std::vector<GPSData> readGpsDataForFileNum(const std::string &scenario_dir, const int file_num) {
+    std::vector<GPSData> readGpsDataForFileNum(const std::string &scenario_dir, const std::string &file_num_str) {
         std::string gps_filename = scenario_dir;
         gps_filename += kGpsFilePrefix;
-        gps_filename += convertFileNumToFileStrSuffix(file_num);
+        gps_filename += file_num_str;
         gps_filename += kCsvFileSuffix;
 
         return readGpsDataFromFile(gps_filename);
+    }
+
+    std::vector<GPSData> readGpsDataForFileNum(const std::string &scenario_dir, const int file_num) {
+        return readGpsDataForFileNum(scenario_dir, convertFileNumToFileStrSuffix(file_num));
     }
 
     std::vector<PreprocessedGPSWithXY> readPreprocessedGpsDataFromFile(const std::string &gps_filename) {
@@ -184,6 +195,32 @@ namespace h3d {
         }
 
         return getTimestampsForFileNums(gps_data_by_filenums);
+    }
+
+    std::vector<GPSData> getFirstGpsDataForEachFileNumInScenario(const std::string &dataset_dir, const std::string &scenario_num_str) {
+        std::string scenario_dir = h3d::getScenarioDirectory(dataset_dir, scenario_num_str);
+        int max_file_num_for_scenario = h3d::getMaxFileNumForScenario(scenario_dir, h3d::kPointCloudFilePrefix);
+
+        std::vector<GPSData> gps_data;
+        for (int i = 0; i <= max_file_num_for_scenario; i++) {
+            std::vector<GPSData> gps_data_for_filenum = readGpsDataForFileNum(scenario_dir, i);
+            gps_data.emplace_back(gps_data_for_filenum[0]);
+        }
+        return gps_data;
+    }
+
+    Eigen::Vector2d gpsToMetric(const double latitude, const double longitude,
+                                const double &origin_latitude, const double &origin_longitude) {
+        const double theta = math_util::DegToRad(latitude);
+        const double c = std::cos(theta);
+        const double s = std::sin(theta);
+        const double r = sqrt(math_util::Sq(wgs_84_a * wgs_84_b) / (math_util::Sq(c * wgs_84_b) + math_util::Sq(s * wgs_84_a)));
+        const double dlat = math_util::DegToRad(latitude - origin_latitude);
+        const double dlong = math_util::DegToRad(longitude - origin_longitude);
+        const double r1 = r * c;
+        const double x = r1 * dlong;
+        const double y = r * dlat;
+        return Eigen::Vector2d(x, y);
     }
 }
 #endif //AUTODIFF_GP_GPS_H
