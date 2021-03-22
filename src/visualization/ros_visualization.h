@@ -12,6 +12,7 @@
 #include <pose_optimization/sample_based_movable_observation_gp_cost_functor_3d.h>
 
 #include <base_lib/pose_reps.h>
+#include <gaussian_process/gp_classifier.h>
 
 namespace visualization {
 
@@ -158,7 +159,7 @@ namespace visualization {
 //                const double &resolution, const double &x_min, const double &x_max, const double &y_min,
 //                const double &y_max) {
         void displayMaxGpRegressorOutput(
-                std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde,
+                std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc,
                 const double &resolution, const double &x_min, const double &x_max, const double &y_min,
                 const double &y_max) {
             int64_t x_min_unscaled = floor(x_min / resolution);
@@ -221,10 +222,10 @@ namespace visualization {
 
                         Eigen::Matrix<double, 3, Eigen::Dynamic> object_pose_2d(3, 1);
                         object_pose_2d << (x_val * resolution), (y_val * resolution), yaw;
-                        Eigen::Matrix<double, 1, Eigen::Dynamic> kde_output = kde->Inference(object_pose_2d);
-                        output_mats[i].col(data_index) = kde_output;
-                        min_value = std::min(min_value, kde_output.minCoeff());
-                        max_value = std::max(max_value, kde_output.maxCoeff());
+                        Eigen::Matrix<double, 1, Eigen::Dynamic> gpc_output = gpc->Inference(object_pose_2d);
+                        output_mats[i].col(data_index) = gpc_output;
+                        min_value = std::min(min_value, gpc_output.minCoeff());
+                        max_value = std::max(max_value, gpc_output.maxCoeff());
                     }
                 }
             }

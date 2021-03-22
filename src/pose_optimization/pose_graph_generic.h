@@ -17,6 +17,7 @@
 //#include <gaussian_process/gp_regression.h>
 #include <gaussian_process/kernel_density_estimator.h>
 #include <pose_optimization/pose_optimization_parameters.h>
+#include <gaussian_process/gp_classifier.h>
 
 namespace pose_graph {
     typedef uint64_t NodeId;
@@ -96,27 +97,11 @@ namespace pose_graph {
          * Relative orientation of the object in the map.
          */
         RotationType orientation_;
-    };
 
-    /**
-     * Negative movable object observation.
-     *
-     * No object of the given class was detected at the location.
-     *
-     * TODO Do we need this? Should this have an orientation?
-     */
-    template<int TranslationDim>
-    struct NegativeMapObjectObservation {
+        double obs_value_;
 
-        /**
-         * Semantic class that was not present at the given location.
-         */
-        std::string semantic_class_;
-
-        /**
-         * Location in the map that did not have an object of the given type.
-         */
-        Eigen::Matrix<double, TranslationDim, 1> transl_;
+        // TODO consider adding which robot pose node this came from and the relative pose and variance relative to the
+        //  robot
     };
 
     /**
@@ -191,8 +176,7 @@ namespace pose_graph {
         typedef MovableObservationFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> MovableObservationFactorType;
         typedef GaussianBinaryFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> GaussianBinaryFactorType;
         typedef MapObjectObservation<MovObjDistributionTranslationDim, MovObjDistributionRotationType> MapObjectObservationType;
-        typedef NegativeMapObjectObservation<MovObjDistributionTranslationDim> NegativeMapObjectObservationType;
-        typedef gp_regression::KernelDensityEstimator<KernelDim, MovObjKernelType> KdeType;
+        typedef gp_regression::GaussianProcessClassifier<KernelDim, MovObjKernelType> GpcType;
 
         /**
          * Create the pose graph.
@@ -260,70 +244,32 @@ namespace pose_graph {
             return binary_factors_;
         }
 
-        /**
-         * Add 2d positive and negative observations to the GP regressors per class, or make new ones if this class has
-         * not yet been observed.
-         *
-         * @param observations_by_class Observations by their class.
-         */
-//        void addMapFrameObservations(const std::unordered_map<std::string, std::pair<std::vector<NegativeMovableObservation2D>, std::vector<MapObservation2D>>> &observations_by_class) {
-//            for (const auto &obs_by_class : observations_by_class) {
-//                Eigen::MatrixXf inputs;
-//                Eigen::MatrixXf outputs;
-//                if (getMatrixRepresentationOfDetections(obs_by_class.second, inputs, outputs)) {
-//                    auto gp_iter = movable_object_2d_gp_regressors_by_class_.find(obs_by_class.first);
-//                    std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> gp_regressor;
-//                    if (gp_iter != movable_object_2d_gp_regressors_by_class_.end()) {
-//                        gp_regressor = gp_iter->second;
-//                        gp_regressor->appendData(inputs, outputs);
-//                    } else {
-//                        gp_regressor = std::make_shared<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>>(inputs, outputs, &pose_2d_kernel_);
-//                    }
-//                    movable_object_2d_gp_regressors_by_class_[obs_by_class.first] = gp_regressor;
-//                }
-//            }
-//        }
-
         void addMapFrameObservations(
-                const std::unordered_map<std::string, std::pair<std::vector<NegativeMapObjectObservationType>,
-                        std::vector<MapObjectObservationType>>> &observations_by_class) {
+                const std::unordered_map<std::string, std::vector<MapObjectObservationType>> &observations_by_class) {
             for (const auto &obs_by_class : observations_by_class) {
                 Eigen::MatrixXf inputs;
-                if (getMatrixRepresentationOfDetections(obs_by_class.second.second, inputs)) {
-                    auto kde_iter = movable_object_2d_kdes_by_class_.find(obs_by_class.first);
-                    std::shared_ptr<KdeType> kde;
-                    if (kde_iter != movable_object_2d_kdes_by_class_.end()) {
-                        kde = kde_iter->second;
-                        kde->appendData(inputs);
+                Eigen::MatrixXf outputs;
+                if (getMatrixRepresentationOfDetections(obs_by_class.second, inputs)
+                        && getMatrixRepresentationOfDetectionSampleValue(obs_by_class.second, outputs)) {
+                    auto gpc_iter = movable_object_gpcs_by_class_.find(obs_by_class.first);
+                    std::shared_ptr<GpcType> gpc;
+                    if (gpc_iter != movable_object_gpcs_by_class_.end()) {
+                        gpc = gpc_iter->second;
+                        gpc->appendData(inputs, outputs);
                     } else {
-                        kde = std::make_shared<KdeType>(inputs, &mov_obj_kernel_);
+                        gpc = std::make_shared<GpcType>(inputs, outputs, &mov_obj_kernel_);
                     }
-                    movable_object_2d_kdes_by_class_[obs_by_class.first] = kde;
+                    movable_object_gpcs_by_class_[obs_by_class.first] = gpc;
                 }
             }
         }
-//
-//        /**
-//         * Get the movable object gp regressor for the given semantic class.
-//         *
-//         * @param class_label Class label to get the regressor for.
-//         *
-//         * @return Regressor (or null pointer if it doesn't exist).
-//         */
-//        std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> getMovableObjGpRegressor(const std::string &class_label) {
-//            auto regressor_iter = movable_object_2d_gp_regressors_by_class_.find(class_label);
-//            if (regressor_iter != movable_object_2d_gp_regressors_by_class_.end()) {
-//                return regressor_iter->second;
-//            }
-//            return nullptr;
-//        }
 
-        std::shared_ptr<KdeType> getMovableObjKde(const std::string &class_label) {
-            auto regressor_iter = movable_object_2d_kdes_by_class_.find(class_label);
-            if (regressor_iter != movable_object_2d_kdes_by_class_.end()) {
-                return regressor_iter->second;
+        std::shared_ptr<GpcType> getMovableObjGpc(const std::string &class_label) {
+            auto gpc_iter = movable_object_gpcs_by_class_.find(class_label);
+            if (gpc_iter != movable_object_gpcs_by_class_.end()) {
+                return gpc_iter->second;
             }
-            LOG(WARNING) << "No KDE found for class " << class_label;
+            LOG(WARNING) << "No Gaussian Process Classifier found for class " << class_label;
             return nullptr;
         }
 
@@ -362,7 +308,7 @@ namespace pose_graph {
         }
 
         virtual ceres::CostFunction *createMovableObjectCostFunctor(
-                const std::shared_ptr<KdeType> &movable_object_kde,
+                const std::shared_ptr<GpcType> &movable_object_gpc,
                 const MovableObservationFactorType &factor,
                 const pose_optimization::CostFunctionParameters &cost_function_params) const = 0;
 
@@ -403,97 +349,29 @@ namespace pose_graph {
         std::vector<GaussianBinaryFactorType> binary_factors_;
 
         // TODO convert class labels to enum?
-//        /**
-//         * Movable object GP regressors, by their semantic class.
-//         */
-//        std::unordered_map<std::string, std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>>> movable_object_2d_gp_regressors_by_class_;
-
         /**
-         * Movable object KDEs, by their semantic class.
+         * Movable object Gaussian Process Classifiers, by their semantic class.
          */
-        std::unordered_map<std::string, std::shared_ptr<KdeType>> movable_object_2d_kdes_by_class_;
-
-        // Commenting out because we're not currently using Negative detections - will probably be need to made into a
-        // virtual method if we're using this
-//
-//        /**
-//         * Convert the negative and positive observations to a matrix of inputs and outputs representing the observations.
-//         *
-//         * @param pos_and_neg_observations[in]  Positive and negative observations.
-//         * @param input_matrix[out]             Matrix to fill with input data (positions). Each observation will
-//         *                                      generate a column (or more for negative since we create them for a few
-//         *                                      angles).
-//         * @param output_matrix[out]            Matrix to fill with output data (1s for positive detections, 0s for
-//         *                                      negative detections). Each observation will generate a column (or more
-//         *                                      for negative since we create them for a few angles).
-//         * @return True if the matrices were populated, false if not (if the observations were empty).
-//         */
-//        bool getMatrixRepresentationOfDetections(
-//                const std::pair<std::vector<NegativeMapObjectObservationType>,
-//                        std::vector<MapObjectObservationType>> &pos_and_neg_observations,
-//                Eigen::MatrixXf &input_matrix, Eigen::MatrixXf &output_matrix) const {
-//            std::vector<MapObjectObservation2d> observations = pos_and_neg_observations.second;
-//            std::vector<NegativeMapObjectObservation2d> neg_obs = pos_and_neg_observations.first;
-//
-//            size_t neg_obs_count = neg_obs.size();
-//            size_t pos_obs_count = observations.size();
-//            size_t total_entries_count = (pos_obs_count + (kNumDiscreteOrientationsNegObservations * neg_obs_count));
-//
-//            if (total_entries_count == 0) {
-//                return false;
-//            }
-//
-//            // Inputs should have 3 rows and as many columns as examples
-//            input_matrix = Eigen::MatrixXf(3, total_entries_count);
-//            output_matrix = Eigen::MatrixXf::Zero(1, total_entries_count);
-//            for (size_t i = 0; i < pos_obs_count; i++) {
-//                input_matrix(0, i) = observations[i].transl_.x();
-//                input_matrix(1, i) = observations[i].transl_.y();
-//                input_matrix(2, i) = observations[i].orientation_;
-//            }
-//            output_matrix.leftCols(pos_obs_count) = Eigen::MatrixXf::Ones(1, pos_obs_count);
-//
-//            for (size_t i = 0; i < neg_obs_count; i++) {
-//                // TODO figure out a better way to handle orientation in negative observations
-//
-//                float angle_inc = (M_PI * 2) / kNumDiscreteOrientationsNegObservations;
-//                // Base the initial angle offset from the 0 on the number of the negative observation so that it is
-//                // deterministic, but we don't end up with all negative observations at the same angle
-//                float angle_start = ((float) i) * angle_inc / neg_obs_count;
-//                for (uint8_t angle_index = 0; angle_index < kNumDiscreteOrientationsNegObservations; angle_index++) {
-//                    float angle = angle_start + (angle_index * angle_inc);
-//                    size_t index = pos_obs_count + (i * kNumDiscreteOrientationsNegObservations) + angle_index;
-//                    input_matrix(0, index) = neg_obs[i].transl_.x();
-//                    input_matrix(1, index) = neg_obs[i].transl_.y();
-//                    input_matrix(2, index) = angle;
-//                }
-//            }
-//            return true;
-//        }
+        std::unordered_map<std::string, std::shared_ptr<GpcType>> movable_object_gpcs_by_class_;
 
         virtual bool getMatrixRepresentationOfDetections(
                 const std::vector<MapObjectObservationType> &pos_observations,
                 Eigen::MatrixXf &input_matrix) const = 0;
 
-//        bool getMatrixRepresentationOfDetections(
-//                const std::vector<MapObjectObservationType> &pos_observations,
-//                Eigen::MatrixXf &input_matrix) const {
-//
-//            size_t pos_obs_count = pos_observations.size();
-//
-//            if (pos_obs_count == 0) {
-//                return false;
-//            }
-//
-//            // Inputs should have 3 rows and as many columns as examples
-//            input_matrix = Eigen::MatrixXf(3, pos_obs_count);
-//            for (size_t i = 0; i < pos_obs_count; i++) {
-//                input_matrix(0, i) = pos_observations[i].transl_.x();
-//                input_matrix(1, i) = pos_observations[i].transl_.y();
-//                input_matrix(2, i) = pos_observations[i].orientation_;
-//            }
-//            return true;
-//        }
+        bool getMatrixRepresentationOfDetectionSampleValue(const std::vector<MapObjectObservationType> &observations,
+                                                           Eigen::MatrixXf &outputs_matrix) {
+            size_t obs_count = observations.size();
+
+            if (obs_count == 0) {
+                return false;
+            }
+
+            outputs_matrix = Eigen::MatrixXf(1, obs_count);
+            for (size_t i = 0; i < obs_count; i++) {
+                outputs_matrix(0, i) = observations[i].obs_value_;
+            }
+            return true;
+        }
     };
 }
 

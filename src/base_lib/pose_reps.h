@@ -95,6 +95,13 @@ namespace pose {
     }
 
 
+    pose::Pose2d addGaussianNoise(const pose::Pose2d &original_pose_2d, const Eigen::Vector3d &variances,
+                                  util_random::Random &rand_gen) {
+        return std::make_pair(Eigen::Vector2d(rand_gen.Gaussian(original_pose_2d.first.x(), sqrt(variances(0))),
+                                              rand_gen.Gaussian(original_pose_2d.first.y(), sqrt(variances(1)))),
+                              rand_gen.Gaussian(original_pose_2d.second, sqrt(variances(2))));
+    }
+
     pose::Pose2d addRelativeGaussianNoise(const pose::Pose2d &original_pose_2d, const double &x_std_dev,
                                           const double &y_std_dev, const double &theta_std_dev,
                                           util_random::Random &rand_gen) {
@@ -105,5 +112,21 @@ namespace pose {
         return addGaussianNoise(original_pose_2d, scaled_x_std_dev, scaled_y_std_dev, scaled_yaw_std_dev,
                                 rand_gen);
     }
+
+    std::pair<pose::Pose2d, Eigen::Vector3d> addPositionRelativeGaussianNoiseAndGetVariance(const pose::Pose2d &original_pose_2d,
+                                                                const Eigen::Vector3d &variances,
+                                                                util_random::Random &rand_gen) {
+        double x_std_dev = sqrt(variances(0));
+        double y_std_dev = sqrt(variances(1));
+        double yaw_std_dev = sqrt(variances(2));
+        double scaled_x_std_dev = original_pose_2d.first.x() * x_std_dev;
+        double scaled_y_std_dev = original_pose_2d.first.y() * y_std_dev;
+
+        Eigen::Vector3d new_variances(pow(scaled_x_std_dev, 2), pow(scaled_y_std_dev, 2),variances(2));
+
+        return std::make_pair(addGaussianNoise(original_pose_2d, scaled_x_std_dev, scaled_y_std_dev, yaw_std_dev,
+                                               rand_gen), new_variances);
+    }
+
 }
 #endif //AUTODIFF_GP_POSE_REPS_H

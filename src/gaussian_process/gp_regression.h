@@ -87,15 +87,14 @@ namespace gp_regression {
          *
          * @param x Estimate the output value for this input.
          *
-         * @return Estimated output value for the given input.
+         * @return Pair of estimated output value for the given input and variance for the estimate.
          */
         template<typename T>
-        Eigen::Matrix<T, M, Eigen::Dynamic> Inference(const Eigen::Matrix<T, N, Eigen::Dynamic>& x) {
+        std::pair<Eigen::Matrix<T, M, Eigen::Dynamic>, Eigen::Matrix<T, 1, Eigen::Dynamic>> Inference(const Eigen::Matrix<T, N, Eigen::Dynamic>& x) {
 //            LOG(INFO) << "O " << O;
 
             Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> k_x_transp(x.cols(), num_datapoints_);
             for (int i = 0; i < num_datapoints_; i++) {
-                // TODO Is it a problem here that inputs_.col(i) is of type float instead of T? Need to investigate
                 Eigen::Matrix<T, N, 1> input_i = inputs_.col(i).cast<T>();
                 for (int j = 0; j < x.cols(); j++) {
 //                    LOG(INFO) << " j  " << j;
@@ -104,10 +103,21 @@ namespace gp_regression {
                 }
             }
 
-//            return k_x_transp;
-            Eigen::Matrix<T, Eigen::Dynamic, M> mu_star_transp = k_x_transp * inv_gram_matrix_.cast<T>() * outputs_transp_.cast<T>();
+            Eigen::Matrix<T, Eigen::Dynamic, 1> input_variance = Eigen::Matrix<T, Eigen::Dynamic, 1>(x.cols(), 1);
 
-            return mu_star_transp.transpose();
+            for (int j = 0; j < x.cols(); j++) {
+                Eigen::Matrix<T, N, 1> eval_input = x.col(j);
+                input_variance(j, 1) = kernel_->evaluateKernel(eval_input, eval_input);
+            }
+
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> kernel_times_inv_gram = k_x_transp * inv_gram_matrix_.cast<T>();
+
+            Eigen::Matrix<T, Eigen::Dynamic, M> mu_star_transp = kernel_times_inv_gram * outputs_transp_.cast<T>();
+
+            // Compute variance: k_xx + K_x^T * K_d^-1 * K_x
+            Eigen::Matrix<T, Eigen::Dynamic, 1> variance_column_vec = input_variance + ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
+
+            return std::make_pair(mu_star_transp.transpose(), variance_column_vec.transpose());
         }
 
     private:

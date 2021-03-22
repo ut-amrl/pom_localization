@@ -69,6 +69,9 @@ TARGET_LINK_LIBRARIES(run_on_h3d_detections ${libs} ${PCL_LIBRARIES} stdc++fs)
 ROSBUILD_ADD_EXECUTABLE(output_first_gps_entries src/h3d_dataset/output_first_gps_entries.cc)
 TARGET_LINK_LIBRARIES(output_first_gps_entries ${libs} stdc++fs)
 
+ROSBUILD_ADD_EXECUTABLE(uncertainty_aware_localization_test src/synthetic_problem/uncertainty_aware/uncertainty_aware_synthetic_problem_localization_test_main.cc)
+TARGET_LINK_LIBRARIES(uncertainty_aware_localization_test ${libs})
+
 
 #IF(TESTING)
 #  enable_testing()

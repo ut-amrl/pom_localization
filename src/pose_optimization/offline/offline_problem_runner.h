@@ -67,22 +67,17 @@ namespace offline_optimization {
             if (problem_params.cost_function_params_.movable_obj_observations_enabled_) {
 
                 // Add the map observations
-                std::unordered_map<std::string, std::pair<
-                        std::vector<pose_graph::NegativeMapObjectObservation<MovObjDistributionTranslationDim>>,
-                        std::vector<MapObjectObservationType>>> observations_by_class;
+                std::unordered_map<std::string, std::vector<MapObjectObservationType>> observations_by_class;
                 for (const MapObjectObservationType &map_observation : problem_data.map_object_observations_) {
-                    std::pair<std::vector<pose_graph::NegativeMapObjectObservation<MovObjDistributionTranslationDim>>,
-                            std::vector<MapObjectObservationType>> observations_for_class;
+                    std::vector<MapObjectObservationType> observations_for_class;
                     auto obs_for_class_iter = observations_by_class.find(map_observation.semantic_class_);
                     if (obs_for_class_iter == observations_by_class.end()) {
-                        observations_for_class = std::make_pair(
-                                (std::vector<pose_graph::NegativeMapObjectObservation<MovObjDistributionTranslationDim>>) {},
-                                (std::vector<MapObjectObservationType>) {});
+                        observations_for_class = {};
                     } else {
                         observations_for_class = observations_by_class.at(map_observation.semantic_class_);
                     }
 
-                    observations_for_class.second.emplace_back(map_observation);
+                    observations_for_class.emplace_back(map_observation);
                     observations_by_class[map_observation.semantic_class_] = observations_for_class;
                 }
                 pose_graph->addMapFrameObservations(observations_by_class);

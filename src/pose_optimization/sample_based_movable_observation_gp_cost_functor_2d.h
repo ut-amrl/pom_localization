@@ -26,6 +26,7 @@ namespace pose_optimization {
      * TODO: I'm not sure this will handle detections that have significant pitch or roll (right now, assuming we end
      * up with pretty much only yaw). Might need to revisit the projection logic.
      */
+    template<typename ProbabilityEvaluator>
     struct SampleBasedMovableObservationCostFunctor2D {
 
         /**
@@ -43,10 +44,9 @@ namespace pose_optimization {
 //            observation_transform_.translation() = observation_translation_;
 //            observation_transform_.linear() = observation_orientation_.toRotationMatrix();
 //        }
-
         SampleBasedMovableObservationCostFunctor2D(
-                const std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde,
-                const std::vector<std::pair<Eigen::Vector2d, double>> &observation_samples) :kde_(kde) {
+                const std::shared_ptr<ProbabilityEvaluator> probability_evaluator,
+                const std::vector<std::pair<Eigen::Vector2d, double>> &observation_samples) : probability_evaluator_(probability_evaluator) {
             num_samples_ = observation_samples.size();
             CHECK_GT(num_samples_, 0);
             for (const std::pair<Eigen::Vector2d, double> &observation_sample : observation_samples) {
@@ -82,7 +82,7 @@ namespace pose_optimization {
                 Eigen::Matrix<T, 3, 1> obj_pose_vector;
                 Eigen::Rotation2D<T> obj_rot_world(world_frame_obj_tf.linear());
                 obj_pose_vector << world_frame_obj_tf.translation().x(), world_frame_obj_tf.translation().y(), obj_rot_world.angle();
-                cumulative_probability += kde_->Inference<T>(obj_pose_vector)(0, 0);
+                cumulative_probability += probability_evaluator_->template Inference<T>(obj_pose_vector)(0, 0);
             }
 
             // TODO Do we need to divide by length scale or are we relying on KDE to do that?
@@ -105,7 +105,7 @@ namespace pose_optimization {
          * Gaussian process regressor for evaluating the likelihood of the 2D projection of the object detection in
          * the map frame.
          */
-        std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde_;
+        std::shared_ptr<ProbabilityEvaluator> probability_evaluator_;
 
         /**
          * Affine transforms that provides the sampled object's coordinate frame relative to the robot's coordinate frame.

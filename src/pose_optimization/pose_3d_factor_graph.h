@@ -20,7 +20,6 @@ namespace pose_graph {
     typedef Node<3, Eigen::Quaterniond> Node3d;
     typedef GaussianBinaryFactor<3, Eigen::Quaterniond, 6> GaussianBinaryFactor3d;
     typedef MapObjectObservation<2, double> MapObjectObservation2d;
-    typedef NegativeMapObjectObservation<2> NegativeMapObjectObservation2d;
     typedef MovableObservation<3, Eigen::Quaterniond, 6> MovableObservation3d;
     typedef MovableObservationFactor<3, Eigen::Quaterniond, 6> MovableObservationFactor3d;
 
@@ -129,15 +128,15 @@ namespace pose_graph {
 //            for (const auto &obs_by_class : observations_by_class) {
 //                Eigen::MatrixXf inputs;
 //                if (getMatrixRepresentationOfDetections(obs_by_class.second.second, inputs)) {
-//                    auto kde_iter = movable_object_2d_kdes_by_class_.find(obs_by_class.first);
+//                    auto kde_iter = movable_object_gpcs_by_class_.find(obs_by_class.first);
 //                    std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> kde;
-//                    if (kde_iter != movable_object_2d_kdes_by_class_.end()) {
+//                    if (kde_iter != movable_object_gpcs_by_class_.end()) {
 //                        kde = kde_iter->second;
 //                        kde->appendData(inputs);
 //                    } else {
 //                        kde = std::make_shared<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>>(inputs, &pose_2d_kernel_);
 //                    }
-//                    movable_object_2d_kdes_by_class_[obs_by_class.first] = kde;
+//                    movable_object_gpcs_by_class_[obs_by_class.first] = kde;
 //                }
 //            }
 //        }
@@ -157,9 +156,9 @@ namespace pose_graph {
 ////            return nullptr;
 ////        }
 //
-//        std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> getMovableObjKde(const std::string &class_label) {
-//            auto regressor_iter = movable_object_2d_kdes_by_class_.find(class_label);
-//            if (regressor_iter != movable_object_2d_kdes_by_class_.end()) {
+//        std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> getMovableObjGpc(const std::string &class_label) {
+//            auto regressor_iter = movable_object_gpcs_by_class_.find(class_label);
+//            if (regressor_iter != movable_object_gpcs_by_class_.end()) {
 //                return regressor_iter->second;
 //            }
 //            return nullptr;
@@ -228,7 +227,7 @@ namespace pose_graph {
 //        /**
 //         * Movable object KDEs, by their semantic class.
 //         */
-//        std::unordered_map<std::string, std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>>> movable_object_2d_kdes_by_class_;
+//        std::unordered_map<std::string, std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>>> movable_object_gpcs_by_class_;
 //
 //        /**
 //         * Convert the negative and positive observations to a matrix of inputs and outputs representing the observations.
@@ -316,7 +315,7 @@ namespace pose_graph {
             return new ceres::EigenQuaternionParameterization();
         }
 
-        ceres::CostFunction *createMovableObjectCostFunctor(const std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> &movable_object_kde,
+        ceres::CostFunction *createMovableObjectCostFunctor(const std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> &movable_object_gpc,
                                                             const MovableObservationFactor<3, Eigen::Quaterniond, 6> &factor,
                                                             const pose_optimization::CostFunctionParameters &cost_function_params) const override {
             std::vector<std::pair<Eigen::Vector3d, Eigen::Quaterniond>> observation_samples;
@@ -332,9 +331,9 @@ namespace pose_graph {
                 observation_samples.emplace_back(sample);
             }
 
-            return new ceres::AutoDiffCostFunction<pose_optimization::SampleBasedMovableObservationCostFunctor3D, 1, 3, 4>(
-                    new pose_optimization::SampleBasedMovableObservationCostFunctor3D(
-                            movable_object_kde,
+            return new ceres::AutoDiffCostFunction<pose_optimization::SampleBasedMovableObservationCostFunctor3D<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>, 1, 3, 4>(
+                    new pose_optimization::SampleBasedMovableObservationCostFunctor3D<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
+                            movable_object_gpc,
                             observation_samples));
         }
 
@@ -358,7 +357,7 @@ namespace pose_graph {
                 pose_optimization::AngleLocalParameterization::create, kernel) {
         }
 
-        ceres::CostFunction *createMovableObjectCostFunctor(const std::shared_ptr<gp_regression::KernelDensityEstimator<3, gp_kernel::Pose2dKernel>> &movable_object_kde,
+        ceres::CostFunction *createMovableObjectCostFunctor(const std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> &movable_object_gpc,
                                                             const MovableObservationFactor<2, double, 3> &factor,
                                                             const pose_optimization::CostFunctionParameters &cost_function_params) const override {
             std::vector<std::pair<Eigen::Vector2d, double>> observation_samples;
@@ -376,9 +375,9 @@ namespace pose_graph {
                 observation_samples.emplace_back(sample);
             }
 
-            return new ceres::AutoDiffCostFunction<pose_optimization::SampleBasedMovableObservationCostFunctor2D, 1, 2, 1>(
-                    new pose_optimization::SampleBasedMovableObservationCostFunctor2D(
-                            movable_object_kde,
+            return new ceres::AutoDiffCostFunction<pose_optimization::SampleBasedMovableObservationCostFunctor2D<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>, 1, 2, 1>(
+                    new pose_optimization::SampleBasedMovableObservationCostFunctor2D<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
+                            movable_object_gpc,
                             observation_samples));
         }
 

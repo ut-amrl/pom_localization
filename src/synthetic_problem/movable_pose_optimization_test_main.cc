@@ -23,6 +23,7 @@
 #include <iomanip>
 #include <ctime>
 #include <fstream>
+#include <synthetic_problem/uncertainty_aware/uncertainty_aware_synthetic_problem.h>
 
 using namespace pose;
 
@@ -230,6 +231,19 @@ std::vector<std::pair<Pose2d, unsigned int>> createParkedCarPosesWithFrequency()
     return poses;
 }
 
+synthetic_problem::ObjectPlacementConfiguration<pose::Pose2d, 3> createCarPlacementConfiguration(const Eigen::Vector3d object_pose_variance,
+                                                                                                 const std::vector<std::pair<Pose2d, unsigned int>> &parking_spots_and_frequency) {
+    synthetic_problem::ObjectPlacementConfiguration<pose::Pose2d, 3> obj_placement_config;
+    for (const std::pair<pose::Pose2d, unsigned int> &parking_spot_and_freq : parking_spots_and_frequency) {
+        synthetic_problem::ObjectOccurrenceParams<pose::Pose2d, 3> object_occurrence;
+        object_occurrence.object_pose_variance_ = object_pose_variance;
+        object_occurrence.object_canonical_pose_ = parking_spot_and_freq.first;
+        object_occurrence.relative_frequency_ = parking_spot_and_freq.second;
+        obj_placement_config.obj_placement_config_.emplace_back(object_occurrence);
+    }
+    return obj_placement_config;
+}
+
 std::vector<Eigen::Vector2d> createNegativeObservations() {
     std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> exclude_regions;
     exclude_regions.emplace_back(std::make_pair(Eigen::Vector2d(-9, 0), Eigen::Vector2d(1, 10)));
@@ -290,8 +304,10 @@ std::unordered_map<pose_graph::NodeId, pose::Pose2d> callSyntheticProblem(
     std::unordered_map<std::string, std::vector<pose::Pose2d>> curr_mov_obj_positions_by_class = {{car_class, current_car_poses}};
     return synthetic_prob_runner.runSyntheticProblem(
             ground_truth_trajectory,
-            curr_mov_obj_positions_by_class, //mov_obj_positions_by_class, // TODO make this different
-            past_mov_obj_positions_by_class, //mov_obj_positions_by_class,
+            curr_mov_obj_positions_by_class,
+            {},// TODO make this different
+//            past_mov_obj_positions_by_class, //mov_obj_positions_by_class,
+            {}, // TODO
             noise_config,
             optimization_params);
 }
@@ -535,6 +551,107 @@ void runSyntheticProblemWithConfigVariations(const std::shared_ptr<visualization
 //            const pose_optimization::PoseOptimizationParameters &optimization_params) {
 }
 
+double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::VisualizationManager> &vis_manager,
+                                          const unsigned int &num_prev_trajectories) {
+
+    // Synthetic problem config -------------------------------------------------------------------
+    std::string car_class = "car";
+
+    synthetic_problem::SyntheticProblemNoiseConfig2d noise_config;
+    noise_config.add_additional_initial_noise_ = false;
+    noise_config.odometry_x_std_dev_ = 0.15;
+    noise_config.odometry_y_std_dev_ = 0.15;
+    noise_config.odometry_yaw_std_dev_ = 0.15;
+    noise_config.max_observable_moving_obj_distance_ = 8.0;
+    noise_config.movable_observation_x_std_dev_ = 0.1;
+    noise_config.movable_observation_y_std_dev_ = 0.1;
+    noise_config.movable_observation_yaw_std_dev_ = 0.1;
+
+    pose_optimization::CostFunctionParameters cost_function_params;
+    pose_optimization::PoseOptimizationParameters pose_optimization_params;
+    pose_optimization_params.cost_function_params_ = cost_function_params;
+
+    // TODO consider moving out to some config
+    Eigen::Vector3d trajectory_pose_variance;
+    trajectory_pose_variance(0) = 0.75;
+    trajectory_pose_variance(1) = 0.75;
+    trajectory_pose_variance(2) = 0.75;
+
+    synthetic_problem::ObjectPlacementConfigurationAllClasses<pose::Pose2d, 3> object_configurations_for_all_classes;
+    Eigen::Vector3d obj_occurrence_variance = Eigen::Vector3d(0.16, 0.16, 0.0225);
+    object_configurations_for_all_classes.obj_placement_configs_by_class_[car_class] = createCarPlacementConfiguration(obj_occurrence_variance, createParkedCarPosesWithFrequency());
+
+    std::unordered_map<std::string, std::pair<double, double>> valid_percent_filled_range;
+    valid_percent_filled_range[car_class] = std::make_pair(0.3, 0.8);
+
+    Eigen::Vector3d object_detection_variance_per_detection_len;
+    object_detection_variance_per_detection_len(0) = 0.15;
+    object_detection_variance_per_detection_len(1) = 0.15;
+    object_detection_variance_per_detection_len(2) = 0.25;
+
+    double max_obj_detection_dist = 10.0;
+    synthetic_problem::ScanGenerationParams2d scan_gen_params;
+    scan_gen_params.min_angle_ = -0.75 * M_PI;
+    scan_gen_params.max_angle_ = 0.75 * M_PI;
+    scan_gen_params.max_range_ = 20.0;
+    scan_gen_params.min_range_ = 0.2;
+    scan_gen_params.num_beams_ = 100; // TODO should probably increase this to be more realistic eventually
+
+    std::unordered_map<std::string, pose_optimization::SampleGeneratorParams2d> sample_gen_params_by_class;
+    sample_gen_params_by_class[car_class].num_samples_per_beam_ = 1;
+    sample_gen_params_by_class[car_class].percent_beams_per_scan_ = 0.03;
+    sample_gen_params_by_class[car_class].percent_poses_to_include_ = 1.0;
+
+    util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+
+    // TODO replace with something more complicated once this is working
+    std::vector<pose::Pose2d> ground_truth_trajectory = createGroundTruthPoses();
+
+    // Synthetic problem setup / execution -------------------------------------------------------------------
+    synthetic_problem::SyntheticProblemRunner2d synthetic_prob_runner(vis_manager, true);
+
+    // Make other trajectories to give historical data
+    std::vector<std::vector<pose::Pose2d>> past_trajectories =
+            synthetic_problem::generateSimilarTrajectories(ground_truth_trajectory, trajectory_pose_variance,
+                                                           num_prev_trajectories,random_generator);
+
+    std::vector<std::unordered_map<std::string, std::vector<pose::Pose2d>>> gt_object_placements = synthetic_problem::getObjectInstantiationsFromConfiguration(
+            object_configurations_for_all_classes, num_prev_trajectories + 1, valid_percent_filled_range,
+            random_generator);
+    std::vector<std::unordered_map<std::string, std::vector<pose::Pose2d>>> past_object_placements(gt_object_placements.begin(), gt_object_placements.begin() + num_prev_trajectories);
+
+    std::unordered_map<std::string, std::vector<pose::Pose2d>> object_gt_poses = gt_object_placements.back();
+
+    std::vector<std::vector<std::pair<pose::Pose2d, SensorInfo<pose::Pose2d, 3, sensor_msgs::LaserScan>>>> sensor_info_for_past_trajectories =
+            synthetic_problem::generateSensorInfoForTrajectories<pose::Pose2d, 3, sensor_msgs::LaserScan, synthetic_problem::ScanGenerationParams2d>(
+            past_trajectories, past_object_placements, object_detection_variance_per_detection_len,
+            max_obj_detection_dist, scan_gen_params, random_generator);
+
+    std::function<double(const double&)> pdf_squashing_function = pose_optimization::squashPdfValueToZeroToOneRangeExponential;
+    std::function<double (const pose::Pose2d &,
+            const std::vector<ObjectDetectionRelRobot<pose::Pose2d , 3>> &)> sample_value_generator =
+                    std::bind(&pose_optimization::computeValueForSample<pose::Pose2d, 3>, std::placeholders::_1, std::placeholders::_2, pdf_squashing_function);
+
+    std::unordered_map<std::string, std::vector<std::pair<pose::Pose2d , double>>> samples_for_prev_trajectories = generateSamplesForPastTrajectories(
+            sensor_info_for_past_trajectories, sample_value_generator,
+            sample_gen_params_by_class,
+            random_generator);
+
+    std::unordered_map<std::string, std::vector<std::vector<pose_optimization::ObjectDetectionRelRobot<pose::Pose2d , 3>>>> movable_object_detections =
+            synthetic_problem::generateObjectDetectionsForTrajectory(
+                    ground_truth_trajectory, max_obj_detection_dist, object_gt_poses,
+                    object_detection_variance_per_detection_len, random_generator);
+    std::unordered_map<pose_graph::NodeId, pose::Pose2d> optimization_results =
+            synthetic_prob_runner.runSyntheticProblem(ground_truth_trajectory, object_gt_poses,
+                                                      movable_object_detections, samples_for_prev_trajectories,
+                                                      noise_config, pose_optimization_params);
+    std::unordered_map<pose_graph::NodeId, pose::Pose2d> ground_truth_poses_as_map;
+    for (size_t i = 0; i < ground_truth_trajectory.size(); i++) {
+        ground_truth_poses_as_map[i] = ground_truth_trajectory[i];
+    }
+    return computeATE(ground_truth_poses_as_map, optimization_results);
+}
+
 int main(int argc, char** argv) {
     ros::init(argc, argv,
               "momo_demo_2");
@@ -552,7 +669,8 @@ int main(int argc, char** argv) {
     std::string time_str = oss.str();
     std::string csv_file_name = "results/noise_eval_" + time_str + ".csv";
 
-    LOG(INFO) << runSingleSyntheticProblem(manager);
+    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 4);
+//    LOG(INFO) << runSingleSyntheticProblem(manager);
 //    runSyntheticProblemWithConfigVariations(manager, createParkedCarPosesWithFrequency(), createGroundTruthPoses(),
 //                                            csv_file_name);
 

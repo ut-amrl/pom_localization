@@ -77,7 +77,7 @@ namespace h3d {
 
                     std::pair<Eigen::Vector2d, Eigen::Vector2d> min_max_points_to_display =
                             visualization::VisualizationManager::getMinMaxCornersForDistributionVisualization(poses_global_frame);
-                    vis_manager->displayMaxGpRegressorOutput(pose_graph->getMovableObjKde(car_class), 0.6, // TODO revert
+                    vis_manager->displayMaxGpRegressorOutput(pose_graph->getMovableObjGpc(car_class), 0.6, // TODO revert
                                                              min_max_points_to_display.first.x(),
                                                              min_max_points_to_display.second.x(),
                                                              min_max_points_to_display.first.y(),
@@ -123,7 +123,7 @@ namespace h3d {
 //
 //                std::pair<Eigen::Vector2d, Eigen::Vector2d> min_max_points_to_display =
 //                        visualization::VisualizationManager::getMinMaxCornersForDistributionVisualization(poses_global_frame);
-//                vis_manager->displayMaxGpRegressorOutput(pose_graph->getMovableObjKde(car_class), 0.6, // TODO revert
+//                vis_manager->displayMaxGpRegressorOutput(pose_graph->getMovableObjGpc(car_class), 0.6, // TODO revert
 //                                                         min_max_points_to_display.first.x(),
 //                                                         min_max_points_to_display.second.x(),
 //                                                         min_max_points_to_display.first.y(),

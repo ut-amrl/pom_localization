@@ -70,13 +70,12 @@ namespace pose_optimization {
                     continue;
                 }
 
-//                std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> movable_object_regressor = pose_graph.getMovableObjGpRegressor(factor.observation_.semantic_class_);
-                std::shared_ptr<gp_regression::KernelDensityEstimator<KernelDim, MovObjKernelType>> movable_object_kde =
-                        pose_graph.getMovableObjKde(factor.observation_.semantic_class_);
-                if (movable_object_kde) {
+                std::shared_ptr<gp_regression::GaussianProcessClassifier<KernelDim, MovObjKernelType>> movable_object_gpc =
+                        pose_graph.getMovableObjGpc(factor.observation_.semantic_class_);
+                if (movable_object_gpc) {
 
                     ceres::CostFunction *cost_function =
-                            pose_graph.createMovableObjectCostFunctor(movable_object_kde, factor, cost_function_params);
+                            pose_graph.createMovableObjectCostFunctor(movable_object_gpc, factor, cost_function_params);
 
                     std::pair<double*, double*> raw_pointers_for_node_data = pose_graph.getPointersToUnderlyingData(pose_vars_);
 
