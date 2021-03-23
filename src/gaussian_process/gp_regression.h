@@ -64,6 +64,7 @@ namespace gp_regression {
 
         void refreshInvGramMatrix() {
 
+            LOG(INFO) << "Creating gram matrix";
             // Create the K matrix.
             Eigen::MatrixXf gram_matrix(num_datapoints_, num_datapoints_);
 
@@ -77,7 +78,9 @@ namespace gp_regression {
                     gram_matrix(row, col) = kernel_->evaluateKernel(input_sample_i, input_sample_j);
                 }
             }
+            LOG(INFO) << "Inverting matrix ";
             inv_gram_matrix_ = gram_matrix.inverse();
+            LOG(INFO) << "Done inverting matrix";
         }
 
         /**

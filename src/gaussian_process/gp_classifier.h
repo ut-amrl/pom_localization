@@ -38,9 +38,16 @@ namespace gp_regression {
             CHECK_EQ(outputs.rows(), 1);
             CHECK_EQ(inputs.cols(), outputs.cols());
             output_data_transformed_ = Eigen::MatrixXf(outputs.rows(), outputs.cols());
+//            LOG(INFO) << "Outputs " << outputs;
             transformZeroToOneOutputsToRealRange(outputs, output_data_transformed_);
+//            LOG(INFO) << "Transformed outputs " << output_data_transformed_;
+            for (int i = 0; i < outputs.cols(); i++) {
+                LOG(INFO) << "Original, transformed " << outputs(0, i) << ", " << output_data_transformed_(0, i);
+            }
 
+            LOG(INFO) << "Creating regressor";
             gp_regressor_  = std::make_shared<GaussianProcessRegression<N, 1, Kernel>>(inputs, output_data_transformed_, kernel);
+            LOG(INFO) << "Done creating regressor";
         }
 
         void appendData(const Eigen::MatrixXf &new_inputs, const Eigen::MatrixXf &new_outputs) {
@@ -79,9 +86,12 @@ namespace gp_regression {
         Eigen::Matrix<T, 1, Eigen::Dynamic> Inference(const Eigen::Matrix<T, N, Eigen::Dynamic>& x) {
 
             std::pair<Eigen::Matrix<T, 1, Eigen::Dynamic>, Eigen::Matrix<T, 1, Eigen::Dynamic>> regressor_out = gp_regressor_->Inference(x);
+//            LOG(INFO) << "Regressor out mean " << regressor_out.first;
+//            LOG(INFO) << "Regressor out variance " << regressor_out.second;
 
             Eigen::Matrix<T, 1, Eigen::Dynamic> classification_output = Eigen::Matrix<T, 1, Eigen::Dynamic>(1, x.cols());
             sigmoidNormalConvolution(regressor_out.first, regressor_out.second, classification_output);
+//            LOG(INFO) << "Classification output " << classification_output;
 
             return classification_output;
         }

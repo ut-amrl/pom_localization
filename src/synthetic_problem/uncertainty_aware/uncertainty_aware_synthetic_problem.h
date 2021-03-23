@@ -86,8 +86,10 @@ namespace synthetic_problem {
             }
         }
 
+        LOG(INFO) << "Number of spots: " << object_configuration.obj_placement_config_.size();
         std::vector<PoseType> result_poses;
         unsigned int num_filled_spots = ((double) object_configuration.obj_placement_config_.size()) * percent_spots_filled;
+        LOG(INFO) << "Number of spots to fill " << num_filled_spots;
         for (unsigned int i = 0; i < num_filled_spots; i++) {
             size_t filled_spot_list_index = std::rand() % open_spots_scaled_by_likelihood.size();
             size_t spot_index = open_spots_scaled_by_likelihood[filled_spot_list_index];
@@ -114,28 +116,36 @@ namespace synthetic_problem {
             std::unordered_map<std::string, std::pair<double, double>> &valid_percent_filled_range,
             util_random::Random &random_generator) {
 
+        for (const auto &entry : object_configuration.obj_placement_configs_by_class_) {
+            LOG(INFO) << "(In helper) Config size for class " << entry.first << ": " << entry.second.obj_placement_config_.size();
+        }
+
         std::vector<std::unordered_map<std::string, std::vector<PoseType>>> instantiated_object_poses;
         for (unsigned int i = 0; i < num_configurations; i++) {
+            LOG(INFO) << "Creating object config " << i;
             std::unordered_map<std::string, std::vector<PoseType>> poses_for_config_i;
             for (const auto &obj_config_and_class : object_configuration.obj_placement_configs_by_class_) {
                 std::string obj_class = obj_config_and_class.first;
-                ObjectPlacementConfiguration<PoseType, PoseParamCount> placement_config;
+                ObjectPlacementConfiguration<PoseType, PoseParamCount> placement_config = obj_config_and_class.second;
 
                 std::pair<double, double> valid_percent_filled_range_for_class = std::make_pair(0, 1);
                 if (valid_percent_filled_range.find(obj_class) != valid_percent_filled_range.end()) {
                     std::pair<double, double> retrieved_range = valid_percent_filled_range.at(obj_class);
                     valid_percent_filled_range_for_class.first =
                             std::max(valid_percent_filled_range_for_class.first, retrieved_range.first);
-                    valid_percent_filled_range_for_class.first =
+                    valid_percent_filled_range_for_class.second =
                             std::max(valid_percent_filled_range_for_class.first,
                                      std::min(valid_percent_filled_range_for_class.second, retrieved_range.second));
                 }
 
+                LOG(INFO) << "Valid percent filled range " << valid_percent_filled_range_for_class.first << ", " << valid_percent_filled_range_for_class.second;
                 double percent_filled = random_generator.UniformRandom(
                         valid_percent_filled_range_for_class.first, valid_percent_filled_range_for_class.second);
 
+                LOG(INFO) << "Percent filled " << percent_filled;
                 poses_for_config_i[obj_class] =
                         getObjectInstantiationsFromConfiguration(placement_config, percent_filled, random_generator);
+                LOG(INFO) << "Poses count for class  " << obj_class << ": " << poses_for_config_i[obj_class].size();
 
             }
             instantiated_object_poses.emplace_back(poses_for_config_i);

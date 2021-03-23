@@ -15,6 +15,10 @@
 
 namespace pose_optimization {
 
+    double kMinProbRange = 1e-2;
+    double kMaxProbRange = 1.0 - kMinProbRange;
+    double kLimitedProbRange = kMaxProbRange - kMinProbRange;
+
     template<typename PoseType, int PoseParamCount>
     struct ObjectDetectionRelRobot {
         PoseType pose_;
@@ -53,7 +57,9 @@ namespace pose_optimization {
         size_t iterated_beam_count = 0;
         size_t included_beam_count = 0;
         std::vector<pose::Pose2d> samples;
-        while (!first_beam || (next_beam != start_beam)) {
+//        LOG(INFO) << "Adding off-detection samples ";
+        while (first_beam || (next_beam != start_beam)) {
+//            LOG(INFO) << "In loop";
             if ((first_beam) || (((double) included_beam_count / iterated_beam_count) < sample_gen_params.percent_beams_per_scan_)) {
                 included_beam_count++;
                 double angle_to_point = laser_scan.angle_min + (next_beam * laser_scan.angle_increment);
@@ -65,6 +71,7 @@ namespace pose_optimization {
                     pose::Pose2d sample_pose = pose::createPose2d(sample_range * cos(angle_to_point),
                                                                   sample_range * sin(angle_to_point),
                                                                   random_angle);
+//                    LOG(INFO) << "Adding pose based sample at " << sample_pose.first.x() << ", " << sample_pose.first.y() << ", " << sample_pose.second;
                     samples.emplace_back(sample_pose);
                 }
                 next_beam++;
@@ -98,7 +105,12 @@ namespace pose_optimization {
 
     double squashPdfValueToZeroToOneRangeExponential(const double &pdf_value) {
         // TODO consider having additional scaling to the pdf value
-        return 1 - exp(-1 * pdf_value);
+        // TODO need less hacky way to keep this from going to infinity when scaled to real value range
+        // Using this for now so we can debug other nan/inf issues and remove this as the source of the problem
+        double pre_range_limited = (1 - exp(-1 * pdf_value));
+        double post_range_limited = kMinProbRange + pre_range_limited * kLimitedProbRange;
+        LOG(INFO) << "Range, Pre-range, post limited value " << kLimitedProbRange << ", " << pre_range_limited << ", " << post_range_limited;
+        return post_range_limited;
     }
 
     double squashPdfValueToZeroToOneRangeATan(const double &pdf_value) {
