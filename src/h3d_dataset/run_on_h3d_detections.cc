@@ -35,7 +35,7 @@ namespace h3d {
         gp_kernel::PeriodicGaussianKernel<1> orientation_kernel(M_PI * 2, cost_function_params.orientation_kernel_var_,
                                                                 cost_function_params.orientation_kernel_len_);
         gp_kernel::Pose2dKernel pose_2d_kernel(position_kernel, orientation_kernel);
-        return std::make_shared<pose_graph::PoseGraph2dMovObjDistribution2d>(pose_2d_kernel);
+        return std::make_shared<pose_graph::PoseGraph2dMovObjDistribution2d>((std::unordered_map<std::string, double>){}, 0.05, pose_2d_kernel);
     }
 
     ceres::IterationCallback* createCeresIterationCallback(

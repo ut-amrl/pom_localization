@@ -96,7 +96,8 @@ namespace pose_optimization {
                                                       const ScanType &scan,
                                                       const SampleGenParamsType &sample_gen_params,
                                                       util_random::Random &rand_gen) {
-        std::vector<pose::Pose2d> sample_poses = getSamplePosesFromScanData(scan, sample_gen_params, rand_gen);
+//        std::vector<pose::Pose2d> sample_poses = getSamplePosesFromScanData(scan, sample_gen_params, rand_gen);
+        std::vector<pose::Pose2d> sample_poses;
         for (const ObjectDetectionRelRobot<PoseType, PoseParamCount> &object_detection : detected_objects) {
             sample_poses.emplace_back(object_detection.pose_);
         }
@@ -109,7 +110,7 @@ namespace pose_optimization {
         // Using this for now so we can debug other nan/inf issues and remove this as the source of the problem
         double pre_range_limited = (1 - exp(-1 * pdf_value));
         double post_range_limited = kMinProbRange + pre_range_limited * kLimitedProbRange;
-        LOG(INFO) << "Range, Pre-range, post limited value " << kLimitedProbRange << ", " << pre_range_limited << ", " << post_range_limited;
+//        LOG(INFO) << "Range, Pre-range, post limited value " << kLimitedProbRange << ", " << pre_range_limited << ", " << post_range_limited;
         return post_range_limited;
     }
 
@@ -171,6 +172,10 @@ namespace pose_optimization {
         for (const PoseType &sample_pose : sample_poses_rel_robot) {
             samples_and_value_rel_map.emplace_back(std::make_pair(pose::combinePoses(robot_pose, sample_pose),
                     sample_value_generator(sample_pose, object_detections)));
+            std::pair<pose::Pose2d, double> last_value = samples_and_value_rel_map.back();
+            if (last_value.second> 0.5) {
+                LOG(INFO) << "Object detection global frame " << last_value.first.first.x() << ", " << last_value.first.first.y() << ", " << last_value.first.second;
+            }
         }
         return samples_and_value_rel_map;
     }

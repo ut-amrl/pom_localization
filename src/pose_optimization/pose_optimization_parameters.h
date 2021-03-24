@@ -37,6 +37,9 @@ namespace pose_optimization {
         float position_kernel_var_ = 1;
         float orientation_kernel_len_ = 0.1;
         float orientation_kernel_var_ = 1;
+
+        std::unordered_map<std::string, double> obj_probability_prior_mean_by_class_;
+        double default_obj_probability_prior_mean_ = 0.05;
     };
 
     /**

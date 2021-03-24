@@ -32,11 +32,17 @@ namespace gp_regression {
         explicit GaussianProcessRegression(
                 const Eigen::MatrixXf& inputs,
                 const Eigen::MatrixXf& outputs,
-                Kernel* kernel) : num_datapoints_(inputs.cols()), inputs_(inputs), kernel_(kernel) {
+                const double &prior_mean,
+                Kernel* kernel) : num_datapoints_(inputs.cols()), inputs_(inputs), kernel_(kernel), prior_mean_(prior_mean) {
             CHECK_EQ(inputs.rows(), N);
             CHECK_EQ(outputs.rows(), M);
             CHECK_EQ(inputs.cols(), outputs.cols());
             outputs_transp_ = outputs.transpose();
+
+            prior_mean_mat_ = Eigen::MatrixXf(1, 1);
+            prior_mean_mat_ << prior_mean;
+
+            mean_adjusted_outputs_transp_ = (outputs_transp_.array() - prior_mean).matrix();
 
             refreshInvGramMatrix();
         }
@@ -59,6 +65,8 @@ namespace gp_regression {
             inputs_.rightCols(additional_count) = new_inputs;
 //            inputs_.block(0, prev_size + 1, N, new_size) = new_inputs;
             num_datapoints_ = new_size;
+
+            mean_adjusted_outputs_transp_ = (outputs_transp_.array() - prior_mean_).matrix();
             refreshInvGramMatrix();
         }
 
@@ -78,9 +86,24 @@ namespace gp_regression {
                     gram_matrix(row, col) = kernel_->evaluateKernel(input_sample_i, input_sample_j);
                 }
             }
+            Eigen::MatrixXf self_var_mat = 0.2 * Eigen::MatrixXf::Identity(gram_matrix.rows(), gram_matrix.cols());
+
+            gram_matrix = gram_matrix + self_var_mat;
+
+            LOG(INFO) << "Inputs " << inputs_;
+            LOG(INFO) << "Outputs " << mean_adjusted_outputs_transp_;
+            LOG(INFO) << "Gram matrix (not inverted)";
+            LOG(INFO) << gram_matrix;
             LOG(INFO) << "Inverting matrix ";
             inv_gram_matrix_ = gram_matrix.inverse();
             LOG(INFO) << "Done inverting matrix";
+
+            LOG(INFO) << inv_gram_matrix_;
+            LOG(INFO) << "Testing inversion";
+            Eigen::MatrixXf matrix_times_inv = gram_matrix * inv_gram_matrix_;
+            LOG(INFO) << "Gram matrix determinant " << gram_matrix.determinant();
+            LOG(INFO) << matrix_times_inv;
+            LOG(INFO) << "Diag entry " << matrix_times_inv(matrix_times_inv.rows() - 1, matrix_times_inv.cols() - 1);
         }
 
         /**
@@ -113,17 +136,26 @@ namespace gp_regression {
                 input_variance(j, 1) = kernel_->evaluateKernel(eval_input, eval_input);
             }
 
+//            LOG(INFO) << "Input variance " << input_variance;
+
             Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> kernel_times_inv_gram = k_x_transp * inv_gram_matrix_.cast<T>();
 
-            Eigen::Matrix<T, Eigen::Dynamic, M> mu_star_transp = kernel_times_inv_gram * outputs_transp_.cast<T>();
+            Eigen::Matrix<T, Eigen::Dynamic, M> mu_star_transp = prior_mean_mat_.cast<T>() + kernel_times_inv_gram * mean_adjusted_outputs_transp_.cast<T>();
 
             // Compute variance: k_xx + K_x^T * K_d^-1 * K_x
-            Eigen::Matrix<T, Eigen::Dynamic, 1> variance_column_vec = input_variance + ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
+//            Eigen::Matrix<T, Eigen::Dynamic, 1> variance_column_vec = input_variance + ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
+            // TODO!!!! Need to add self-variance back in -- currently causing NaNs
+            Eigen::Matrix<T, Eigen::Dynamic, 1> variance_column_vec =  ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
+//            LOG(INFO) << "Non-self-variance " << ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
+//            LOG(INFO) << "Variance col vec " << variance_column_vec;
 
             return std::make_pair(mu_star_transp.transpose(), variance_column_vec.transpose());
         }
 
     private:
+
+
+        Eigen::MatrixXf prior_mean_mat_;
 
         /**
          * Number of input/output pairs that the GP was trained on.
@@ -141,9 +173,19 @@ namespace gp_regression {
         Eigen::MatrixXf outputs_transp_;
 
         /**
+         * Transpose of the output data (observations at the input points).
+         */
+        Eigen::MatrixXf mean_adjusted_outputs_transp_;
+
+        /**
          * Kernel for evaluating the difference between two points.
          */
         Kernel* kernel_;
+
+        /**
+         * Prior mean.
+         */
+        double prior_mean_;
 
         /**
          * Inverse of the gram matrix (kernel values for each pair of inputs).

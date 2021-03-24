@@ -60,16 +60,16 @@ std::vector<Pose2d> createGroundTruthPoses() {
     poses.emplace_back(createPose2d(4, 18, 0));
     poses.emplace_back(createPose2d(7, 18, 0));
     // TODO uncomment
-//    poses.emplace_back(createPose2d(10, 17.5, 0));
-//    poses.emplace_back(createPose2d(12, 15, -M_PI_4));
-//    poses.emplace_back(createPose2d(12, 12, -M_PI_2));
-//    poses.emplace_back(createPose2d(11.5, 9, -M_PI_2));
-//    poses.emplace_back(createPose2d(11.7, 6, -M_PI_2));
-//    poses.emplace_back(createPose2d(11.3, 3, -M_PI_2));
-//    poses.emplace_back(createPose2d(11, -1, -(M_PI_2 + M_PI_4)));
-//    poses.emplace_back(createPose2d(9, -0.0, M_PI));
-//    poses.emplace_back(createPose2d(6, -0.9, M_PI));
-//    poses.emplace_back(createPose2d(3, -0.7, M_PI));
+    poses.emplace_back(createPose2d(10, 17.5, 0));
+    poses.emplace_back(createPose2d(12, 15, -M_PI_4));
+    poses.emplace_back(createPose2d(12, 12, -M_PI_2));
+    poses.emplace_back(createPose2d(11.5, 9, -M_PI_2));
+    poses.emplace_back(createPose2d(11.7, 6, -M_PI_2));
+    poses.emplace_back(createPose2d(11.3, 3, -M_PI_2));
+    poses.emplace_back(createPose2d(11, -1, -(M_PI_2 + M_PI_4)));
+    poses.emplace_back(createPose2d(9, -0.0, M_PI));
+    poses.emplace_back(createPose2d(6, -0.9, M_PI));
+    poses.emplace_back(createPose2d(3, -0.7, M_PI));
 
 //    poses.emplace_back(createPose2d(0, 0, 0)); // Should test how this deals with non-zero-origins?
 //    poses.emplace_back(createPose2d(0.1, 1, 0));
@@ -216,20 +216,20 @@ std::vector<Pose2d> createParkedCarPoses() {
 
 std::vector<std::pair<Pose2d, unsigned int>> createParkedCarPosesWithFrequency() {
     std::vector<std::pair<Pose2d, unsigned int>> poses;
-    // TODO uncomment
-//    poses.emplace_back(std::make_pair(createPose2d(-3, 2, -(M_PI * 5.0/6.0)), 10));
-//    poses.emplace_back(std::make_pair(createPose2d(-3, 4, -(M_PI * 5.0/6.0)), 1));
-//    poses.emplace_back(std::make_pair(createPose2d(-7, 6, -(M_PI / 6.0)), 2));
+//     TODO uncomment
+    poses.emplace_back(std::make_pair(createPose2d(-3, 2, -(M_PI * 5.0/6.0)), 10));
+    poses.emplace_back(std::make_pair(createPose2d(-3, 4, -(M_PI * 5.0/6.0)), 1));
+    poses.emplace_back(std::make_pair(createPose2d(-7, 6, -(M_PI / 6.0)), 2));
 
     poses.emplace_back(std::make_pair(createPose2d(3, 2, -(M_PI /6.0)), 1));
-//    poses.emplace_back(std::make_pair(createPose2d(3, 6, -(M_PI /6.0)), 3));
-//    poses.emplace_back(std::make_pair(createPose2d(3, 8, -(M_PI /6.0)), 2));
-//    poses.emplace_back(std::make_pair(createPose2d(3, 14, -(M_PI /6.0)), 1));
-//
-//    poses.emplace_back(std::make_pair(createPose2d(7, 12, -(M_PI * 5.0 /6.0)), 3));
-//    poses.emplace_back(std::make_pair(createPose2d(7, 10, -(M_PI * 5.0/6.0)), 1));
-//    poses.emplace_back(std::make_pair(createPose2d(7, 6, -(M_PI * 5.0 /6.0)), 2));
-//    poses.emplace_back(std::make_pair(createPose2d(7, 2, -(M_PI * 5.0 /6.0)), 2));
+    poses.emplace_back(std::make_pair(createPose2d(3, 6, -(M_PI /6.0)), 3));
+    poses.emplace_back(std::make_pair(createPose2d(3, 8, -(M_PI /6.0)), 2));
+    poses.emplace_back(std::make_pair(createPose2d(3, 14, -(M_PI /6.0)), 1));
+
+    poses.emplace_back(std::make_pair(createPose2d(7, 12, -(M_PI * 5.0 /6.0)), 3));
+    poses.emplace_back(std::make_pair(createPose2d(7, 10, -(M_PI * 5.0/6.0)), 1));
+    poses.emplace_back(std::make_pair(createPose2d(7, 6, -(M_PI * 5.0 /6.0)), 2));
+    poses.emplace_back(std::make_pair(createPose2d(7, 2, -(M_PI * 5.0 /6.0)), 2));
     return poses;
 }
 
@@ -570,6 +570,8 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     noise_config.movable_observation_yaw_std_dev_ = 0.1;
 
     pose_optimization::CostFunctionParameters cost_function_params;
+    cost_function_params.position_kernel_len_ = 0.4;
+    cost_function_params.orientation_kernel_len_ = 100;
     pose_optimization::PoseOptimizationParameters pose_optimization_params;
     pose_optimization_params.cost_function_params_ = cost_function_params;
 
@@ -580,7 +582,7 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     trajectory_pose_variance(2) = 0.75;
 
     synthetic_problem::ObjectPlacementConfigurationAllClasses<pose::Pose2d, 3> object_configurations_for_all_classes;
-    Eigen::Vector3d obj_occurrence_variance = Eigen::Vector3d(0.16, 0.16, 0.0225);
+    Eigen::Vector3d obj_occurrence_variance = Eigen::Vector3d(0.00005, 0.00005, 0.00005);
     object_configurations_for_all_classes.obj_placement_configs_by_class_[car_class] = createCarPlacementConfiguration(obj_occurrence_variance, createParkedCarPosesWithFrequency());
 
     for (const auto &entry : object_configurations_for_all_classes.obj_placement_configs_by_class_) {
@@ -601,14 +603,15 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     synthetic_problem::ScanGenerationParams2d scan_gen_params;
     scan_gen_params.min_angle_ = -0.75 * M_PI;
     scan_gen_params.max_angle_ = 0.75 * M_PI;
-    scan_gen_params.max_range_ = 20.0;
+//    scan_gen_params.max_range_ = 20.0;
+    scan_gen_params.max_range_ = 5.0;
     scan_gen_params.min_range_ = 0.2;
     scan_gen_params.num_beams_ = 100; // TODO should probably increase this to be more realistic eventually
 
     std::unordered_map<std::string, pose_optimization::SampleGeneratorParams2d> sample_gen_params_by_class;
     sample_gen_params_by_class[car_class].num_samples_per_beam_ = 1;
     // TODO increase this
-    sample_gen_params_by_class[car_class].percent_beams_per_scan_ = 0.0005;
+    sample_gen_params_by_class[car_class].percent_beams_per_scan_ = 0.01;
     sample_gen_params_by_class[car_class].percent_poses_to_include_ = 1.0;
 
     util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
@@ -627,7 +630,14 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     std::vector<std::unordered_map<std::string, std::vector<pose::Pose2d>>> gt_object_placements = synthetic_problem::getObjectInstantiationsFromConfiguration(
             object_configurations_for_all_classes, num_prev_trajectories + 1, valid_percent_filled_range,
             random_generator);
+
+    LOG(INFO) << "Past placements ";
     std::vector<std::unordered_map<std::string, std::vector<pose::Pose2d>>> past_object_placements(gt_object_placements.begin(), gt_object_placements.begin() + num_prev_trajectories);
+    for (const std::unordered_map<std::string, std::vector<pose::Pose2d>> &past_objs : past_object_placements) {
+        for (const pose::Pose2d &pose : past_objs.at(car_class)) {
+            LOG(INFO) << pose.first.x() << ", " << pose.first.y() << ", " << pose.second;
+        }
+    }
 
     std::unordered_map<std::string, std::vector<pose::Pose2d>> object_gt_poses = gt_object_placements.back();
     LOG(INFO) << "Object gt pose size: " << object_gt_poses[car_class].size();
@@ -679,7 +689,7 @@ int main(int argc, char** argv) {
     std::string time_str = oss.str();
     std::string csv_file_name = "results/noise_eval_" + time_str + ".csv";
 
-    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 4);
+    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 10);
 //    LOG(INFO) << runSingleSyntheticProblem(manager);
 //    runSyntheticProblemWithConfigVariations(manager, createParkedCarPosesWithFrequency(), createGroundTruthPoses(),
 //                                            csv_file_name);

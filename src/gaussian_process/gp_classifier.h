@@ -33,11 +33,17 @@ namespace gp_regression {
         explicit GaussianProcessClassifier(
                 const Eigen::MatrixXf& inputs,
                 const Eigen::MatrixXf& outputs,
+                const double &prior_mean,
                 Kernel* kernel) : num_datapoints_(inputs.cols()), inputs_(inputs), outputs_(outputs) {
             CHECK_EQ(inputs.rows(), N);
             CHECK_EQ(outputs.rows(), 1);
             CHECK_EQ(inputs.cols(), outputs.cols());
             output_data_transformed_ = Eigen::MatrixXf(outputs.rows(), outputs.cols());
+            Eigen::MatrixXf mean_vec = Eigen::MatrixXf(1, 1);
+            mean_vec << prior_mean;
+            Eigen::MatrixXf transformed_mean_vec = Eigen::MatrixXf(1, 1);
+            transformZeroToOneOutputsToRealRange(mean_vec, transformed_mean_vec);
+            double transformed_prior_mean = transformed_mean_vec(0);
 //            LOG(INFO) << "Outputs " << outputs;
             transformZeroToOneOutputsToRealRange(outputs, output_data_transformed_);
 //            LOG(INFO) << "Transformed outputs " << output_data_transformed_;
@@ -46,7 +52,7 @@ namespace gp_regression {
             }
 
             LOG(INFO) << "Creating regressor";
-            gp_regressor_  = std::make_shared<GaussianProcessRegression<N, 1, Kernel>>(inputs, output_data_transformed_, kernel);
+            gp_regressor_  = std::make_shared<GaussianProcessRegression<N, 1, Kernel>>(inputs, output_data_transformed_, transformed_prior_mean, kernel);
             LOG(INFO) << "Done creating regressor";
         }
 
@@ -143,10 +149,11 @@ namespace gp_regression {
                                       Eigen::Matrix<T, 1, Eigen::Dynamic> &sigmoid_approx) {
 
             // mean / sqrt(1 + (pi/8) * variance)
-            Eigen::Array<T, 1, Eigen::Dynamic> sigmoid_input = (mean.array()) / ((((variance.array()) * T(M_PI / 8)) + T(1)).sqrt());
+//            Eigen::Array<T, 1, Eigen::Dynamic> sigmoid_input = (mean.array()) / ((((variance.array()) * T(M_PI / 8)) + T(1)).sqrt());
 
             // 1 / (1 + e^(-x))
-            sigmoid_approx = ((T(1) + ((T(-1) * sigmoid_input).exp())).inverse()).matrix();
+//            sigmoid_approx = ((T(1) + ((T(-1) * sigmoid_input).exp())).inverse()).matrix();
+            sigmoid_approx = ((T(1) + ((T(-1) * mean.array()).exp())).inverse()).matrix();
         }
     };
 } // end gp_regression

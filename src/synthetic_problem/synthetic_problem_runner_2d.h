@@ -32,7 +32,9 @@ namespace synthetic_problem {
             gp_kernel::PeriodicGaussianKernel<1> orientation_kernel(M_PI * 2, cost_function_params.orientation_kernel_var_,
                                                                     cost_function_params.orientation_kernel_len_);
             gp_kernel::Pose2dKernel pose_2d_kernel(position_kernel, orientation_kernel);
-            return std::make_shared<pose_graph::PoseGraph2dMovObjDistribution2d>(pose_2d_kernel);
+            return std::make_shared<pose_graph::PoseGraph2dMovObjDistribution2d>(
+                    cost_function_params.obj_probability_prior_mean_by_class_,
+                    cost_function_params.default_obj_probability_prior_mean_, pose_2d_kernel);
         }
 
         void runOptimizationVisualization(

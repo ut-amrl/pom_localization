@@ -240,7 +240,9 @@ namespace visualization {
                     if (inf_val > 1) {
                         LOG(INFO) << "Inf val " << inf_val;
                     }
-                    int8_t value = (int8_t) (100) * ((inf_val - min_value) / (max_value - min_value));
+//                    int8_t value = (int8_t) (100) * ((inf_val - min_value) / (max_value - min_value));
+
+                    int8_t value = (int8_t) 100 * inf_val;
                     if (value > best_val) {
                         best_val = value;
                     }
