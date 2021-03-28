@@ -74,14 +74,18 @@ namespace pose_optimization {
 //                    LOG(INFO) << "Adding pose based sample at " << sample_pose.first.x() << ", " << sample_pose.first.y() << ", " << sample_pose.second;
                     samples.emplace_back(sample_pose);
                 }
-                next_beam++;
-                if (next_beam >= laser_scan.ranges.size()) {
-                    next_beam = 0;
-                }
+            }
+//            } else {
+//                LOG(INFO) << "Skipping ray";
+//            }
+            next_beam++;
+            if (next_beam >= laser_scan.ranges.size()) {
+                next_beam = 0;
             }
             first_beam = false;
             iterated_beam_count++;
         }
+        LOG(INFO) << "Num samples for scan " << samples.size();
         return samples;
     }
 
@@ -96,8 +100,8 @@ namespace pose_optimization {
                                                       const ScanType &scan,
                                                       const SampleGenParamsType &sample_gen_params,
                                                       util_random::Random &rand_gen) {
-//        std::vector<pose::Pose2d> sample_poses = getSamplePosesFromScanData(scan, sample_gen_params, rand_gen);
-        std::vector<pose::Pose2d> sample_poses;
+        std::vector<pose::Pose2d> sample_poses = getSamplePosesFromScanData(scan, sample_gen_params, rand_gen);
+//        std::vector<pose::Pose2d> sample_poses;
         for (const ObjectDetectionRelRobot<PoseType, PoseParamCount> &object_detection : detected_objects) {
             sample_poses.emplace_back(object_detection.pose_);
         }
@@ -123,12 +127,12 @@ namespace pose_optimization {
         // TODO should we instead have a translation component that is normally distributed and a rotation component and just use the distance for each?
         // Assuming since each dimension is independent, that we can just evaluated the gaussian for each dim, and then multiply
         double prob = statistics::ProbabilityDensityGaussian(sample_pose.first.x(), obj_pose.pose_.first.x(),
-                                                               sqrt(obj_pose.object_pose_variance_(0)));
+                                                               3 * sqrt(obj_pose.object_pose_variance_(0)));
         prob *= statistics::ProbabilityDensityGaussian(sample_pose.first.y(), obj_pose.pose_.first.y(),
-                                                               sqrt(obj_pose.object_pose_variance_(1)));
+                                                               3 * sqrt(obj_pose.object_pose_variance_(1)));
         // Have to handle this one more carefully since it is periodic... TODO not sure if doing this right (maybe look at von Mises distribution?)
         double yaw_diff = math_util::AngleDiff(obj_pose.pose_.second, sample_pose.second);
-        prob *= statistics::ProbabilityDensityGaussian(yaw_diff, (double) 0, sqrt(obj_pose.object_pose_variance_(2)));
+        prob *= statistics::ProbabilityDensityGaussian(yaw_diff, (double) 0, 3 * sqrt(obj_pose.object_pose_variance_(2)));
         return prob;
     }
 

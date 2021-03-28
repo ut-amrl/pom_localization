@@ -34,6 +34,7 @@ namespace gp_regression {
                 const Eigen::MatrixXf& inputs,
                 const Eigen::MatrixXf& outputs,
                 const double &prior_mean,
+                const double &identity_noise,
                 Kernel* kernel) : num_datapoints_(inputs.cols()), inputs_(inputs), outputs_(outputs) {
             CHECK_EQ(inputs.rows(), N);
             CHECK_EQ(outputs.rows(), 1);
@@ -52,7 +53,7 @@ namespace gp_regression {
             }
 
             LOG(INFO) << "Creating regressor";
-            gp_regressor_  = std::make_shared<GaussianProcessRegression<N, 1, Kernel>>(inputs, output_data_transformed_, transformed_prior_mean, kernel);
+            gp_regressor_  = std::make_shared<GaussianProcessRegression<N, 1, Kernel>>(inputs, output_data_transformed_, transformed_prior_mean, identity_noise, kernel);
             LOG(INFO) << "Done creating regressor";
         }
 

@@ -463,6 +463,64 @@ namespace visualization {
                                                 kObservedFromGtCarDetectionsMin, kObservedFromGtCarDetectionsMax);
         }
 
+        void displayPastSampleValues(const std::string &obj_class, const std::vector<std::pair<pose::Pose2d, double>> &sample_poses_and_values) {
+            ros::Publisher publisher;
+            getOrCreatePublisherForSamples(obj_class, publisher);
+
+            visualization_msgs::Marker marker_msg;
+            marker_msg.type = visualization_msgs::Marker::Type::TRIANGLE_LIST;
+
+            geometry_msgs::Point triangle_corner_1;
+            triangle_corner_1.x = -0.05;
+            triangle_corner_1.y = -0.05;
+            geometry_msgs::Point triangle_corner_2;
+            triangle_corner_2.x = -0.05;
+            triangle_corner_2.y = 0.05;
+            geometry_msgs::Point triangle_corner_3;
+            triangle_corner_3.x = 0.1;
+
+            for (size_t i = 0; i < sample_poses_and_values.size(); i++) {
+                std::pair<pose::Pose2d, double> pose_and_value = sample_poses_and_values.at(i);
+                std_msgs::ColorRGBA color;
+                color.a = 1.0;
+                color.b = 1.0 - pose_and_value.second;
+                color.r = pose_and_value.second;
+                Eigen::Vector2d sample_position = pose_and_value.first.first;
+                double sample_orientation = pose_and_value.first.second;
+                double sin_orientation = sin(sample_orientation);
+                double cos_orientation = cos(sample_orientation);
+                geometry_msgs::Point p1;
+                p1.x = sample_position.x() + (triangle_corner_1.x * cos_orientation) - (sin_orientation * triangle_corner_1.y);
+                p1.y = sample_position.y() + (triangle_corner_1.x * sin_orientation) + (triangle_corner_1.y * cos_orientation);
+
+                geometry_msgs::Point p2;
+                p2.x = sample_position.x() + (triangle_corner_2.x * cos_orientation) - (triangle_corner_2.y * sin_orientation);
+                p2.y = sample_position.y() + (triangle_corner_2.x * sin_orientation) + (triangle_corner_2.y * cos_orientation);
+
+                geometry_msgs::Point p3;
+                p3.x = sample_position.x() + (triangle_corner_3.x * cos_orientation) - (triangle_corner_3.y * sin_orientation);
+                p3.y = sample_position.y() + (triangle_corner_3.x * sin_orientation) + (triangle_corner_3.y * cos_orientation);
+
+                for (int j = 0; j < 6; j++) {
+                    marker_msg.colors.emplace_back(color);
+                }
+                marker_msg.points.emplace_back(p1);
+                marker_msg.points.emplace_back(p2);
+                marker_msg.points.emplace_back(p3);
+                marker_msg.points.emplace_back(p1);
+                marker_msg.points.emplace_back(p3);
+                marker_msg.points.emplace_back(p2);
+            }
+            marker_msg.scale.x = 1.0;
+            marker_msg.scale.y = 1.0;
+            marker_msg.scale.z = 1.0;
+
+            marker_msg.id = 1;
+            marker_msg.pose.orientation.w = 1.0;
+
+            publishMarker(marker_msg, publisher);
+        }
+
         void displayObjObservationsFromEstTrajectory(const std::vector<pose::Pose2d> &est_trajectory,
                                                    const std::vector<std::vector<pose::Pose2d>> &relative_car_poses,
                                                    const std::string &obj_class) {
@@ -598,6 +656,7 @@ namespace visualization {
         ros::Publisher odom_marker_pub_;
 
         std::unordered_map<TrajectoryType, std::unordered_map<std::string, ros::Publisher>> obs_marker_pubs_by_class_by_traj_type_;
+        std::unordered_map<std::string, ros::Publisher> sample_pubs_by_class_;
 
         std::unordered_map<int32_t, ros::Publisher> pub_for_angle_mult_;
         std::unordered_map<int32_t, ros::Publisher> robot_pose_pub_for_angle_mult_;
@@ -641,6 +700,24 @@ namespace visualization {
             }
 
             pub = obs_marker_pubs_by_class_by_traj_type_[trajectory_type][obj_class];
+        }
+
+        void getOrCreatePublisherForSamples(const std::string &obj_class, ros::Publisher &pub) {
+
+            if (sample_pubs_by_class_.find(obj_class) == sample_pubs_by_class_.end()) {
+                std::string topic_name = obj_class + "_past_sample_markers";
+                ros::Publisher new_pub_for_class = node_handle_.advertise<visualization_msgs::Marker>(topic_name, 10000);
+                sample_pubs_by_class_[obj_class] = new_pub_for_class;
+                ros::Duration(2).sleep();
+                for (int id = 0; id < kRobotEstPosesMax; id++) {
+                    removeMarker(id, new_pub_for_class);
+                    ros::Duration(0.0001).sleep();
+                }
+                ros::Duration(1).sleep();
+                // TODO consider removing all existing markers on this topic
+            }
+
+            pub = sample_pubs_by_class_[obj_class];
         }
 
         std::vector<pose::Pose3d> convert2DPosesTo3D(const std::vector<pose::Pose2d> &poses_2d) {

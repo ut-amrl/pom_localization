@@ -187,9 +187,13 @@ namespace pose_graph {
         PoseGraph(const std::function<ceres::LocalParameterization*()> &rotation_local_parameterization_creator,
                   const std::unordered_map<std::string, double> &obj_probability_prior_mean_by_class,
                   const double &default_obj_probability_prior_mean,
+                  const std::unordered_map<std::string, double> &obj_probability_input_variance_by_class,
+                  const double &default_obj_probability_input_variance,
                   MovObjKernelType &kernel) : rotation_local_parameterization_creator_(rotation_local_parameterization_creator),
                   obj_probability_prior_mean_by_class_(obj_probability_prior_mean_by_class),
                   default_obj_probability_prior_mean_(default_obj_probability_prior_mean),
+                  obj_probability_input_variance_by_class_(obj_probability_input_variance_by_class),
+                  default_obj_probability_input_variance_(default_obj_probability_input_variance),
                   mov_obj_kernel_(kernel) {
 
         }
@@ -268,7 +272,14 @@ namespace pose_graph {
                                 prior_mean = mean_for_class;
                             }
                         }
-                        gpc = std::make_shared<GpcType>(inputs, outputs, prior_mean, &mov_obj_kernel_);
+                        double input_variance = default_obj_probability_input_variance_;
+                        if (obj_probability_input_variance_by_class_.find(obs_by_class.first) != obj_probability_input_variance_by_class_.end()) {
+                            double input_variance_for_class = obj_probability_input_variance_by_class_.at(obs_by_class.first);
+                            if (input_variance_for_class > 0) {
+                                prior_mean = input_variance_for_class;
+                            }
+                        }
+                        gpc = std::make_shared<GpcType>(inputs, outputs, prior_mean, input_variance, &mov_obj_kernel_);
                     }
                     movable_object_gpcs_by_class_[obs_by_class.first] = gpc;
                 }
@@ -340,6 +351,10 @@ namespace pose_graph {
         std::unordered_map<std::string, double> obj_probability_prior_mean_by_class_;
 
         double default_obj_probability_prior_mean_;
+
+        std::unordered_map<std::string, double> obj_probability_input_variance_by_class_;
+
+        double default_obj_probability_input_variance_;
 
         /**
          * Kernel for comparing 2d movable object pose similarity.

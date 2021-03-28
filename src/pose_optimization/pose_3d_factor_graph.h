@@ -38,11 +38,15 @@ namespace pose_graph {
         PoseGraphXdMovObjDistribution2d(const std::function<ceres::LocalParameterization*()> &rotation_local_parameterization_creator,
                                         const std::unordered_map<std::string, double> &obj_probability_prior_mean_by_class,
                                         const double &default_obj_probability_prior_mean,
+                                        const std::unordered_map<std::string, double> &obj_probability_input_variance_by_class,
+                                        const double &default_obj_probability_input_variance,
                                         gp_kernel::Pose2dKernel &kernel) : PoseGraph<
                                      gp_kernel::Pose2dKernel, MeasurementTranslationDim, MeasurementRotationType,
                                      CovDim, 2, double, 3>(rotation_local_parameterization_creator,
                                                            obj_probability_prior_mean_by_class,
-                                                           default_obj_probability_prior_mean, kernel) {}
+                                                           default_obj_probability_prior_mean,
+                                                           obj_probability_input_variance_by_class,
+                                                           default_obj_probability_input_variance, kernel) {}
 
         ~PoseGraphXdMovObjDistribution2d() override {}
 
@@ -313,8 +317,10 @@ namespace pose_graph {
     public:
         PoseGraph3dMovObjDistribution2d(const std::unordered_map<std::string, double> &obj_probability_prior_mean_by_class,
                                         const double &default_obj_probability_prior_mean,
+                                        const std::unordered_map<std::string, double> &obj_probability_input_variance_by_class,
+                                        const double &default_obj_probability_input_variance,
                                         gp_kernel::Pose2dKernel &kernel) : PoseGraphXdMovObjDistribution2d<3, Eigen::Quaterniond, 6>(
-                createQuaternionParameterization, obj_probability_prior_mean_by_class, default_obj_probability_prior_mean, kernel) {
+                createQuaternionParameterization, obj_probability_prior_mean_by_class, default_obj_probability_prior_mean, obj_probability_input_variance_by_class, default_obj_probability_input_variance, kernel) {
         }
 
         static ceres::LocalParameterization* createQuaternionParameterization() {
@@ -361,8 +367,12 @@ namespace pose_graph {
     public:
         PoseGraph2dMovObjDistribution2d(const std::unordered_map<std::string, double> &obj_probability_prior_mean_by_class,
                                         const double &default_obj_probability_prior_mean,
+                                        const std::unordered_map<std::string, double> &obj_probability_input_variance_by_class,
+                                        const double &default_obj_probability_input_variance,
                                         gp_kernel::Pose2dKernel &kernel) : PoseGraphXdMovObjDistribution2d<2, double, 3>(
-                pose_optimization::AngleLocalParameterization::create, obj_probability_prior_mean_by_class, default_obj_probability_prior_mean, kernel) {
+                pose_optimization::AngleLocalParameterization::create, obj_probability_prior_mean_by_class,
+                default_obj_probability_prior_mean, obj_probability_input_variance_by_class,
+                default_obj_probability_input_variance, kernel) {
         }
 
         ceres::CostFunction *createMovableObjectCostFunctor(const std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> &movable_object_gpc,

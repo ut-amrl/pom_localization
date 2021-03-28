@@ -33,7 +33,8 @@ namespace gp_regression {
                 const Eigen::MatrixXf& inputs,
                 const Eigen::MatrixXf& outputs,
                 const double &prior_mean,
-                Kernel* kernel) : num_datapoints_(inputs.cols()), inputs_(inputs), kernel_(kernel), prior_mean_(prior_mean) {
+                const double &identity_noise,
+                Kernel* kernel) : num_datapoints_(inputs.cols()), inputs_(inputs), kernel_(kernel), prior_mean_(prior_mean), identity_noise_(identity_noise) {
             CHECK_EQ(inputs.rows(), N);
             CHECK_EQ(outputs.rows(), M);
             CHECK_EQ(inputs.cols(), outputs.cols());
@@ -86,7 +87,8 @@ namespace gp_regression {
                     gram_matrix(row, col) = kernel_->evaluateKernel(input_sample_i, input_sample_j);
                 }
             }
-            Eigen::MatrixXf self_var_mat = 0.2 * Eigen::MatrixXf::Identity(gram_matrix.rows(), gram_matrix.cols());
+            Eigen::MatrixXf self_var_mat = identity_noise_ * Eigen::MatrixXf::Identity(gram_matrix.rows(), gram_matrix.cols());
+            LOG(INFO) << "Adding mat " << self_var_mat;
 
             gram_matrix = gram_matrix + self_var_mat;
 
@@ -130,11 +132,11 @@ namespace gp_regression {
             }
 
             Eigen::Matrix<T, Eigen::Dynamic, 1> input_variance = Eigen::Matrix<T, Eigen::Dynamic, 1>(x.cols(), 1);
-
-            for (int j = 0; j < x.cols(); j++) {
-                Eigen::Matrix<T, N, 1> eval_input = x.col(j);
-                input_variance(j, 1) = kernel_->evaluateKernel(eval_input, eval_input);
-            }
+            input_variance.setConstant(T(identity_noise_));
+//            for (int j = 0; j < x.cols(); j++) {
+//                Eigen::Matrix<T, N, 1> eval_input = x.col(j);
+//                input_variance(j, 1) = kernel_->evaluateKernel(eval_input, eval_input);
+//            }
 
 //            LOG(INFO) << "Input variance " << input_variance;
 
@@ -143,9 +145,9 @@ namespace gp_regression {
             Eigen::Matrix<T, Eigen::Dynamic, M> mu_star_transp = prior_mean_mat_.cast<T>() + kernel_times_inv_gram * mean_adjusted_outputs_transp_.cast<T>();
 
             // Compute variance: k_xx + K_x^T * K_d^-1 * K_x
-//            Eigen::Matrix<T, Eigen::Dynamic, 1> variance_column_vec = input_variance + ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
+            Eigen::Matrix<T, Eigen::Dynamic, 1> variance_column_vec = input_variance + ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
             // TODO!!!! Need to add self-variance back in -- currently causing NaNs
-            Eigen::Matrix<T, Eigen::Dynamic, 1> variance_column_vec =  ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
+//            Eigen::Matrix<T, Eigen::Dynamic, 1> variance_column_vec =  ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
 //            LOG(INFO) << "Non-self-variance " << ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
 //            LOG(INFO) << "Variance col vec " << variance_column_vec;
 
@@ -186,6 +188,8 @@ namespace gp_regression {
          * Prior mean.
          */
         double prior_mean_;
+
+        double identity_noise_;
 
         /**
          * Inverse of the gram matrix (kernel values for each pair of inputs).

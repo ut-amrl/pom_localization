@@ -34,7 +34,10 @@ namespace synthetic_problem {
             gp_kernel::Pose2dKernel pose_2d_kernel(position_kernel, orientation_kernel);
             return std::make_shared<pose_graph::PoseGraph2dMovObjDistribution2d>(
                     cost_function_params.obj_probability_prior_mean_by_class_,
-                    cost_function_params.default_obj_probability_prior_mean_, pose_2d_kernel);
+                    cost_function_params.default_obj_probability_prior_mean_,
+                    cost_function_params.obj_probability_input_variance_by_class_,
+                    cost_function_params.default_obj_probability_input_variance_,
+                    pose_2d_kernel);
         }
 
         void runOptimizationVisualization(
@@ -44,12 +47,17 @@ namespace synthetic_problem {
                 const std::vector<pose::Pose2d> &ground_truth_trajectory,
                 const std::vector<pose::Pose2d> &unoptimized_trajectory,
                 const std::vector<pose::Pose2d> &ground_truth_obj_poses,
+                const std::unordered_map<std::string, std::vector<std::pair<pose::Pose2d, double>>> &past_movable_object_poses,
                 const std::unordered_map<std::string, std::vector<std::vector<pose::Pose2d>>> &noisy_obj_observations_by_type) {
             if (run_visualization_) {
 
                 switch (vis_stage) {
                     case offline_optimization::VisualizationTypeEnum::BEFORE_ANY_OPTIMIZATION:
                         // Optionally display distribution intensity map (either over robot poses or over object poses)
+
+                        for (const auto &samples_by_type : past_movable_object_poses) {
+                            vis_manager_->displayPastSampleValues(samples_by_type.first, samples_by_type.second);
+                        }
 
                     {
                         // TODO make this not specific to car class
@@ -72,7 +80,6 @@ namespace synthetic_problem {
 
                     }
 
-
                         vis_manager_->displayTrueTrajectory(ground_truth_trajectory);
                         vis_manager_->displayOdomTrajectory(unoptimized_trajectory);
 
@@ -86,6 +93,7 @@ namespace synthetic_problem {
                                                                                  noisy_obs_with_type.second,
                                                                                  noisy_obs_with_type.first);
                         }
+
 
                         // Display true trajectory
                         // Display true object poses
@@ -263,7 +271,7 @@ namespace synthetic_problem {
                     std::bind(&SyntheticProblemRunner2d::runOptimizationVisualization, this,
                               std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
                               ground_truth_trajectory, initial_node_positions, object_gt_poses.at(kCarClass),
-                              noisy_observations));
+                              past_movable_object_poses, noisy_observations));
         }
 
     private:
