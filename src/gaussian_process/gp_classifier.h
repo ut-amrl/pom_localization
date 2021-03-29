@@ -103,6 +103,10 @@ namespace gp_regression {
             return classification_output;
         }
 
+        std::shared_ptr<GaussianProcessRegression<N, 1, Kernel>> getUnderlyingGpRegressor() {
+            return gp_regressor_;
+        }
+
     private:
 
         std::shared_ptr<GaussianProcessRegression<N, 1, Kernel>> gp_regressor_;

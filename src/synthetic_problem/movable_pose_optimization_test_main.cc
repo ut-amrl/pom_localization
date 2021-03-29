@@ -56,9 +56,9 @@ std::vector<Pose2d> createGroundTruthPoses() {
     poses.emplace_back(createPose2d(0, 10, M_PI_2));
     poses.emplace_back(createPose2d(0.3, 13, M_PI_2));
     poses.emplace_back(createPose2d(0.7, 15, M_PI_4));
-//    poses.emplace_back(createPose2d(2, 17, 0));
-//    poses.emplace_back(createPose2d(4, 18, 0));
-//    poses.emplace_back(createPose2d(7, 18, 0));
+    poses.emplace_back(createPose2d(2, 17, 0));
+    poses.emplace_back(createPose2d(4, 18, 0));
+    poses.emplace_back(createPose2d(7, 18, 0));
      // TODO uncomment
 //    poses.emplace_back(createPose2d(10, 17.5, 0));
 //    poses.emplace_back(createPose2d(12, 15, -M_PI_4));
@@ -572,6 +572,8 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     pose_optimization::CostFunctionParameters cost_function_params;
     cost_function_params.position_kernel_len_ = 0.4;
     cost_function_params.orientation_kernel_len_ = 0.4;
+    cost_function_params.position_kernel_var_ = 10;
+    cost_function_params.orientation_kernel_var_ = 10;
     pose_optimization::PoseOptimizationParameters pose_optimization_params;
     pose_optimization_params.cost_function_params_ = cost_function_params;
 
@@ -612,7 +614,7 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     std::unordered_map<std::string, pose_optimization::SampleGeneratorParams2d> sample_gen_params_by_class;
     sample_gen_params_by_class[car_class].num_samples_per_beam_ = 1;
     // TODO increase this
-    sample_gen_params_by_class[car_class].percent_beams_per_scan_ = 0.1;
+    sample_gen_params_by_class[car_class].percent_beams_per_scan_ = 0.05;
     sample_gen_params_by_class[car_class].percent_poses_to_include_ = 1.0;
 
     util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
@@ -662,6 +664,8 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
             synthetic_problem::generateObjectDetectionsForTrajectory(
                     ground_truth_trajectory, max_obj_detection_dist, object_gt_poses,
                     object_detection_variance_per_detection_len, random_generator);
+
+    LOG(INFO) << "Running synthetic problem";
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> optimization_results =
             synthetic_prob_runner.runSyntheticProblem(ground_truth_trajectory, object_gt_poses,
                                                       movable_object_detections, samples_for_prev_trajectories,

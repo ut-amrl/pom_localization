@@ -51,15 +51,13 @@ namespace pose_optimization {
                                                          util_random::Random &rand_gen) {
 
         // Pick a random beam to start
-        size_t start_beam = rand_gen.RandomInt(0, (int) laser_scan.ranges.size());
+        size_t start_beam = rand_gen.RandomInt(0, (int) laser_scan.ranges.size() - 1);
         bool first_beam = true;
         size_t next_beam = start_beam;
         size_t iterated_beam_count = 0;
         size_t included_beam_count = 0;
         std::vector<pose::Pose2d> samples;
-//        LOG(INFO) << "Adding off-detection samples ";
         while (first_beam || (next_beam != start_beam)) {
-//            LOG(INFO) << "In loop";
             if ((first_beam) || (((double) included_beam_count / iterated_beam_count) < sample_gen_params.percent_beams_per_scan_)) {
                 included_beam_count++;
                 double angle_to_point = laser_scan.angle_min + (next_beam * laser_scan.angle_increment);
@@ -71,13 +69,9 @@ namespace pose_optimization {
                     pose::Pose2d sample_pose = pose::createPose2d(sample_range * cos(angle_to_point),
                                                                   sample_range * sin(angle_to_point),
                                                                   random_angle);
-//                    LOG(INFO) << "Adding pose based sample at " << sample_pose.first.x() << ", " << sample_pose.first.y() << ", " << sample_pose.second;
                     samples.emplace_back(sample_pose);
                 }
             }
-//            } else {
-//                LOG(INFO) << "Skipping ray";
-//            }
             next_beam++;
             if (next_beam >= laser_scan.ranges.size()) {
                 next_beam = 0;
@@ -85,7 +79,6 @@ namespace pose_optimization {
             first_beam = false;
             iterated_beam_count++;
         }
-        LOG(INFO) << "Num samples for scan " << samples.size();
         return samples;
     }
 
@@ -114,7 +107,6 @@ namespace pose_optimization {
         // Using this for now so we can debug other nan/inf issues and remove this as the source of the problem
         double pre_range_limited = (1 - exp(-1 * pdf_value));
         double post_range_limited = kMinProbRange + pre_range_limited * kLimitedProbRange;
-//        LOG(INFO) << "Range, Pre-range, post limited value " << kLimitedProbRange << ", " << pre_range_limited << ", " << post_range_limited;
         return post_range_limited;
     }
 
@@ -177,9 +169,9 @@ namespace pose_optimization {
             samples_and_value_rel_map.emplace_back(std::make_pair(pose::combinePoses(robot_pose, sample_pose),
                     sample_value_generator(sample_pose, object_detections)));
             std::pair<pose::Pose2d, double> last_value = samples_and_value_rel_map.back();
-            if (last_value.second> 0.5) {
-                LOG(INFO) << "Object detection global frame " << last_value.first.first.x() << ", " << last_value.first.first.y() << ", " << last_value.first.second;
-            }
+//            if (last_value.second> 0.5) {
+//                LOG(INFO) << "Object detection global frame " << last_value.first.first.x() << ", " << last_value.first.first.y() << ", " << last_value.first.second;
+//            }
         }
         return samples_and_value_rel_map;
     }
@@ -191,7 +183,6 @@ namespace pose_optimization {
             const std::function<double (const PoseType &, const std::vector<ObjectDetectionRelRobot<PoseType, PoseParamCount>> &)> sample_value_generator,
             const std::unordered_map<std::string, SampleGenParamsType> &sample_gen_params_by_class,
             util_random::Random &rand_gen) {
-
         std::unordered_map<std::string, std::vector<std::pair<PoseType, double>>> samples_by_class;
         for (const auto &obj_detections_by_class : sensor_info_at_pose.object_detections_) {
             if (sample_gen_params_by_class.find(obj_detections_by_class.first) == sample_gen_params_by_class.end()) {
@@ -204,7 +195,6 @@ namespace pose_optimization {
                     obj_detections_by_class.second,
                     sample_value_generator,
                     sample_gen_params_by_class.at(obj_detections_by_class.first),rand_gen);
-
         }
         return samples_by_class;
     }
@@ -238,6 +228,7 @@ namespace pose_optimization {
                     }
                     samples_for_class.insert(samples_for_class.begin(), samples_for_pose_for_class.second.begin(),
                                              samples_for_pose_for_class.second.end());
+
                     samples[samples_for_pose_for_class.first] = samples_for_class;
                 }
             }

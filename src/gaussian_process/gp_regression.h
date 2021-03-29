@@ -133,6 +133,7 @@ namespace gp_regression {
 
             Eigen::Matrix<T, Eigen::Dynamic, 1> input_variance = Eigen::Matrix<T, Eigen::Dynamic, 1>(x.cols(), 1);
             input_variance.setConstant(T(identity_noise_));
+//            LOG(INFO) << "Self variance " << input_variance;
 //            for (int j = 0; j < x.cols(); j++) {
 //                Eigen::Matrix<T, N, 1> eval_input = x.col(j);
 //                input_variance(j, 1) = kernel_->evaluateKernel(eval_input, eval_input);
@@ -145,7 +146,8 @@ namespace gp_regression {
             Eigen::Matrix<T, Eigen::Dynamic, M> mu_star_transp = prior_mean_mat_.cast<T>() + kernel_times_inv_gram * mean_adjusted_outputs_transp_.cast<T>();
 
             // Compute variance: k_xx + K_x^T * K_d^-1 * K_x
-            Eigen::Matrix<T, Eigen::Dynamic, 1> variance_column_vec = input_variance + ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
+//            LOG(INFO) << "Non-self variance: " << ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
+            Eigen::Matrix<T, Eigen::Dynamic, 1> variance_column_vec = input_variance - ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
             // TODO!!!! Need to add self-variance back in -- currently causing NaNs
 //            Eigen::Matrix<T, Eigen::Dynamic, 1> variance_column_vec =  ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
 //            LOG(INFO) << "Non-self-variance " << ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
