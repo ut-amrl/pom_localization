@@ -90,8 +90,8 @@ namespace pose_optimization {
             cumulative_probability = cumulative_probability / T(num_samples_);
             // Dividing by number of observations in KDE is already done by KDE
 
-            LOG(INFO) << "Num samples " << num_samples_;
-            LOG(INFO) << "Cumulative prob " << cumulative_probability;
+//            LOG(INFO) << "Num samples " << num_samples_;
+//            LOG(INFO) << "Cumulative prob " << cumulative_probability;
 
             residuals[0] = sqrt(T(-2.0) * log(cumulative_probability));
 

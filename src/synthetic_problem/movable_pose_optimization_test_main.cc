@@ -59,17 +59,17 @@ std::vector<Pose2d> createGroundTruthPoses() {
     poses.emplace_back(createPose2d(2, 17, 0));
     poses.emplace_back(createPose2d(4, 18, 0));
     poses.emplace_back(createPose2d(7, 18, 0));
-     // TODO uncomment
-//    poses.emplace_back(createPose2d(10, 17.5, 0));
-//    poses.emplace_back(createPose2d(12, 15, -M_PI_4));
-//    poses.emplace_back(createPose2d(12, 12, -M_PI_2));
-//    poses.emplace_back(createPose2d(11.5, 9, -M_PI_2));
-//    poses.emplace_back(createPose2d(11.7, 6, -M_PI_2));
-//    poses.emplace_back(createPose2d(11.3, 3, -M_PI_2));
-//    poses.emplace_back(createPose2d(11, -1, -(M_PI_2 + M_PI_4)));
-//    poses.emplace_back(createPose2d(9, -0.0, M_PI));
-//    poses.emplace_back(createPose2d(6, -0.9, M_PI));
-//    poses.emplace_back(createPose2d(3, -0.7, M_PI));
+    // TODO uncomment
+    poses.emplace_back(createPose2d(10, 17.5, 0));
+    poses.emplace_back(createPose2d(12, 15, -M_PI_4));
+    poses.emplace_back(createPose2d(12, 12, -M_PI_2));
+    poses.emplace_back(createPose2d(11.5, 9, -M_PI_2));
+    poses.emplace_back(createPose2d(11.7, 6, -M_PI_2));
+    poses.emplace_back(createPose2d(11.3, 3, -M_PI_2));
+    poses.emplace_back(createPose2d(11, -1, -(M_PI_2 + M_PI_4)));
+    poses.emplace_back(createPose2d(9, -0.0, M_PI));
+    poses.emplace_back(createPose2d(6, -0.9, M_PI));
+    poses.emplace_back(createPose2d(3, -0.7, M_PI));
 
 //    poses.emplace_back(createPose2d(0, 0, 0)); // Should test how this deals with non-zero-origins?
 //    poses.emplace_back(createPose2d(0.1, 1, 0));
@@ -607,7 +607,7 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     scan_gen_params.min_angle_ = -0.75 * M_PI;
     scan_gen_params.max_angle_ = 0.75 * M_PI;
 //    scan_gen_params.max_range_ = 20.0;
-    scan_gen_params.max_range_ = 5.0;
+    scan_gen_params.max_range_ = 10.0;
     scan_gen_params.min_range_ = 0.2;
     scan_gen_params.num_beams_ = 100; // TODO should probably increase this to be more realistic eventually
 
@@ -694,7 +694,7 @@ int main(int argc, char** argv) {
     std::string time_str = oss.str();
     std::string csv_file_name = "results/noise_eval_" + time_str + ".csv";
 
-    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 15);
+    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 10);
 //    LOG(INFO) << runSingleSyntheticProblem(manager);
 //    runSyntheticProblemWithConfigVariations(manager, createParkedCarPosesWithFrequency(), createGroundTruthPoses(),
 //                                            csv_file_name);
