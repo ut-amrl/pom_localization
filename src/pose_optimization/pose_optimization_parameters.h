@@ -40,6 +40,7 @@ namespace pose_optimization {
 
         std::unordered_map<std::string, double> obj_probability_prior_mean_by_class_;
         double default_obj_probability_prior_mean_ = 0.05;
+//        double default_obj_probability_prior_mean_ = 0.25;
 
         std::unordered_map<std::string, double> obj_probability_input_variance_by_class_;
         double default_obj_probability_input_variance_ = 1.0;

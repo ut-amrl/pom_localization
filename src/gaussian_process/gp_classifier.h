@@ -52,6 +52,8 @@ namespace gp_regression {
                 LOG(INFO) << "Original, transformed " << outputs(0, i) << ", " << output_data_transformed_(0, i);
             }
 
+            prior_mean_regressor_range_ = transformed_prior_mean;
+
             LOG(INFO) << "Creating regressor";
             gp_regressor_  = std::make_shared<GaussianProcessRegression<N, 1, Kernel>>(inputs, output_data_transformed_, transformed_prior_mean, identity_noise, kernel);
             LOG(INFO) << "Done creating regressor";
@@ -117,6 +119,11 @@ namespace gp_regression {
         int num_datapoints_;
 
         /**
+         * Prior mean in the range of regressors (-inf to inf, after being pushed through logit).
+         */
+        double prior_mean_regressor_range_;
+
+        /**
          * Input data (points where we have observations).
          *
          * TODO do we need to maintain this or should we just pass it off to the regressor.
@@ -153,8 +160,10 @@ namespace gp_regression {
                                       const Eigen::Matrix<T, 1, Eigen::Dynamic> &variance,
                                       Eigen::Matrix<T, 1, Eigen::Dynamic> &sigmoid_approx) {
 
+
+
             // mean / sqrt(1 + (pi/8) * variance)
-            Eigen::Array<T, 1, Eigen::Dynamic> sigmoid_input = (mean.array()) / ((((variance.array()) * T(M_PI / 8)) + T(1)).sqrt());
+            Eigen::Array<T, 1, Eigen::Dynamic> sigmoid_input = T(prior_mean_regressor_range_) + ((mean.array() - T(prior_mean_regressor_range_)) / ((((variance.array()) * T(M_PI / 8)) + T(1)).sqrt()));
 
             // 1 / (1 + e^(-x))
             sigmoid_approx = ((T(1) + ((T(-1) * sigmoid_input).exp())).inverse()).matrix();

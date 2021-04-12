@@ -592,7 +592,7 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     noise_config.movable_observation_yaw_std_dev_ = 0.1;
 
     pose_optimization::CostFunctionParameters cost_function_params;
-    cost_function_params.position_kernel_len_ = 2;
+    cost_function_params.position_kernel_len_ = 0.7;
     cost_function_params.orientation_kernel_len_ = 0.4; // TODO fix
     cost_function_params.orientation_kernel_len_ = 10000;
 //    cost_function_params.position_kernel_var_ = 30;
