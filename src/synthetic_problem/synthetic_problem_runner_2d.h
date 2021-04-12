@@ -155,30 +155,31 @@ namespace synthetic_problem {
         }
 
         std::unordered_map<pose_graph::NodeId, pose::Pose2d> runSyntheticProblem(const std::vector<pose::Pose2d> &ground_truth_trajectory,
+                const std::vector<pose::Pose2d> &noisy_odometry, // TODO remove?
                 const std::unordered_map<std::string, std::vector<pose::Pose2d>> &object_gt_poses,
                 const std::unordered_map<std::string, std::vector<std::vector<pose_optimization::ObjectDetectionRelRobot<pose::Pose2d , 3>>>> &movable_object_detections,
                 const std::unordered_map<std::string, std::vector<std::pair<pose::Pose2d, double>>> &past_movable_object_poses,
                 const SyntheticProblemNoiseConfig2d &noise_config,
-                const pose_optimization::PoseOptimizationParameters &pose_optimization_params) {
+                const pose_optimization::PoseOptimizationParameters &pose_optimization_params,
+                util_random::Random &random_generator) {
 
             OfflineProblemDataType offline_problem_data;
 
-            // Compute true odometry and add noise to generate constraints ----------------------------------
-            std::vector<pose::Pose2d> true_odometry;
-            for (size_t i = 1; i < ground_truth_trajectory.size(); i++) {
-                true_odometry.emplace_back(pose::getPoseOfObj1RelToObj2(ground_truth_trajectory[i],
-                                                                        ground_truth_trajectory[i-1]));
-            }
-
-//            util_random::Random random_generator;
-            util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
-            std::vector<pose::Pose2d> noisy_odometry;
-            for (const pose::Pose2d &true_odom : true_odometry) {
-                noisy_odometry.emplace_back(pose::addRelativeGaussianNoise(true_odom, noise_config.odometry_x_std_dev_,
-                                                             noise_config.odometry_y_std_dev_,
-                                                             noise_config.odometry_yaw_std_dev_,
-                                                             random_generator));
-            }
+//            // Compute true odometry and add noise to generate constraints ----------------------------------
+//            std::vector<pose::Pose2d> true_odometry;
+//            for (size_t i = 1; i < ground_truth_trajectory.size(); i++) {
+//                true_odometry.emplace_back(pose::getPoseOfObj1RelToObj2(ground_truth_trajectory[i],
+//                                                                        ground_truth_trajectory[i-1]));
+//            }
+//
+////            util_random::Random random_generator;
+//            std::vector<pose::Pose2d> noisy_odometry;
+//            for (const pose::Pose2d &true_odom : true_odometry) {
+//                noisy_odometry.emplace_back(pose::addRelativeGaussianNoise(true_odom, noise_config.odometry_x_std_dev_,
+//                                                             noise_config.odometry_y_std_dev_,
+//                                                             noise_config.odometry_yaw_std_dev_,
+//                                                             random_generator));
+//            }
 
             Eigen::Matrix<double, 3, 3> odom_cov_mat = Eigen::Matrix<double, 3, 3>::Zero();
             odom_cov_mat(0, 0) = pow(noise_config.odometry_x_std_dev_, 2);

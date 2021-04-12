@@ -42,6 +42,10 @@ namespace gp_kernel {
             return static_cast<T>(variance_) * exp(-0.5 * scaled_distance);
         }
 
+        double getKernelSelfValue() {
+            return variance_;
+        }
+
     private:
 
         /**

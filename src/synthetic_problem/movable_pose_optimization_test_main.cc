@@ -54,22 +54,22 @@ std::vector<Pose2d> createGroundTruthPoses() {
     poses.emplace_back(createPose2d(0, 4, M_PI_2));
     poses.emplace_back(createPose2d(-.04, 7, M_PI_2));
     poses.emplace_back(createPose2d(0, 10, M_PI_2));
-    poses.emplace_back(createPose2d(0.3, 13, M_PI_2));
-    poses.emplace_back(createPose2d(0.7, 15, M_PI_4));
-    poses.emplace_back(createPose2d(2, 17, 0));
-    poses.emplace_back(createPose2d(4, 18, 0));
-    poses.emplace_back(createPose2d(7, 18, 0));
-    // TODO uncomment
-    poses.emplace_back(createPose2d(10, 17.5, 0));
-    poses.emplace_back(createPose2d(12, 15, -M_PI_4));
-    poses.emplace_back(createPose2d(12, 12, -M_PI_2));
-    poses.emplace_back(createPose2d(11.5, 9, -M_PI_2));
-    poses.emplace_back(createPose2d(11.7, 6, -M_PI_2));
-    poses.emplace_back(createPose2d(11.3, 3, -M_PI_2));
-    poses.emplace_back(createPose2d(11, -1, -(M_PI_2 + M_PI_4)));
-    poses.emplace_back(createPose2d(9, -0.0, M_PI));
-    poses.emplace_back(createPose2d(6, -0.9, M_PI));
-    poses.emplace_back(createPose2d(3, -0.7, M_PI));
+//    poses.emplace_back(createPose2d(0.3, 13, M_PI_2));
+//    poses.emplace_back(createPose2d(0.7, 15, M_PI_4));
+//    poses.emplace_back(createPose2d(2, 17, 0));
+//    poses.emplace_back(createPose2d(4, 18, 0));
+//    poses.emplace_back(createPose2d(7, 18, 0));
+//    // TODO uncomment
+//    poses.emplace_back(createPose2d(10, 17.5, 0));
+//    poses.emplace_back(createPose2d(12, 15, -M_PI_4));
+//    poses.emplace_back(createPose2d(12, 12, -M_PI_2));
+//    poses.emplace_back(createPose2d(11.5, 9, -M_PI_2));
+//    poses.emplace_back(createPose2d(11.7, 6, -M_PI_2));
+//    poses.emplace_back(createPose2d(11.3, 3, -M_PI_2));
+//    poses.emplace_back(createPose2d(11, -1, -(M_PI_2 + M_PI_4)));
+//    poses.emplace_back(createPose2d(9, -0.0, M_PI));
+//    poses.emplace_back(createPose2d(6, -0.9, M_PI));
+//    poses.emplace_back(createPose2d(3, -0.7, M_PI));
 
 //    poses.emplace_back(createPose2d(0, 0, 0)); // Should test how this deals with non-zero-origins?
 //    poses.emplace_back(createPose2d(0.1, 1, 0));
@@ -304,14 +304,36 @@ std::unordered_map<pose_graph::NodeId, pose::Pose2d> callSyntheticProblem(
     std::string car_class = "car";
     std::unordered_map<std::string, std::vector<pose::Pose2d>> past_mov_obj_positions_by_class = {{car_class, past_car_poses}};
     std::unordered_map<std::string, std::vector<pose::Pose2d>> curr_mov_obj_positions_by_class = {{car_class, current_car_poses}};
+
+    util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+
+    // TODO move back to synthetic problem?
+    // Compute true odometry and add noise to generate constraints ----------------------------------
+    std::vector<pose::Pose2d> true_odometry;
+    for (size_t i = 1; i < ground_truth_trajectory.size(); i++) {
+        true_odometry.emplace_back(pose::getPoseOfObj1RelToObj2(ground_truth_trajectory[i],
+                                                                ground_truth_trajectory[i-1]));
+    }
+
+//            util_random::Random random_generator;
+    std::vector<pose::Pose2d> noisy_odometry;
+    for (const pose::Pose2d &true_odom : true_odometry) {
+        noisy_odometry.emplace_back(pose::addRelativeGaussianNoise(true_odom, noise_config.odometry_x_std_dev_,
+                                                                   noise_config.odometry_y_std_dev_,
+                                                                   noise_config.odometry_yaw_std_dev_,
+                                                                   random_generator));
+    }
+
     return synthetic_prob_runner.runSyntheticProblem(
             ground_truth_trajectory,
+            noisy_odometry,
             curr_mov_obj_positions_by_class,
             {},// TODO make this different
 //            past_mov_obj_positions_by_class, //mov_obj_positions_by_class,
             {}, // TODO
             noise_config,
-            optimization_params);
+            optimization_params,
+            random_generator);
 }
 
 double computeATE(const std::unordered_map<pose_graph::NodeId, pose::Pose2d> &ground_truth_trajectory,
@@ -570,10 +592,15 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     noise_config.movable_observation_yaw_std_dev_ = 0.1;
 
     pose_optimization::CostFunctionParameters cost_function_params;
-    cost_function_params.position_kernel_len_ = 0.4;
-    cost_function_params.orientation_kernel_len_ = 0.4;
-    cost_function_params.position_kernel_var_ = 10;
-    cost_function_params.orientation_kernel_var_ = 10;
+    cost_function_params.position_kernel_len_ = 2;
+    cost_function_params.orientation_kernel_len_ = 0.4; // TODO fix
+    cost_function_params.orientation_kernel_len_ = 10000;
+//    cost_function_params.position_kernel_var_ = 30;
+//    cost_function_params.orientation_kernel_var_ = 30;
+
+    cost_function_params.position_kernel_var_ = 900;
+    cost_function_params.orientation_kernel_var_ = 1;
+    cost_function_params.default_obj_probability_input_variance_ = 100;
     pose_optimization::PoseOptimizationParameters pose_optimization_params;
     pose_optimization_params.cost_function_params_ = cost_function_params;
 
@@ -617,7 +644,8 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     sample_gen_params_by_class[car_class].percent_beams_per_scan_ = 0.05;
     sample_gen_params_by_class[car_class].percent_poses_to_include_ = 1.0;
 
-    util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+//    util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+    util_random::Random random_generator;
 
     // TODO replace with something more complicated once this is working
     std::vector<pose::Pose2d> ground_truth_trajectory = createGroundTruthPoses();
@@ -625,25 +653,44 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     // Synthetic problem setup / execution -------------------------------------------------------------------
     synthetic_problem::SyntheticProblemRunner2d synthetic_prob_runner(vis_manager, true);
 
-    // Make other trajectories to give historical data
-    std::vector<std::vector<pose::Pose2d>> past_trajectories =
-            synthetic_problem::generateSimilarTrajectories(ground_truth_trajectory, trajectory_pose_variance,
-                                                           num_prev_trajectories,random_generator);
+    // Compute true odometry and add noise to generate constraints ----------------------------------
+    std::vector<pose::Pose2d> true_odometry;
+    for (size_t i = 1; i < ground_truth_trajectory.size(); i++) {
+        true_odometry.emplace_back(pose::getPoseOfObj1RelToObj2(ground_truth_trajectory[i],
+                                                                ground_truth_trajectory[i-1]));
+    }
+
+//            util_random::Random random_generator;
+    std::vector<pose::Pose2d> noisy_odometry;
+    for (const pose::Pose2d &true_odom : true_odometry) {
+        noisy_odometry.emplace_back(pose::addRelativeGaussianNoise(true_odom, noise_config.odometry_x_std_dev_,
+                                                                   noise_config.odometry_y_std_dev_,
+                                                                   noise_config.odometry_yaw_std_dev_,
+                                                                   random_generator));
+    }
+
+
+
 
     std::vector<std::unordered_map<std::string, std::vector<pose::Pose2d>>> gt_object_placements = synthetic_problem::getObjectInstantiationsFromConfiguration(
             object_configurations_for_all_classes, num_prev_trajectories + 1, valid_percent_filled_range,
             random_generator);
 
     LOG(INFO) << "Past placements ";
-    std::vector<std::unordered_map<std::string, std::vector<pose::Pose2d>>> past_object_placements(gt_object_placements.begin(), gt_object_placements.begin() + num_prev_trajectories);
+    std::vector<std::unordered_map<std::string, std::vector<pose::Pose2d>>> past_object_placements(gt_object_placements.begin() + 1, gt_object_placements.end());
     for (const std::unordered_map<std::string, std::vector<pose::Pose2d>> &past_objs : past_object_placements) {
         for (const pose::Pose2d &pose : past_objs.at(car_class)) {
             LOG(INFO) << pose.first.x() << ", " << pose.first.y() << ", " << pose.second;
         }
     }
 
-    std::unordered_map<std::string, std::vector<pose::Pose2d>> object_gt_poses = gt_object_placements.back();
+    std::unordered_map<std::string, std::vector<pose::Pose2d>> object_gt_poses = gt_object_placements.front();
     LOG(INFO) << "Object gt pose size: " << object_gt_poses[car_class].size();
+
+    // Make other trajectories to give historical data
+    std::vector<std::vector<pose::Pose2d>> past_trajectories =
+            synthetic_problem::generateSimilarTrajectories(ground_truth_trajectory, trajectory_pose_variance,
+                                                           num_prev_trajectories,random_generator);
 
     std::vector<std::vector<std::pair<pose::Pose2d, SensorInfo<pose::Pose2d, 3, sensor_msgs::LaserScan>>>> sensor_info_for_past_trajectories =
             synthetic_problem::generateSensorInfoForTrajectories<pose::Pose2d, 3, sensor_msgs::LaserScan, synthetic_problem::ScanGenerationParams2d>(
@@ -667,9 +714,11 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
 
     LOG(INFO) << "Running synthetic problem";
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> optimization_results =
-            synthetic_prob_runner.runSyntheticProblem(ground_truth_trajectory, object_gt_poses,
+            synthetic_prob_runner.runSyntheticProblem(ground_truth_trajectory,
+                                                      noisy_odometry, // TODO remove?
+                                                      object_gt_poses,
                                                       movable_object_detections, samples_for_prev_trajectories,
-                                                      noise_config, pose_optimization_params);
+                                                      noise_config, pose_optimization_params, random_generator);
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> ground_truth_poses_as_map;
     for (size_t i = 0; i < ground_truth_trajectory.size(); i++) {
         ground_truth_poses_as_map[i] = ground_truth_trajectory[i];
@@ -694,7 +743,7 @@ int main(int argc, char** argv) {
     std::string time_str = oss.str();
     std::string csv_file_name = "results/noise_eval_" + time_str + ".csv";
 
-    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 10);
+    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 5);
 //    LOG(INFO) << runSingleSyntheticProblem(manager);
 //    runSyntheticProblemWithConfigVariations(manager, createParkedCarPosesWithFrequency(), createGroundTruthPoses(),
 //                                            csv_file_name);

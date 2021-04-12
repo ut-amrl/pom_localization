@@ -94,6 +94,7 @@ namespace pose_optimization {
 //            LOG(INFO) << "Cumulative prob " << cumulative_probability;
 
             residuals[0] = sqrt(T(-2.0) * log(cumulative_probability));
+            LOG(INFO) << "residual " << residuals[0];
 
             return true;
         }

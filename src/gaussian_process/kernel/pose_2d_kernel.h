@@ -63,6 +63,10 @@ namespace gp_kernel {
                     * orientation_kernel_.evaluateKernel<T>(orientation_data_1, orientation_data_2);
         }
 
+        double getKernelSelfValue() {
+            return position_kernel_.getKernelSelfValue() * orientation_kernel_.getKernelSelfValue();
+        }
+
     private:
 
         /**

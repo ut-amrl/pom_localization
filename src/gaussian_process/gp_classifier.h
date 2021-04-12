@@ -93,12 +93,12 @@ namespace gp_regression {
         Eigen::Matrix<T, 1, Eigen::Dynamic> Inference(const Eigen::Matrix<T, N, Eigen::Dynamic>& x) {
 
             std::pair<Eigen::Matrix<T, 1, Eigen::Dynamic>, Eigen::Matrix<T, 1, Eigen::Dynamic>> regressor_out = gp_regressor_->Inference(x);
-//            LOG(INFO) << "Regressor out mean " << regressor_out.first;
+            LOG(INFO) << "Regressor out mean " << regressor_out.first;
 //            LOG(INFO) << "Regressor out variance " << regressor_out.second;
 
             Eigen::Matrix<T, 1, Eigen::Dynamic> classification_output = Eigen::Matrix<T, 1, Eigen::Dynamic>(1, x.cols());
             sigmoidNormalConvolution(regressor_out.first, regressor_out.second, classification_output);
-//            LOG(INFO) << "Classification output " << classification_output;
+            LOG(INFO) << "Classification output " << classification_output;
 
             return classification_output;
         }
@@ -154,11 +154,11 @@ namespace gp_regression {
                                       Eigen::Matrix<T, 1, Eigen::Dynamic> &sigmoid_approx) {
 
             // mean / sqrt(1 + (pi/8) * variance)
-//            Eigen::Array<T, 1, Eigen::Dynamic> sigmoid_input = (mean.array()) / ((((variance.array()) * T(M_PI / 8)) + T(1)).sqrt());
+            Eigen::Array<T, 1, Eigen::Dynamic> sigmoid_input = (mean.array()) / ((((variance.array()) * T(M_PI / 8)) + T(1)).sqrt());
 
             // 1 / (1 + e^(-x))
-//            sigmoid_approx = ((T(1) + ((T(-1) * sigmoid_input).exp())).inverse()).matrix();
-            sigmoid_approx = ((T(1) + ((T(-1) * mean.array()).exp())).inverse()).matrix();
+            sigmoid_approx = ((T(1) + ((T(-1) * sigmoid_input).exp())).inverse()).matrix();
+            LOG(INFO) << "Sigmoid approx without variance: " << ((T(1) + ((T(-1) * mean.array()).exp())).inverse()).matrix();
         }
     };
 } // end gp_regression

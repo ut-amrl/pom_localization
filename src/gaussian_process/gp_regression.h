@@ -45,6 +45,8 @@ namespace gp_regression {
 
             mean_adjusted_outputs_transp_ = (outputs_transp_.array() - prior_mean).matrix();
 
+            kernel_self_value_ = kernel->getKernelSelfValue();
+
             refreshInvGramMatrix();
         }
 
@@ -132,7 +134,7 @@ namespace gp_regression {
             }
 
             Eigen::Matrix<T, Eigen::Dynamic, 1> input_variance = Eigen::Matrix<T, Eigen::Dynamic, 1>(x.cols(), 1);
-            input_variance.setConstant(T(identity_noise_));
+            input_variance.setConstant(T(identity_noise_ + kernel_self_value_));
 //            LOG(INFO) << "Self variance " << input_variance;
 //            for (int j = 0; j < x.cols(); j++) {
 //                Eigen::Matrix<T, N, 1> eval_input = x.col(j);
@@ -146,8 +148,12 @@ namespace gp_regression {
             Eigen::Matrix<T, Eigen::Dynamic, M> mu_star_transp = prior_mean_mat_.cast<T>() + kernel_times_inv_gram * mean_adjusted_outputs_transp_.cast<T>();
 
             // Compute variance: k_xx + K_x^T * K_d^-1 * K_x
-//            LOG(INFO) << "Non-self variance: " << ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
+            LOG(INFO) << "Non-self variance: " << T(-1.0) * ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
             Eigen::Matrix<T, Eigen::Dynamic, 1> variance_column_vec = input_variance - ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
+            LOG(INFO) << "Var " << variance_column_vec;
+//            if (variance_column_vec.minCoeff()  < T(0)) {
+//                LOG(INFO) << "Min coeff is negative: " << variance_column_vec;
+//            }
             // TODO!!!! Need to add self-variance back in -- currently causing NaNs
 //            Eigen::Matrix<T, Eigen::Dynamic, 1> variance_column_vec =  ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
 //            LOG(INFO) << "Non-self-variance " << ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
@@ -192,6 +198,8 @@ namespace gp_regression {
         double prior_mean_;
 
         double identity_noise_;
+
+        double kernel_self_value_;
 
         /**
          * Inverse of the gram matrix (kernel values for each pair of inputs).

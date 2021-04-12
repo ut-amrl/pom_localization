@@ -45,6 +45,10 @@ namespace gp_kernel {
             return static_cast<T>(variance_) * exp(-0.5 * math_util::Sq(sin(period_invariant_dist)) / math_util::Sq(static_cast<T>(length_)));
         }
 
+        double getKernelSelfValue() {
+            return variance_;
+        }
+
     private:
 
         /**

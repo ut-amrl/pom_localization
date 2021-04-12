@@ -171,7 +171,7 @@ namespace pose_optimization {
             options.max_num_iterations = 1000;
             options.minimizer_progress_to_stdout = true;
 //            options.function_tolerance = 1e-10;
-            options.function_tolerance = 1e-20;
+//            options.function_tolerance = 1e-20;
             options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
 //            options.gradient_tolerance = 1e-15;
 //            options.parameter_tolerance = 1e-20;
