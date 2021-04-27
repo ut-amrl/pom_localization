@@ -33,17 +33,25 @@ namespace pose_optimization {
         bool odometry_enabled_;
         bool movable_obj_observations_enabled_;
 
-        float position_kernel_len_ = 0.7;
-        float position_kernel_var_ = 1;
-        float orientation_kernel_len_ = 0.1;
-        float orientation_kernel_var_ = 1;
+        float mean_position_kernel_len_ = 0.7;
+        float mean_position_kernel_var_ = 1;
+        float mean_orientation_kernel_len_ = 0.1;
+        float mean_orientation_kernel_var_ = 1;
+
+        float var_position_kernel_len_ = 0.7;
+        float var_position_kernel_var_ = 1;
+        float var_orientation_kernel_len_ = 0.1;
+        float var_orientation_kernel_var_ = 1;
 
         std::unordered_map<std::string, double> obj_probability_prior_mean_by_class_;
         double default_obj_probability_prior_mean_ = 0.05;
 //        double default_obj_probability_prior_mean_ = 0.25;
 
-        std::unordered_map<std::string, double> obj_probability_input_variance_by_class_;
-        double default_obj_probability_input_variance_ = 1.0;
+        std::unordered_map<std::string, double> obj_probability_input_variance_by_class_for_mean_;
+        double default_obj_probability_input_variance_for_mean_ = 1.0;
+
+        std::unordered_map<std::string, double> obj_probability_input_variance_by_class_for_var_;
+        double default_obj_probability_input_variance_for_var_ = 1.0;
 
     };
 

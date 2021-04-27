@@ -34,6 +34,7 @@ pose::Pose2d addGaussianNoise(const pose::Pose2d &original_pose_2d, const double
                                           rand_gen.Gaussian(original_pose_2d.first.y(), y_std_dev)),
                           rand_gen.Gaussian(original_pose_2d.second, theta_std_dev));
 }
+
 // TODO sample angle from Gaussian in SO(3)
 Pose3d addGaussianNoise(const Pose3d &original_pose_3d, const float &x_std_dev, const float &y_std_dev,
                         const float &z_std_dev, const float &yaw_std_dev, util_random::Random &rand_gen) {
@@ -99,16 +100,16 @@ std::vector<Pose2d> createHighLevelTrajectory() {
 //    poses.emplace_back(pose::createPose2d(-18, -31, 3.0 * M_PI / 4.0 ));
 
     poses.emplace_back(pose::createPose2d(-12, -31, -M_PI));
-    poses.emplace_back(pose::createPose2d(-15, -25,  M_PI / 2.0));
-    poses.emplace_back(pose::createPose2d(-15, 25,  M_PI / 2.0));
+    poses.emplace_back(pose::createPose2d(-15, -25, M_PI / 2.0));
+    poses.emplace_back(pose::createPose2d(-15, 25, M_PI / 2.0));
 //    poses.emplace_back(pose::createPose2d(-18, 31, M_PI / 4.0 ));
-    poses.emplace_back(pose::createPose2d(-12, 31, 0 ));
-    poses.emplace_back(pose::createPose2d(10, 31, 0 ));
+    poses.emplace_back(pose::createPose2d(-12, 31, 0));
+    poses.emplace_back(pose::createPose2d(10, 31, 0));
 //    poses.emplace_back(pose::createPose2d(18, 31, - M_PI / 4.0 ));
-    poses.emplace_back(pose::createPose2d(12, 25,  -M_PI / 2.0));
-    poses.emplace_back(pose::createPose2d(12, -25,  -M_PI / 2.0));
+    poses.emplace_back(pose::createPose2d(12, 25, -M_PI / 2.0));
+    poses.emplace_back(pose::createPose2d(12, -25, -M_PI / 2.0));
 //    poses.emplace_back(pose::createPose2d(18, -31, -3.0 * M_PI / 4.0 ));
-    poses.emplace_back(pose::createPose2d(10, -31, -M_PI ));
+    poses.emplace_back(pose::createPose2d(10, -31, -M_PI));
 
 ////    poses.emplace_back(pose::createPose2d(-18, -31, 3.0 * M_PI / 4.0 ));
 //    poses.emplace_back(pose::createPose2d(0, 0, 0));
@@ -130,13 +131,16 @@ std::vector<Pose2d> createHighLevelTrajectory() {
     return poses;
 }
 
-std::vector<Pose2d> createIntermediateTrajectory(std::vector<Pose2d> high_level_trajectory, double min_dist_between_nodes, double max_transl_variation, double max_rot_variation) {
+std::vector<Pose2d>
+createIntermediateTrajectory(std::vector<Pose2d> high_level_trajectory, double min_dist_between_nodes,
+                             double max_transl_variation, double max_rot_variation) {
     std::vector<Pose2d> poses;
 //    poses.emplace_back(high_level_trajectory[0]);
 
     Pose2d last_added_pose;
     double remaining_dist = 0;
-    util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+    util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count());
     for (size_t i = 0; i < high_level_trajectory.size(); i++) {
         // Pseudocode:
         // Get previous pose and next pose
@@ -145,7 +149,7 @@ std::vector<Pose2d> createIntermediateTrajectory(std::vector<Pose2d> high_level_
         if (i == (high_level_trajectory.size() - 1)) {
             next_pose = high_level_trajectory[0];
         } else {
-            next_pose = high_level_trajectory[i+1];
+            next_pose = high_level_trajectory[i + 1];
         }
 
         // Using remaining distance from prev iter, construct a node that uses up what's left
@@ -161,9 +165,10 @@ std::vector<Pose2d> createIntermediateTrajectory(std::vector<Pose2d> high_level_
         last_added_pose = createPose2d(next_position.x(), next_position.y(), new_angle);
 
 //        LOG(INFO) << "Adding pose " << last_added_pose.first.x() << ", " << last_added_pose.first.y() << ", " << last_added_pose.second;
-        pose::Pose2d imperfect_pose = createPose2d(last_added_pose.first.x() + random_generator.UniformRandom(-max_transl_variation, max_transl_variation),
-                                                   last_added_pose.first.y() + random_generator.UniformRandom(-max_transl_variation, max_transl_variation),
-                                                   last_added_pose.second + random_generator.UniformRandom(-max_rot_variation, max_rot_variation));
+        pose::Pose2d imperfect_pose = createPose2d(
+                last_added_pose.first.x() + random_generator.UniformRandom(-max_transl_variation, max_transl_variation),
+                last_added_pose.first.y() + random_generator.UniformRandom(-max_transl_variation, max_transl_variation),
+                last_added_pose.second + random_generator.UniformRandom(-max_rot_variation, max_rot_variation));
         poses.emplace_back(imperfect_pose);
 
         // Get the distance, vector, and angle change from that node to the next higher level trajectory node
@@ -181,12 +186,17 @@ std::vector<Pose2d> createIntermediateTrajectory(std::vector<Pose2d> high_level_
         for (int j = 0; j < num_nodes; j++) {
             double angle_change = angle_diff_last_to_next * (min_dist_between_nodes / dist);
             double interpolated_angle = math_util::AngleMod(last_added_pose.second + angle_change);
-            Pose2d new_pose = std::make_pair(last_added_pose.first + (unit_vector_to_second * min_dist_between_nodes), interpolated_angle);
+            Pose2d new_pose = std::make_pair(last_added_pose.first + (unit_vector_to_second * min_dist_between_nodes),
+                                             interpolated_angle);
             last_added_pose = new_pose;
-            LOG(INFO) << "Adding pose " << last_added_pose.first.x() << ", " << last_added_pose.first.y() << ", " << last_added_pose.second;
-            imperfect_pose = createPose2d(last_added_pose.first.x() + random_generator.UniformRandom(-max_transl_variation, max_transl_variation),
-                                                       last_added_pose.first.y() + random_generator.UniformRandom(-max_transl_variation, max_transl_variation),
-                                                       last_added_pose.second + random_generator.UniformRandom(-max_rot_variation, max_rot_variation));
+            LOG(INFO) << "Adding pose " << last_added_pose.first.x() << ", " << last_added_pose.first.y() << ", "
+                      << last_added_pose.second;
+            imperfect_pose = createPose2d(last_added_pose.first.x() +
+                                          random_generator.UniformRandom(-max_transl_variation, max_transl_variation),
+                                          last_added_pose.first.y() +
+                                          random_generator.UniformRandom(-max_transl_variation, max_transl_variation),
+                                          last_added_pose.second +
+                                          random_generator.UniformRandom(-max_rot_variation, max_rot_variation));
             poses.emplace_back(imperfect_pose);
             if (j == (num_nodes - 1)) {
                 remaining_dist = min_dist_between_nodes - (next_pose.first - new_pose.first).norm();
@@ -198,43 +208,44 @@ std::vector<Pose2d> createIntermediateTrajectory(std::vector<Pose2d> high_level_
 
 std::vector<Pose2d> createParkedCarPoses() {
     std::vector<Pose2d> poses;
-    poses.emplace_back(createPose2d(-3, 2, -(M_PI * 5.0/6.0)));
-    poses.emplace_back(createPose2d(-3, 4, -(M_PI * 5.0/6.0)));
+    poses.emplace_back(createPose2d(-3, 2, -(M_PI * 5.0 / 6.0)));
+    poses.emplace_back(createPose2d(-3, 4, -(M_PI * 5.0 / 6.0)));
 //    poses.emplace_back(createPose2d(-7, 6, -(M_PI / 6.0)));
 
-    poses.emplace_back(createPose2d(3, 2, -(M_PI /6.0)));
-    poses.emplace_back(createPose2d(3, 6, -(M_PI /6.0)));
+    poses.emplace_back(createPose2d(3, 2, -(M_PI / 6.0)));
+    poses.emplace_back(createPose2d(3, 6, -(M_PI / 6.0)));
 //    poses.emplace_back(createPose2d(3, 8, -(M_PI /6.0)));
 //    poses.emplace_back(createPose2d(3, 14, -(M_PI /6.0)));
 
 //    poses.emplace_back(createPose2d(7, 12, -(M_PI * 5.0 /6.0)));
 //    poses.emplace_back(createPose2d(7, 10, -(M_PI * 5.0/6.0)));
-    poses.emplace_back(createPose2d(7, 6, -(M_PI * 5.0 /6.0)));
-    poses.emplace_back(createPose2d(7, 2, -(M_PI * 5.0 /6.0)));
+    poses.emplace_back(createPose2d(7, 6, -(M_PI * 5.0 / 6.0)));
+    poses.emplace_back(createPose2d(7, 2, -(M_PI * 5.0 / 6.0)));
     return poses;
 }
 
 std::vector<std::pair<Pose2d, unsigned int>> createParkedCarPosesWithFrequency() {
     std::vector<std::pair<Pose2d, unsigned int>> poses;
 //     TODO uncomment
-    poses.emplace_back(std::make_pair(createPose2d(-3, 2, -(M_PI * 5.0/6.0)), 10));
-    poses.emplace_back(std::make_pair(createPose2d(-3, 4, -(M_PI * 5.0/6.0)), 1));
+    poses.emplace_back(std::make_pair(createPose2d(-3, 2, -(M_PI * 5.0 / 6.0)), 10));
+    poses.emplace_back(std::make_pair(createPose2d(-3, 4, -(M_PI * 5.0 / 6.0)), 1));
     poses.emplace_back(std::make_pair(createPose2d(-7, 6, -(M_PI / 6.0)), 2));
 
-    poses.emplace_back(std::make_pair(createPose2d(3, 2, -(M_PI /6.0)), 1));
-    poses.emplace_back(std::make_pair(createPose2d(3, 6, -(M_PI /6.0)), 3));
-    poses.emplace_back(std::make_pair(createPose2d(3, 8, -(M_PI /6.0)), 2));
-    poses.emplace_back(std::make_pair(createPose2d(3, 14, -(M_PI /6.0)), 1));
+    poses.emplace_back(std::make_pair(createPose2d(3, 2, -(M_PI / 6.0)), 1));
+    poses.emplace_back(std::make_pair(createPose2d(3, 6, -(M_PI / 6.0)), 3));
+    poses.emplace_back(std::make_pair(createPose2d(3, 8, -(M_PI / 6.0)), 2));
+    poses.emplace_back(std::make_pair(createPose2d(3, 14, -(M_PI / 6.0)), 1));
 
-    poses.emplace_back(std::make_pair(createPose2d(7, 12, -(M_PI * 5.0 /6.0)), 3));
-    poses.emplace_back(std::make_pair(createPose2d(7, 10, -(M_PI * 5.0/6.0)), 1));
-    poses.emplace_back(std::make_pair(createPose2d(7, 6, -(M_PI * 5.0 /6.0)), 2));
-    poses.emplace_back(std::make_pair(createPose2d(7, 2, -(M_PI * 5.0 /6.0)), 2));
+    poses.emplace_back(std::make_pair(createPose2d(7, 12, -(M_PI * 5.0 / 6.0)), 3));
+    poses.emplace_back(std::make_pair(createPose2d(7, 10, -(M_PI * 5.0 / 6.0)), 1));
+    poses.emplace_back(std::make_pair(createPose2d(7, 6, -(M_PI * 5.0 / 6.0)), 2));
+    poses.emplace_back(std::make_pair(createPose2d(7, 2, -(M_PI * 5.0 / 6.0)), 2));
     return poses;
 }
 
-synthetic_problem::ObjectPlacementConfiguration<pose::Pose2d, 3> createCarPlacementConfiguration(const Eigen::Vector3d &object_pose_variance,
-                                                                                                 const std::vector<std::pair<Pose2d, unsigned int>> &parking_spots_and_frequency) {
+synthetic_problem::ObjectPlacementConfiguration<pose::Pose2d, 3>
+createCarPlacementConfiguration(const Eigen::Vector3d &object_pose_variance,
+                                const std::vector<std::pair<Pose2d, unsigned int>> &parking_spots_and_frequency) {
     synthetic_problem::ObjectPlacementConfiguration<pose::Pose2d, 3> obj_placement_config;
     for (const std::pair<pose::Pose2d, unsigned int> &parking_spot_and_freq : parking_spots_and_frequency) {
         synthetic_problem::ObjectOccurrenceParams<pose::Pose2d, 3> object_occurrence;
@@ -305,14 +316,15 @@ std::unordered_map<pose_graph::NodeId, pose::Pose2d> callSyntheticProblem(
     std::unordered_map<std::string, std::vector<pose::Pose2d>> past_mov_obj_positions_by_class = {{car_class, past_car_poses}};
     std::unordered_map<std::string, std::vector<pose::Pose2d>> curr_mov_obj_positions_by_class = {{car_class, current_car_poses}};
 
-    util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+    util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count());
 
     // TODO move back to synthetic problem?
     // Compute true odometry and add noise to generate constraints ----------------------------------
     std::vector<pose::Pose2d> true_odometry;
     for (size_t i = 1; i < ground_truth_trajectory.size(); i++) {
         true_odometry.emplace_back(pose::getPoseOfObj1RelToObj2(ground_truth_trajectory[i],
-                                                                ground_truth_trajectory[i-1]));
+                                                                ground_truth_trajectory[i - 1]));
     }
 
 //            util_random::Random random_generator;
@@ -369,8 +381,8 @@ double runSingleSyntheticProblem(const std::shared_ptr<visualization::Visualizat
     parking_lot_spacing_config.parking_lot_aisle_gap_x = 8;
     parking_lot_spacing_config.parking_lot_aisle_gap_y = 6;
     parking_lot_spacing_config.spots_between_gaps_y = 5;
-    parking_lot_spacing_config.right_parking_angle = -(M_PI /6.0);
-    parking_lot_spacing_config.left_parking_angle = -(5.0 * M_PI /6.0);
+    parking_lot_spacing_config.right_parking_angle = -(M_PI / 6.0);
+    parking_lot_spacing_config.left_parking_angle = -(5.0 * M_PI / 6.0);
     parking_lot_spacing_config.max_frequency_ratio = 10;
 
     synthetic_problem::ParkingLotConfigurationParams parking_lot_config;
@@ -380,7 +392,8 @@ double runSingleSyntheticProblem(const std::shared_ptr<visualization::Visualizat
     parking_lot_config.num_samples_multiplier_ = 4;
     parking_lot_config.parking_lot_percent_filled_ = 0.6;
 //    parking_lot_config.parking_spots_and_relative_frequency_ = createParkedCarPosesWithFrequency();
-    parking_lot_config.parking_spots_and_relative_frequency_ = synthetic_problem::generateParkingSpotsAndFrequency(parking_lot_spacing_config);
+    parking_lot_config.parking_spots_and_relative_frequency_ = synthetic_problem::generateParkingSpotsAndFrequency(
+            parking_lot_spacing_config);
 
     synthetic_problem::SyntheticProblemNoiseConfig2d noise_config;
     noise_config.add_additional_initial_noise_ = false;
@@ -417,34 +430,36 @@ void outputResultsHeader(const std::string &file_name) {
     std::ofstream csv_file(file_name, std::ios::app);
     csv_file << "position_kernel_len" << ", " << "orientation_kernel_len"
              << ", " << "odometry_x_std_dev" << ", " << "odometry_y_std_dev" << ", "
-            << "max_observable_moving_obj_distance" << ", "
+             << "max_observable_moving_obj_distance" << ", "
              << "odometry_yaw_std_dev" << ", " << "movable_observation_x_std_dev" << ", "
              << "movable_observation_y_std_dev" << ", "
              << "movable_observation_yaw_std_dev" << ", "
              << "parking_lot_std_dev_x" << ", "
              << "parking_lot_std_dev_y" << ", "
              << "parking_lot_std_dev_yaw" << ", "
-             << "parking_lot_percent_filled" << ", "  << "absolute_trajectory_error" << "\n";
+             << "parking_lot_percent_filled" << ", " << "absolute_trajectory_error" << "\n";
     csv_file.close();
 }
 
-void outputResults(const std::string &file_name, const synthetic_problem::ParkingLotConfigurationParams &parking_lot_configuration_params,
+void outputResults(const std::string &file_name,
+                   const synthetic_problem::ParkingLotConfigurationParams &parking_lot_configuration_params,
                    const synthetic_problem::SyntheticProblemNoiseConfig2d &noise_config,
                    const pose_optimization::PoseOptimizationParameters &optimization_params,
                    const double &absolute_trajectory_error) {
     // TODO
     std::ofstream csv_file(file_name, std::ios::app);
-    csv_file << optimization_params.cost_function_params_.position_kernel_len_
-    << ", " << optimization_params.cost_function_params_.orientation_kernel_len_
-    << ", " << noise_config.odometry_x_std_dev_ << ", " << noise_config.odometry_y_std_dev_ << ", "
-            << noise_config.max_observable_moving_obj_distance_ << ", "
+    csv_file << optimization_params.cost_function_params_.mean_position_kernel_len_
+             << ", " << optimization_params.cost_function_params_.mean_orientation_kernel_len_
+             << ", " << noise_config.odometry_x_std_dev_ << ", " << noise_config.odometry_y_std_dev_ << ", "
+             << noise_config.max_observable_moving_obj_distance_ << ", "
              << noise_config.odometry_yaw_std_dev_ << ", " << noise_config.movable_observation_x_std_dev_ << ", "
              << noise_config.movable_observation_y_std_dev_ << ", "
              << noise_config.movable_observation_yaw_std_dev_ << ", "
              << parking_lot_configuration_params.parking_lot_std_dev_x_ << ", "
              << parking_lot_configuration_params.parking_lot_std_dev_y_ << ", "
              << parking_lot_configuration_params.parking_lot_std_dev_yaw_ << ", "
-             << parking_lot_configuration_params.parking_lot_percent_filled_ << ", "  << absolute_trajectory_error << "\n";
+             << parking_lot_configuration_params.parking_lot_percent_filled_ << ", " << absolute_trajectory_error
+             << "\n";
     csv_file.close();
 }
 
@@ -468,7 +483,6 @@ void runSyntheticProblemAndOutputResults(
 }
 
 
-
 void runSyntheticProblemWithConfigVariations(const std::shared_ptr<visualization::VisualizationManager> &vis_manager,
                                              const std::vector<std::pair<pose::Pose2d, unsigned int>> &parking_spots_and_relative_frequency,
                                              const std::vector<pose::Pose2d> &ground_truth_trajectory,
@@ -486,8 +500,8 @@ void runSyntheticProblemWithConfigVariations(const std::shared_ptr<visualization
     parking_lot_configuration_params.num_samples_multiplier_ = 5.0;
     noise_config.add_additional_initial_noise_ = false;
 
-    std::vector<double> position_kernel_len_opts = {cost_function_params.position_kernel_len_};
-    std::vector<double> orientation_kernel_len_opts = {cost_function_params.orientation_kernel_len_};
+    std::vector<double> position_kernel_len_opts = {cost_function_params.mean_position_kernel_len_};
+    std::vector<double> orientation_kernel_len_opts = {cost_function_params.mean_orientation_kernel_len_};
 
     pose_optimization::PoseOptimizationParameters optimization_params;
     optimization_params.cost_function_params_ = cost_function_params;
@@ -524,10 +538,10 @@ void runSyntheticProblemWithConfigVariations(const std::shared_ptr<visualization
 
     for (const double &position_kernel_len : position_kernel_len_opts) {
         LOG(INFO) << "Setting position_kernel_len to " << position_kernel_len;
-        cost_function_params.position_kernel_len_ = position_kernel_len;
+        cost_function_params.mean_position_kernel_len_ = position_kernel_len;
         for (const double &orientation_kernel_len : position_kernel_len_opts) {
             LOG(INFO) << "Setting orientation_kernel_len to " << orientation_kernel_len;
-            cost_function_params.orientation_kernel_len_ = orientation_kernel_len;
+            cost_function_params.mean_orientation_kernel_len_ = orientation_kernel_len;
             for (const double &odom_transl_std_dev : odom_transl_std_dev_opts) {
                 LOG(INFO) << "Setting odom_transl_std_dev to " << odom_transl_std_dev;
                 noise_config.odometry_x_std_dev_ = odom_transl_std_dev;
@@ -554,7 +568,7 @@ void runSyntheticProblemWithConfigVariations(const std::shared_ptr<visualization
                                         parking_lot_configuration_params.parking_lot_percent_filled_ = percent_spots_filled;
                                         runSyntheticProblemAndOutputResults(
                                                 results_file_name, vis_manager, parking_lot_configuration_params,
-                                                noise_config, ground_truth_trajectory,optimization_params);
+                                                noise_config, ground_truth_trajectory, optimization_params);
                                     }
                                 }
                             }
@@ -592,15 +606,25 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     noise_config.movable_observation_yaw_std_dev_ = 0.1;
 
     pose_optimization::CostFunctionParameters cost_function_params;
-    cost_function_params.position_kernel_len_ = 0.7;
-    cost_function_params.orientation_kernel_len_ = 0.4; // TODO fix
-    cost_function_params.orientation_kernel_len_ = 10000;
-//    cost_function_params.position_kernel_var_ = 30;
-//    cost_function_params.orientation_kernel_var_ = 30;
+    cost_function_params.mean_position_kernel_len_ = 0.5;
+    cost_function_params.mean_orientation_kernel_len_ = 0.4; // TODO fix
+    cost_function_params.mean_orientation_kernel_len_ = 10000;
+//    cost_function_params.mean_position_kernel_var_ = 30;
+//    cost_function_params.mean_orientation_kernel_var_ = 30;
 
-    cost_function_params.position_kernel_var_ = 900;
-    cost_function_params.orientation_kernel_var_ = 1;
-    cost_function_params.default_obj_probability_input_variance_ = 100;
+    cost_function_params.mean_position_kernel_var_ = 9;
+    cost_function_params.mean_orientation_kernel_var_ = 1;
+
+
+    cost_function_params.default_obj_probability_input_variance_for_mean_ = 10;
+
+    cost_function_params.var_position_kernel_len_ = 1.8;
+    cost_function_params.var_orientation_kernel_len_ = 1000;
+
+    cost_function_params.var_position_kernel_var_ = 100;
+    cost_function_params.var_orientation_kernel_var_ = 100;
+
+    cost_function_params.default_obj_probability_input_variance_for_var_ = 10;
     pose_optimization::PoseOptimizationParameters pose_optimization_params;
     pose_optimization_params.cost_function_params_ = cost_function_params;
 
@@ -613,7 +637,8 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     synthetic_problem::ObjectPlacementConfigurationAllClasses<pose::Pose2d, 3> object_configurations_for_all_classes;
 //    Eigen::Vector3d obj_occurrence_variance = Eigen::Vector3d(0.00005, 0.00005, 0.00005);
     Eigen::Vector3d obj_occurrence_variance = Eigen::Vector3d(0.005, 0.005, 0.005);
-    object_configurations_for_all_classes.obj_placement_configs_by_class_[car_class] = createCarPlacementConfiguration(obj_occurrence_variance, createParkedCarPosesWithFrequency());
+    object_configurations_for_all_classes.obj_placement_configs_by_class_[car_class] = createCarPlacementConfiguration(
+            obj_occurrence_variance, createParkedCarPosesWithFrequency());
 
     for (const auto &entry : object_configurations_for_all_classes.obj_placement_configs_by_class_) {
         LOG(INFO) << "Config size for class " << entry.first << ": " << entry.second.obj_placement_config_.size();
@@ -657,7 +682,7 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     std::vector<pose::Pose2d> true_odometry;
     for (size_t i = 1; i < ground_truth_trajectory.size(); i++) {
         true_odometry.emplace_back(pose::getPoseOfObj1RelToObj2(ground_truth_trajectory[i],
-                                                                ground_truth_trajectory[i-1]));
+                                                                ground_truth_trajectory[i - 1]));
     }
 
 //            util_random::Random random_generator;
@@ -670,14 +695,13 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     }
 
 
-
-
     std::vector<std::unordered_map<std::string, std::vector<pose::Pose2d>>> gt_object_placements = synthetic_problem::getObjectInstantiationsFromConfiguration(
             object_configurations_for_all_classes, num_prev_trajectories + 1, valid_percent_filled_range,
             random_generator);
 
     LOG(INFO) << "Past placements ";
-    std::vector<std::unordered_map<std::string, std::vector<pose::Pose2d>>> past_object_placements(gt_object_placements.begin() + 1, gt_object_placements.end());
+    std::vector<std::unordered_map<std::string, std::vector<pose::Pose2d>>> past_object_placements(
+            gt_object_placements.begin() + 1, gt_object_placements.end());
     for (const std::unordered_map<std::string, std::vector<pose::Pose2d>> &past_objs : past_object_placements) {
         for (const pose::Pose2d &pose : past_objs.at(car_class)) {
             LOG(INFO) << pose.first.x() << ", " << pose.first.y() << ", " << pose.second;
@@ -690,24 +714,26 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     // Make other trajectories to give historical data
     std::vector<std::vector<pose::Pose2d>> past_trajectories =
             synthetic_problem::generateSimilarTrajectories(ground_truth_trajectory, trajectory_pose_variance,
-                                                           num_prev_trajectories,random_generator);
+                                                           num_prev_trajectories, random_generator);
 
     std::vector<std::vector<std::pair<pose::Pose2d, SensorInfo<pose::Pose2d, 3, sensor_msgs::LaserScan>>>> sensor_info_for_past_trajectories =
             synthetic_problem::generateSensorInfoForTrajectories<pose::Pose2d, 3, sensor_msgs::LaserScan, synthetic_problem::ScanGenerationParams2d>(
-            past_trajectories, past_object_placements, object_detection_variance_per_detection_len,
-            max_obj_detection_dist, scan_gen_params, random_generator);
+                    past_trajectories, past_object_placements, object_detection_variance_per_detection_len,
+                    max_obj_detection_dist, scan_gen_params, random_generator);
 
-    std::function<double(const double&)> pdf_squashing_function = pose_optimization::squashPdfValueToZeroToOneRangeExponential;
-    std::function<double (const pose::Pose2d &,
-            const std::vector<ObjectDetectionRelRobot<pose::Pose2d , 3>> &)> sample_value_generator =
-                    std::bind(&pose_optimization::computeValueForSample<pose::Pose2d, 3>, std::placeholders::_1, std::placeholders::_2, pdf_squashing_function);
+    std::function<double(
+            const double &)> pdf_squashing_function = pose_optimization::squashPdfValueToZeroToOneRangeExponential;
+    std::function<double(const pose::Pose2d &,
+                         const std::vector<ObjectDetectionRelRobot<pose::Pose2d, 3>> &)> sample_value_generator =
+            std::bind(&pose_optimization::computeValueForSample<pose::Pose2d, 3>, std::placeholders::_1,
+                      std::placeholders::_2, pdf_squashing_function);
 
-    std::unordered_map<std::string, std::vector<std::pair<pose::Pose2d , double>>> samples_for_prev_trajectories = generateSamplesForPastTrajectories(
+    std::unordered_map<std::string, std::vector<std::pair<pose::Pose2d, double>>> samples_for_prev_trajectories = generateSamplesForPastTrajectories(
             sensor_info_for_past_trajectories, sample_value_generator,
             sample_gen_params_by_class,
             random_generator);
 
-    std::unordered_map<std::string, std::vector<std::vector<pose_optimization::ObjectDetectionRelRobot<pose::Pose2d , 3>>>> movable_object_detections =
+    std::unordered_map<std::string, std::vector<std::vector<pose_optimization::ObjectDetectionRelRobot<pose::Pose2d, 3>>>> movable_object_detections =
             synthetic_problem::generateObjectDetectionsForTrajectory(
                     ground_truth_trajectory, max_obj_detection_dist, object_gt_poses,
                     object_detection_variance_per_detection_len, random_generator);
@@ -726,11 +752,187 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     return computeATE(ground_truth_poses_as_map, optimization_results);
 }
 
-int main(int argc, char** argv) {
+void GPCTest() {
+
+    // Rows = 3
+    // Cols = # samples
+
+    int larger_sample_multiplier = 10;
+    int smaller_num_samples = 25;
+    int larger_num_samples = larger_sample_multiplier * smaller_num_samples;
+    Eigen::MatrixXd larger_inputs = Eigen::MatrixXd(3, larger_num_samples);
+    Eigen::MatrixXd larger_outputs = Eigen::MatrixXd(1, larger_num_samples);
+
+    Eigen::MatrixXd smaller_inputs = Eigen::MatrixXd(3, smaller_num_samples);
+    Eigen::MatrixXd smaller_outputs = Eigen::MatrixXd(1, smaller_num_samples);
+
+    util_random::Random random_generator;
+    for (int i = 0; i < smaller_num_samples; i++) {
+        smaller_inputs(0, i) = random_generator.UniformRandom(0, 1);
+        smaller_inputs(1, i) = random_generator.UniformRandom(0, 1);
+        smaller_inputs(2, i) = random_generator.UniformRandom(0, 2 * M_PI);
+        smaller_outputs(0, i) = random_generator.UniformRandom(0, 1);
+        LOG(INFO) << "Sample " << i;
+        LOG(INFO) << smaller_inputs(0, i);
+        LOG(INFO) << smaller_inputs(1, i);
+        LOG(INFO) << smaller_inputs(2, i);
+        LOG(INFO) << smaller_outputs(0, i);
+
+        for (int j = 0; j < larger_sample_multiplier; j++) {
+            larger_inputs.col(larger_sample_multiplier * i + j) = smaller_inputs.col(i);
+            larger_outputs.col(larger_sample_multiplier * i + j) = smaller_outputs.col(i);
+        }
+    }
+
+    LOG(INFO) << "Smaller inputs";
+    LOG(INFO) << smaller_inputs;
+    LOG(INFO) << "Smaller outputs";
+    LOG(INFO) << smaller_outputs;
+
+//    cost_function_params.mean_position_kernel_len_ = 0.5;
+//    cost_function_params.mean_orientation_kernel_len_ = 10000;
+//    cost_function_params.mean_position_kernel_var_ = 30;
+//    cost_function_params.mean_orientation_kernel_var_ = 30;
+
+//    cost_function_params.mean_position_kernel_var_ = 9;
+//    cost_function_params.mean_orientation_kernel_var_ = 1;
+
+
+//    cost_function_params.default_obj_probability_input_variance_for_mean_ = 10;
+
+//    cost_function_params.var_position_kernel_len_ = 1.8;
+//    cost_function_params.var_orientation_kernel_len_ = 1000;
+
+//    cost_function_params.var_position_kernel_var_ = 100;
+//    cost_function_params.var_orientation_kernel_var_ = 100;
+
+//    cost_function_params.default_obj_probability_input_variance_for_var_ = 10;
+
+    // TODO set values for these
+    double prior_mean = 0.1;
+    double input_variance_for_mean = 10;
+    double mean_pos_kernel_len = 0.5;
+    double mean_pos_kernel_var = 9;
+    double mean_orientation_kernel_len = 10000;
+    double mean_orientation_kernel_var = 1;
+
+    double var_pos_kernel_len = 1.8;
+    double var_orientation_kernel_len = 1000;
+
+    double input_variance_for_var = 10;
+    double var_pos_kernel_var = 100;
+    double var_orientation_kernel_var = 100;
+
+    double input_var_for_var_2 = 10;
+    double var_pos_kernel_var_2 = 10000;
+    double var_orientation_kernel_var_2 = 10000;
+
+    double input_var_for_var_3 = 10;
+    double var_pos_kernel_var_3 = 5000;
+    double var_orientation_kernel_var_3 = 5000;
+
+    gp_kernel::GaussianKernel<2> mean_position_kernel(mean_pos_kernel_len, mean_pos_kernel_var);
+    gp_kernel::PeriodicGaussianKernel<1> mean_orientation_kernel(M_PI * 2,
+                                                                 mean_orientation_kernel_var,
+                                                                 mean_orientation_kernel_len);
+    gp_kernel::Pose2dKernel mean_pose_2d_kernel(mean_position_kernel, mean_orientation_kernel);
+
+
+    gp_kernel::GaussianKernel<2> var_position_kernel(var_pos_kernel_len,
+                                                     var_pos_kernel_var);
+    gp_kernel::PeriodicGaussianKernel<1> var_orientation_kernel(M_PI * 2,
+                                                                var_orientation_kernel_var,
+                                                                var_orientation_kernel_len);
+    gp_kernel::Pose2dKernel var_pose_2d_kernel(var_position_kernel, var_orientation_kernel);
+
+    std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc =
+            std::make_shared<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
+                    larger_inputs, larger_outputs,
+                    prior_mean, input_variance_for_mean,
+                    input_variance_for_var, &mean_pose_2d_kernel,
+                    &var_pose_2d_kernel);
+
+    std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc_smaller_samples =
+            std::make_shared<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
+                    smaller_inputs, smaller_outputs,
+                    prior_mean, input_variance_for_mean,
+                    input_variance_for_var, &mean_pose_2d_kernel,
+                    &var_pose_2d_kernel);
+
+
+
+    gp_kernel::GaussianKernel<2> var_position_kernel_2(var_pos_kernel_len,
+                                                     var_pos_kernel_var_2);
+    gp_kernel::PeriodicGaussianKernel<1> var_orientation_kernel_2(M_PI * 2,
+                                                                var_orientation_kernel_var_2,
+                                                                var_orientation_kernel_len);
+    gp_kernel::Pose2dKernel var_pose_2d_kernel_2(var_position_kernel_2, var_orientation_kernel_2);
+
+    LOG(INFO) << "Creating GP params 2, larger data set";
+    std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> larger_gpc_params_2 =
+            std::make_shared<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
+                    larger_inputs, larger_outputs,
+                    prior_mean, input_variance_for_mean,
+                    input_var_for_var_2, &mean_pose_2d_kernel,
+                    &var_pose_2d_kernel_2);
+
+    LOG(INFO) << "Creating GP params 2, smaller data set";
+    std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc_smaller_samples_params_2 =
+            std::make_shared<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
+                    smaller_inputs, smaller_outputs,
+                    prior_mean, input_variance_for_mean,
+                    input_var_for_var_2, &mean_pose_2d_kernel,
+                    &var_pose_2d_kernel_2);
+
+    gp_kernel::GaussianKernel<2> var_position_kernel_3(var_pos_kernel_len,
+                                                       var_pos_kernel_var_3);
+    gp_kernel::PeriodicGaussianKernel<1> var_orientation_kernel_3(M_PI * 2,
+                                                                  var_orientation_kernel_var_3,
+                                                                  var_orientation_kernel_len);
+    gp_kernel::Pose2dKernel var_pose_2d_kernel_3(var_position_kernel_3, var_orientation_kernel_3);
+
+    LOG(INFO) << "Creating GP params 3, larger data set";
+    std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> larger_gpc_params_3 =
+            std::make_shared<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
+                    larger_inputs, larger_outputs,
+                    prior_mean, input_variance_for_mean,
+                    input_var_for_var_3, &mean_pose_2d_kernel,
+                    &var_pose_2d_kernel_3);
+
+    LOG(INFO) << "Creating GP params 3, smaller data set";
+    std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc_smaller_samples_params_3 =
+            std::make_shared<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
+                    smaller_inputs, smaller_outputs,
+                    prior_mean, input_variance_for_mean,
+                    input_var_for_var_3, &mean_pose_2d_kernel,
+                    &var_pose_2d_kernel_3);
+
+    Eigen::Matrix<double, 3, Eigen::Dynamic> query_input(3, 1);
+    query_input << 0.5, 0.5, M_PI;
+    LOG(INFO) << "Output val larger samples: beta: " << input_variance_for_var << ", position kern var " << var_pos_kernel_var << ", orientation kern var " << var_orientation_kernel_var;
+    LOG(INFO) << gpc->Inference(query_input)(0, 0);
+    LOG(INFO) << "Output val smaller samples: ";
+    LOG(INFO) << gpc_smaller_samples->Inference(query_input)(0, 0);
+
+    LOG(INFO) << "Output val larger samples params 2: : beta: " << input_var_for_var_2 << ", position kern var " << var_pos_kernel_var_2 << ", orientation kern var " << var_orientation_kernel_var_2;
+    LOG(INFO) << larger_gpc_params_2->Inference(query_input)(0, 0);
+    LOG(INFO) << "Output val smaller samples params 2: ";
+    LOG(INFO) << gpc_smaller_samples_params_2->Inference(query_input)(0, 0);
+
+    LOG(INFO) << "Output val larger samples params 3: beta: " << input_var_for_var_3 << ", position kern var " << var_pos_kernel_var_3 << ", orientation kern var " << var_orientation_kernel_var_3;
+    LOG(INFO) << larger_gpc_params_3->Inference(query_input)(0, 0);
+    LOG(INFO) << "Output val smaller samples params 3: ";
+    LOG(INFO) << gpc_smaller_samples_params_3->Inference(query_input)(0, 0);
+
+
+}
+
+int main(int argc, char **argv) {
     ros::init(argc, argv,
               "momo_demo_2");
     ros::NodeHandle n;
-    std::shared_ptr<visualization::VisualizationManager> manager = std::make_shared<visualization::VisualizationManager>(n);
+    std::shared_ptr<visualization::VisualizationManager> manager = std::make_shared<visualization::VisualizationManager>(
+            n);
 
     google::InitGoogleLogging(argv[0]);
     FLAGS_logtostderr = true;
@@ -742,7 +944,7 @@ int main(int argc, char** argv) {
     oss << std::put_time(&tm, "%d-%m-%Y_%H:%M:%S");
     std::string time_str = oss.str();
     std::string csv_file_name = "results/noise_eval_" + time_str + ".csv";
-
+//    GPCTest();
     LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 5);
 //    LOG(INFO) << runSingleSyntheticProblem(manager);
 //    runSyntheticProblemWithConfigVariations(manager, createParkedCarPosesWithFrequency(), createGroundTruthPoses(),

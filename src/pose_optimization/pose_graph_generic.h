@@ -187,14 +187,20 @@ namespace pose_graph {
         PoseGraph(const std::function<ceres::LocalParameterization*()> &rotation_local_parameterization_creator,
                   const std::unordered_map<std::string, double> &obj_probability_prior_mean_by_class,
                   const double &default_obj_probability_prior_mean,
-                  const std::unordered_map<std::string, double> &obj_probability_input_variance_by_class,
-                  const double &default_obj_probability_input_variance,
-                  MovObjKernelType &kernel) : rotation_local_parameterization_creator_(rotation_local_parameterization_creator),
+                  const std::unordered_map<std::string, double> &obj_probability_input_variance_by_class_for_mean,
+                  const double &default_obj_probability_input_variance_for_mean,
+                  const std::unordered_map<std::string, double> &obj_probability_input_variance_by_class_for_var,
+                  const double &default_obj_probability_input_variance_for_var,
+                  MovObjKernelType &mean_kernel,
+                  MovObjKernelType &var_kernel) : rotation_local_parameterization_creator_(rotation_local_parameterization_creator),
                   obj_probability_prior_mean_by_class_(obj_probability_prior_mean_by_class),
                   default_obj_probability_prior_mean_(default_obj_probability_prior_mean),
-                  obj_probability_input_variance_by_class_(obj_probability_input_variance_by_class),
-                  default_obj_probability_input_variance_(default_obj_probability_input_variance),
-                  mov_obj_kernel_(kernel) {
+                  obj_probability_input_variance_by_class_for_mean_(obj_probability_input_variance_by_class_for_mean),
+                  default_obj_probability_input_variance_for_mean_(default_obj_probability_input_variance_for_mean),
+                  obj_probability_input_variance_by_class_for_var_(obj_probability_input_variance_by_class_for_var),
+                  default_obj_probability_input_variance_for_var_(default_obj_probability_input_variance_for_var),
+                  mov_obj_mean_kernel_(mean_kernel),
+                  mov_obj_var_kernel_(var_kernel){
 
         }
 
@@ -255,8 +261,8 @@ namespace pose_graph {
         void addMapFrameObservations(
                 const std::unordered_map<std::string, std::vector<MapObjectObservationType>> &observations_by_class) {
             for (const auto &obs_by_class : observations_by_class) {
-                Eigen::MatrixXf inputs;
-                Eigen::MatrixXf outputs;
+                Eigen::MatrixXd inputs;
+                Eigen::MatrixXd outputs;
                 if (getMatrixRepresentationOfDetections(obs_by_class.second, inputs)
                         && getMatrixRepresentationOfDetectionSampleValue(obs_by_class.second, outputs)) {
                     auto gpc_iter = movable_object_gpcs_by_class_.find(obs_by_class.first);
@@ -272,14 +278,24 @@ namespace pose_graph {
                                 prior_mean = mean_for_class;
                             }
                         }
-                        double input_variance = default_obj_probability_input_variance_;
-                        if (obj_probability_input_variance_by_class_.find(obs_by_class.first) != obj_probability_input_variance_by_class_.end()) {
-                            double input_variance_for_class = obj_probability_input_variance_by_class_.at(obs_by_class.first);
+                        double input_variance_for_mean = default_obj_probability_input_variance_for_mean_;
+                        if (obj_probability_input_variance_by_class_for_mean_.find(obs_by_class.first) != obj_probability_input_variance_by_class_for_mean_.end()) {
+                            double input_variance_for_class = obj_probability_input_variance_by_class_for_mean_.at(obs_by_class.first);
                             if (input_variance_for_class > 0) {
-                                prior_mean = input_variance_for_class;
+                                input_variance_for_mean = input_variance_for_class;
                             }
                         }
-                        gpc = std::make_shared<GpcType>(inputs, outputs, prior_mean, input_variance, &mov_obj_kernel_);
+                        double input_variance_for_var = default_obj_probability_input_variance_for_var_;
+                        if (obj_probability_input_variance_by_class_for_var_.find(obs_by_class.first) != obj_probability_input_variance_by_class_for_var_.end()) {
+                            double input_variance_for_class = obj_probability_input_variance_by_class_for_var_.at(obs_by_class.first);
+                            if (input_variance_for_class > 0) {
+                                input_variance_for_var = input_variance_for_class;
+                            }
+                        }
+                        LOG(INFO) << "Outputs size: " << outputs.size();
+                        gpc = std::make_shared<GpcType>(inputs, outputs, prior_mean, input_variance_for_mean,
+                                                        input_variance_for_var, &mov_obj_mean_kernel_,
+                                                        &mov_obj_var_kernel_);
                     }
                     movable_object_gpcs_by_class_[obs_by_class.first] = gpc;
                 }
@@ -352,14 +368,24 @@ namespace pose_graph {
 
         double default_obj_probability_prior_mean_;
 
-        std::unordered_map<std::string, double> obj_probability_input_variance_by_class_;
+        std::unordered_map<std::string, double> obj_probability_input_variance_by_class_for_mean_;
 
-        double default_obj_probability_input_variance_;
+        double default_obj_probability_input_variance_for_mean_;
+
+
+        std::unordered_map<std::string, double> obj_probability_input_variance_by_class_for_var_;
+
+        double default_obj_probability_input_variance_for_var_;
 
         /**
          * Kernel for comparing 2d movable object pose similarity.
          */
-        MovObjKernelType mov_obj_kernel_;
+        MovObjKernelType mov_obj_mean_kernel_;
+
+        /**
+         * Kernel for comparing 2d movable object pose similarity.
+         */
+        MovObjKernelType mov_obj_var_kernel_;
 
         /**
          * Map of node id to the nodes.
@@ -386,17 +412,17 @@ namespace pose_graph {
 
         virtual bool getMatrixRepresentationOfDetections(
                 const std::vector<MapObjectObservationType> &pos_observations,
-                Eigen::MatrixXf &input_matrix) const = 0;
+                Eigen::MatrixXd &input_matrix) const = 0;
 
         bool getMatrixRepresentationOfDetectionSampleValue(const std::vector<MapObjectObservationType> &observations,
-                                                           Eigen::MatrixXf &outputs_matrix) {
+                                                           Eigen::MatrixXd &outputs_matrix) {
             size_t obs_count = observations.size();
 
             if (obs_count == 0) {
                 return false;
             }
 
-            outputs_matrix = Eigen::MatrixXf(1, obs_count);
+            outputs_matrix = Eigen::MatrixXd(1, obs_count);
             for (size_t i = 0; i < obs_count; i++) {
                 outputs_matrix(0, i) = observations[i].obs_value_;
             }

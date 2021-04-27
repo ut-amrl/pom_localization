@@ -323,7 +323,7 @@ namespace visualization {
                     double inf_val = output_mats[j](0, i);
                     double regressor_val = (int8_t) 100 * output_mats_regressor_val[j](0, i);
                     double variance_val = (int8_t) (100) * ((output_mats_variance[j](0, i) - variance_min_value) / (variance_max_value - variance_min_value));
-                    LOG(INFO) << "Variance val: " << variance_val;
+//                    LOG(INFO) << "Variance val: " << variance_val;
 
                     if (inf_val > 1) {
                         LOG(INFO) << "Inf val " << inf_val;
@@ -332,7 +332,7 @@ namespace visualization {
 
                     int8_t value = (int8_t) 100 * inf_val;
                     if (value > best_val) {
-                        LOG(INFO) << "Variance val for best val " << variance_val;
+//                        LOG(INFO) << "Variance val for best val " << variance_val;
                         best_val = value;
                         regressor_val_for_best_val = regressor_val;
                         variance_val_for_best_val = variance_val;

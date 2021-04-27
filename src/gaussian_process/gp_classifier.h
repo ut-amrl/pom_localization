@@ -14,7 +14,7 @@ namespace gp_regression {
     // dimensions, with the kernel type Kernel (which should be a subclass of Kernel and should have the same
     // N template parameter)
     // That is, the GP approximates f: R^N -> R^M
-    template <int N, typename Kernel>
+    template<int N, typename Kernel>
     class GaussianProcessClassifier {
     public:
 
@@ -31,18 +31,20 @@ namespace gp_regression {
          *                  kernel must be parameterized with N.
          */
         explicit GaussianProcessClassifier(
-                const Eigen::MatrixXf& inputs,
-                const Eigen::MatrixXf& outputs,
+                const Eigen::MatrixXd &inputs,
+                const Eigen::MatrixXd &outputs,
                 const double &prior_mean,
-                const double &identity_noise,
-                Kernel* kernel) : num_datapoints_(inputs.cols()), inputs_(inputs), outputs_(outputs) {
+                const double &identity_noise_mean,
+                const double &identity_noise_var,
+                Kernel *mean_kernel,
+                Kernel *variance_kernel) : num_datapoints_(inputs.cols()), inputs_(inputs), outputs_(outputs) {
             CHECK_EQ(inputs.rows(), N);
             CHECK_EQ(outputs.rows(), 1);
             CHECK_EQ(inputs.cols(), outputs.cols());
-            output_data_transformed_ = Eigen::MatrixXf(outputs.rows(), outputs.cols());
-            Eigen::MatrixXf mean_vec = Eigen::MatrixXf(1, 1);
+            output_data_transformed_ = Eigen::MatrixXd(outputs.rows(), outputs.cols());
+            Eigen::MatrixXd mean_vec = Eigen::MatrixXd(1, 1);
             mean_vec << prior_mean;
-            Eigen::MatrixXf transformed_mean_vec = Eigen::MatrixXf(1, 1);
+            Eigen::MatrixXd transformed_mean_vec = Eigen::MatrixXd(1, 1);
             transformZeroToOneOutputsToRealRange(mean_vec, transformed_mean_vec);
             double transformed_prior_mean = transformed_mean_vec(0);
 //            LOG(INFO) << "Outputs " << outputs;
@@ -55,16 +57,20 @@ namespace gp_regression {
             prior_mean_regressor_range_ = transformed_prior_mean;
 
             LOG(INFO) << "Creating regressor";
-            gp_regressor_  = std::make_shared<GaussianProcessRegression<N, 1, Kernel>>(inputs, output_data_transformed_, transformed_prior_mean, identity_noise, kernel);
+            gp_regressor_ = std::make_shared<GaussianProcessRegression<N, 1, Kernel>>(inputs, output_data_transformed_,
+                                                                                      transformed_prior_mean,
+                                                                                      identity_noise_mean,
+                                                                                      identity_noise_var, mean_kernel,
+                                                                                      variance_kernel);
             LOG(INFO) << "Done creating regressor";
         }
 
-        void appendData(const Eigen::MatrixXf &new_inputs, const Eigen::MatrixXf &new_outputs) {
+        void appendData(const Eigen::MatrixXd &new_inputs, const Eigen::MatrixXd &new_outputs) {
             CHECK_EQ(new_inputs.rows(), N);
             CHECK_EQ(new_outputs.rows(), 1);
             CHECK_EQ(new_inputs.cols(), new_outputs.cols());
 
-            Eigen::MatrixXf new_outputs_transformed = Eigen::MatrixXf(new_outputs.rows(), new_outputs.cols());
+            Eigen::MatrixXd new_outputs_transformed = Eigen::MatrixXd(new_outputs.rows(), new_outputs.cols());
             transformZeroToOneOutputsToRealRange(new_outputs, new_outputs_transformed);
 
             auto prev_size = outputs_.cols();
@@ -92,15 +98,17 @@ namespace gp_regression {
          * @return Estimated output value for the given input.
          */
         template<typename T>
-        Eigen::Matrix<T, 1, Eigen::Dynamic> Inference(const Eigen::Matrix<T, N, Eigen::Dynamic>& x) {
+        Eigen::Matrix<T, 1, Eigen::Dynamic> Inference(const Eigen::Matrix<T, N, Eigen::Dynamic> &x) {
 
-            std::pair<Eigen::Matrix<T, 1, Eigen::Dynamic>, Eigen::Matrix<T, 1, Eigen::Dynamic>> regressor_out = gp_regressor_->Inference(x);
-            LOG(INFO) << "Regressor out mean " << regressor_out.first;
-//            LOG(INFO) << "Regressor out variance " << regressor_out.second;
+            std::pair<Eigen::Matrix<T, 1, Eigen::Dynamic>, Eigen::Matrix<T, 1, Eigen::Dynamic>> regressor_out = gp_regressor_->Inference(
+                    x);
+//            LOG(INFO) << "Regressor out mean " << regressor_out.first;
+            LOG(INFO) << "Regressor out variance " << regressor_out.second;
 
-            Eigen::Matrix<T, 1, Eigen::Dynamic> classification_output = Eigen::Matrix<T, 1, Eigen::Dynamic>(1, x.cols());
+            Eigen::Matrix<T, 1, Eigen::Dynamic> classification_output = Eigen::Matrix<T, 1, Eigen::Dynamic>(1,
+                                                                                                            x.cols());
             sigmoidNormalConvolution(regressor_out.first, regressor_out.second, classification_output);
-            LOG(INFO) << "Classification output " << classification_output;
+//            LOG(INFO) << "Classification output " << classification_output;
 
             return classification_output;
         }
@@ -128,7 +136,7 @@ namespace gp_regression {
          *
          * TODO do we need to maintain this or should we just pass it off to the regressor.
          */
-        Eigen::MatrixXf inputs_;
+        Eigen::MatrixXd inputs_;
 
         /**
          * Output data (observations at the input points).
@@ -137,19 +145,19 @@ namespace gp_regression {
          *
          * TODO do we need to maintain this at all?
          */
-        Eigen::MatrixXf outputs_;
+        Eigen::MatrixXd outputs_;
 
         /**
          * Values are spread out across the entire real line.
          *
          * TODO do we need to maintain this or should we just transform and pass it off to the regressor.
          */
-        Eigen::MatrixXf output_data_transformed_;
+        Eigen::MatrixXd output_data_transformed_;
 
         // TODO need to figure out how to have non-zero mean
 
-        void transformZeroToOneOutputsToRealRange(const Eigen::MatrixXf &zero_to_one_output_vals,
-                                                  Eigen::MatrixXf &real_valued_output_vals) {
+        void transformZeroToOneOutputsToRealRange(const Eigen::MatrixXd &zero_to_one_output_vals,
+                                                  Eigen::MatrixXd &real_valued_output_vals) {
             // Using the logit function (inverse of logistic function)
             // f(x) = - ln((1/x) - 1)
             real_valued_output_vals = (-1 * (zero_to_one_output_vals.array().inverse() - 1).log()).matrix();
@@ -163,11 +171,13 @@ namespace gp_regression {
 
 
             // mean / sqrt(1 + (pi/8) * variance)
-            Eigen::Array<T, 1, Eigen::Dynamic> sigmoid_input = T(prior_mean_regressor_range_) + ((mean.array() - T(prior_mean_regressor_range_)) / ((((variance.array()) * T(M_PI / 8)) + T(1)).sqrt()));
+            Eigen::Array<T, 1, Eigen::Dynamic> sigmoid_input = T(prior_mean_regressor_range_) +
+                                                               ((mean.array() - T(prior_mean_regressor_range_)) /
+                                                                ((((variance.array()) * T(M_PI / 8)) + T(1)).sqrt()));
 
             // 1 / (1 + e^(-x))
             sigmoid_approx = ((T(1) + ((T(-1) * sigmoid_input).exp())).inverse()).matrix();
-            LOG(INFO) << "Sigmoid approx without variance: " << ((T(1) + ((T(-1) * mean.array()).exp())).inverse()).matrix();
+//            LOG(INFO) << "Sigmoid approx without variance: " << ((T(1) + ((T(-1) * mean.array()).exp())).inverse()).matrix();
         }
     };
 } // end gp_regression

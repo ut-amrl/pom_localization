@@ -186,8 +186,12 @@ namespace pose_optimization {
 
         std::vector<std::pair<PoseType, double>> samples_and_value_rel_map;
         for (const PoseType &sample_pose : sample_poses_rel_robot) {
-            samples_and_value_rel_map.emplace_back(std::make_pair(pose::combinePoses(robot_pose, sample_pose),
-                    sample_value_generator(sample_pose, object_detections)));
+            std::pair<PoseType, double> sample_val = std::make_pair(pose::combinePoses(robot_pose, sample_pose), sample_value_generator(sample_pose, object_detections));
+//            for (int i = 0; i < 8; i++) {
+                samples_and_value_rel_map.emplace_back(sample_val);
+//            }
+//            samples_and_value_rel_map.emplace_back(std::make_pair(pose::combinePoses(robot_pose, sample_pose),
+//                    sample_value_generator(sample_pose, object_detections)));
 //            std::pair<pose::Pose2d, double> last_value = samples_and_value_rel_map.back();
 //            if (last_value.second> 0.5) {
 //                LOG(INFO) << "Object detection global frame " << last_value.first.first.x() << ", " << last_value.first.first.y() << ", " << last_value.first.second;

@@ -30,12 +30,26 @@ namespace h3d {
 
     static std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>> createPoseGraph(const pose_optimization::CostFunctionParameters &cost_function_params) {
 
-        gp_kernel::GaussianKernel<2> position_kernel(cost_function_params.position_kernel_len_,
-                                                     cost_function_params.position_kernel_var_);
-        gp_kernel::PeriodicGaussianKernel<1> orientation_kernel(M_PI * 2, cost_function_params.orientation_kernel_var_,
-                                                                cost_function_params.orientation_kernel_len_);
-        gp_kernel::Pose2dKernel pose_2d_kernel(position_kernel, orientation_kernel);
-        return std::make_shared<pose_graph::PoseGraph2dMovObjDistribution2d>((std::unordered_map<std::string, double>){}, 0.05, (std::unordered_map<std::string, double>){}, 0.2, pose_2d_kernel);
+        gp_kernel::GaussianKernel<2> mean_position_kernel(cost_function_params.mean_position_kernel_len_,
+                                                     cost_function_params.mean_position_kernel_var_);
+        gp_kernel::PeriodicGaussianKernel<1> mean_orientation_kernel(M_PI * 2, cost_function_params.mean_orientation_kernel_var_,
+                                                                cost_function_params.mean_orientation_kernel_len_);
+        gp_kernel::Pose2dKernel mean_pose_2d_kernel(mean_position_kernel, mean_orientation_kernel);
+
+        gp_kernel::GaussianKernel<2> var_position_kernel(cost_function_params.var_position_kernel_len_,
+                                                          cost_function_params.var_position_kernel_var_);
+        gp_kernel::PeriodicGaussianKernel<1> var_orientation_kernel(M_PI * 2, cost_function_params.var_orientation_kernel_var_,
+                                                                     cost_function_params.var_orientation_kernel_len_);
+        gp_kernel::Pose2dKernel var_pose_2d_kernel(var_position_kernel, var_orientation_kernel);
+
+        return std::make_shared<pose_graph::PoseGraph2dMovObjDistribution2d>((std::unordered_map<std::string, double>){},
+                                                                             0.05,
+                                                                             (std::unordered_map<std::string, double>){},
+                                                                             0.2,
+                                                                             (std::unordered_map<std::string, double>){},
+                                                                             0.2,
+                                                                             mean_pose_2d_kernel,
+                                                                             var_pose_2d_kernel);
     }
 
     ceres::IterationCallback* createCeresIterationCallback(
@@ -529,10 +543,10 @@ int main(int argc, char** argv) {
 
     pose_optimization::CostFunctionParameters cost_function_params;
 //    cost_function_params.odometry_enabled_ = false;
-//    cost_function_params.position_kernel_len_ = cost_function_params.position_kernel_len_ / 5;
-//    cost_function_params.orientation_kernel_len_ = cost_function_params.orientation_kernel_len_ / 5;
-//    cost_function_params.orientation_kernel_len_ = 100000;
-//    cost_function_params.position_kernel_len_ = 10000000;
+//    cost_function_params.mean_position_kernel_len_ = cost_function_params.mean_position_kernel_len_ / 5;
+//    cost_function_params.mean_orientation_kernel_len_ = cost_function_params.mean_orientation_kernel_len_ / 5;
+//    cost_function_params.mean_orientation_kernel_len_ = 100000;
+//    cost_function_params.mean_position_kernel_len_ = 10000000;
     pose_optimization::PoseOptimizationParameters pose_optimization_params;
     pose_optimization_params.cost_function_params_ = cost_function_params;
     offline_optimization::OfflinePoseOptimizer<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3> offline_optimizer;
