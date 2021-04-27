@@ -102,7 +102,7 @@ namespace gp_regression {
 
             std::pair<Eigen::Matrix<T, 1, Eigen::Dynamic>, Eigen::Matrix<T, 1, Eigen::Dynamic>> regressor_out = gp_regressor_->Inference(
                     x);
-//            LOG(INFO) << "Regressor out mean " << regressor_out.first;
+            LOG(INFO) << "Regressor out mean " << regressor_out.first;
             LOG(INFO) << "Regressor out variance " << regressor_out.second;
 
             Eigen::Matrix<T, 1, Eigen::Dynamic> classification_output = Eigen::Matrix<T, 1, Eigen::Dynamic>(1,

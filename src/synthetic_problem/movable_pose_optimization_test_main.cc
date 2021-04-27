@@ -766,28 +766,6 @@ void GPCTest() {
     Eigen::MatrixXd smaller_inputs = Eigen::MatrixXd(3, smaller_num_samples);
     Eigen::MatrixXd smaller_outputs = Eigen::MatrixXd(1, smaller_num_samples);
 
-    util_random::Random random_generator;
-    for (int i = 0; i < smaller_num_samples; i++) {
-        smaller_inputs(0, i) = random_generator.UniformRandom(0, 1);
-        smaller_inputs(1, i) = random_generator.UniformRandom(0, 1);
-        smaller_inputs(2, i) = random_generator.UniformRandom(0, 2 * M_PI);
-        smaller_outputs(0, i) = random_generator.UniformRandom(0, 1);
-        LOG(INFO) << "Sample " << i;
-        LOG(INFO) << smaller_inputs(0, i);
-        LOG(INFO) << smaller_inputs(1, i);
-        LOG(INFO) << smaller_inputs(2, i);
-        LOG(INFO) << smaller_outputs(0, i);
-
-        for (int j = 0; j < larger_sample_multiplier; j++) {
-            larger_inputs.col(larger_sample_multiplier * i + j) = smaller_inputs.col(i);
-            larger_outputs.col(larger_sample_multiplier * i + j) = smaller_outputs.col(i);
-        }
-    }
-
-    LOG(INFO) << "Smaller inputs";
-    LOG(INFO) << smaller_inputs;
-    LOG(INFO) << "Smaller outputs";
-    LOG(INFO) << smaller_outputs;
 
 //    cost_function_params.mean_position_kernel_len_ = 0.5;
 //    cost_function_params.mean_orientation_kernel_len_ = 10000;
@@ -820,16 +798,39 @@ void GPCTest() {
     double var_orientation_kernel_len = 1000;
 
     double input_variance_for_var = 10;
-    double var_pos_kernel_var = 100;
-    double var_orientation_kernel_var = 100;
+    double var_pos_kernel_var = 1;
+    double var_orientation_kernel_var = 1;
 
     double input_var_for_var_2 = 10;
-    double var_pos_kernel_var_2 = 10000;
-    double var_orientation_kernel_var_2 = 10000;
+    double var_pos_kernel_var_2 = 10;
+    double var_orientation_kernel_var_2 = 10;
 
     double input_var_for_var_3 = 10;
-    double var_pos_kernel_var_3 = 5000;
-    double var_orientation_kernel_var_3 = 5000;
+    double var_pos_kernel_var_3 = 5;
+    double var_orientation_kernel_var_3 = 5;
+
+    util_random::Random random_generator;
+    for (int i = 0; i < smaller_num_samples; i++) {
+        smaller_inputs(0, i) = random_generator.UniformRandom(0, 1);
+        smaller_inputs(1, i) = random_generator.UniformRandom(0, 1);
+        smaller_inputs(2, i) = random_generator.UniformRandom(0, 2 * M_PI);
+        smaller_outputs(0, i) = random_generator.UniformRandom(0, 1);
+        LOG(INFO) << "Sample " << i;
+        LOG(INFO) << smaller_inputs(0, i);
+        LOG(INFO) << smaller_inputs(1, i);
+        LOG(INFO) << smaller_inputs(2, i);
+        LOG(INFO) << smaller_outputs(0, i);
+
+        for (int j = 0; j < larger_sample_multiplier; j++) {
+            larger_inputs.col(larger_sample_multiplier * i + j) = smaller_inputs.col(i);
+            larger_outputs.col(larger_sample_multiplier * i + j) = smaller_outputs.col(i);
+        }
+    }
+
+    LOG(INFO) << "Smaller inputs";
+    LOG(INFO) << smaller_inputs;
+    LOG(INFO) << "Smaller outputs";
+    LOG(INFO) << smaller_outputs;
 
     gp_kernel::GaussianKernel<2> mean_position_kernel(mean_pos_kernel_len, mean_pos_kernel_var);
     gp_kernel::PeriodicGaussianKernel<1> mean_orientation_kernel(M_PI * 2,
@@ -944,8 +945,8 @@ int main(int argc, char **argv) {
     oss << std::put_time(&tm, "%d-%m-%Y_%H:%M:%S");
     std::string time_str = oss.str();
     std::string csv_file_name = "results/noise_eval_" + time_str + ".csv";
-//    GPCTest();
-    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 5);
+    GPCTest();
+//    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 5);
 //    LOG(INFO) << runSingleSyntheticProblem(manager);
 //    runSyntheticProblemWithConfigVariations(manager, createParkedCarPosesWithFrequency(), createGroundTruthPoses(),
 //                                            csv_file_name);
