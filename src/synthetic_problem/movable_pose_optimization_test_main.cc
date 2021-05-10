@@ -55,11 +55,11 @@ std::vector<Pose2d> createGroundTruthPoses() {
     poses.emplace_back(createPose2d(0, 4, M_PI_2));
     poses.emplace_back(createPose2d(-.04, 7, M_PI_2));
     poses.emplace_back(createPose2d(0, 10, M_PI_2));
-//    poses.emplace_back(createPose2d(0.3, 13, M_PI_2));
-//    poses.emplace_back(createPose2d(0.7, 15, M_PI_4));
-//    poses.emplace_back(createPose2d(2, 17, 0));
-//    poses.emplace_back(createPose2d(4, 18, 0));
-//    poses.emplace_back(createPose2d(7, 18, 0));
+    poses.emplace_back(createPose2d(0.3, 13, M_PI_2));
+    poses.emplace_back(createPose2d(0.7, 15, M_PI_4));
+    poses.emplace_back(createPose2d(2, 17, 0));
+    poses.emplace_back(createPose2d(4, 18, 0));
+    poses.emplace_back(createPose2d(7, 18, 0));
 //    // TODO uncomment
 //    poses.emplace_back(createPose2d(10, 17.5, 0));
 //    poses.emplace_back(createPose2d(12, 15, -M_PI_4));
@@ -619,10 +619,10 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     cost_function_params.default_obj_probability_input_variance_for_mean_ = 10;
 
     cost_function_params.var_position_kernel_len_ = 1.8;
-    cost_function_params.var_orientation_kernel_len_ = 1000;
+    cost_function_params.var_orientation_kernel_len_ = 10;
 
-    cost_function_params.var_position_kernel_var_ = 100;
-    cost_function_params.var_orientation_kernel_var_ = 100;
+    cost_function_params.var_position_kernel_var_ = 0.0003;
+    cost_function_params.var_orientation_kernel_var_ = 0.0003;
 
     cost_function_params.default_obj_probability_input_variance_for_var_ = 10;
     pose_optimization::PoseOptimizationParameters pose_optimization_params;
@@ -757,8 +757,8 @@ void GPCTest() {
     // Rows = 3
     // Cols = # samples
 
-    int larger_sample_multiplier = 10;
-    int smaller_num_samples = 25;
+    int larger_sample_multiplier = 4;
+    int smaller_num_samples = 10;
     int larger_num_samples = larger_sample_multiplier * smaller_num_samples;
     Eigen::MatrixXd larger_inputs = Eigen::MatrixXd(3, larger_num_samples);
     Eigen::MatrixXd larger_outputs = Eigen::MatrixXd(1, larger_num_samples);
@@ -788,7 +788,7 @@ void GPCTest() {
 
     // TODO set values for these
     double prior_mean = 0.1;
-    double input_variance_for_mean = 10;
+    double input_variance_for_mean = 1;
     double mean_pos_kernel_len = 0.5;
     double mean_pos_kernel_var = 9;
     double mean_orientation_kernel_len = 10000;
@@ -945,8 +945,8 @@ int main(int argc, char **argv) {
     oss << std::put_time(&tm, "%d-%m-%Y_%H:%M:%S");
     std::string time_str = oss.str();
     std::string csv_file_name = "results/noise_eval_" + time_str + ".csv";
-    GPCTest();
-//    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 5);
+//    GPCTest();
+    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 10);
 //    LOG(INFO) << runSingleSyntheticProblem(manager);
 //    runSyntheticProblemWithConfigVariations(manager, createParkedCarPosesWithFrequency(), createGroundTruthPoses(),
 //                                            csv_file_name);

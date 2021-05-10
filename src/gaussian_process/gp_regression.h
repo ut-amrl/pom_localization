@@ -173,7 +173,8 @@ namespace gp_regression {
 
 //            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> kernel_times_inv_gram = k_x_transp * inv_gram_matrix_.cast<T>();
             Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> kernel_times_inv_gram_mean = k_x_transp_mean_kernel * inv_gram_matrix_mean_.cast<T>();
-
+            LOG(INFO) << "Kernel times inv gram mat times mean adjusted " << kernel_times_inv_gram_mean * mean_adjusted_outputs_transp_.cast<T>();
+            LOG(INFO) << "Kernel times inv gram m at times out " << kernel_times_inv_gram_mean * outputs_transp_.cast<T>();
             Eigen::Matrix<T, Eigen::Dynamic, M> mu_star_transp = prior_mean_mat_.cast<T>() + kernel_times_inv_gram_mean * mean_adjusted_outputs_transp_.cast<T>();
 
             // Compute variance: k_xx + K_x^T * K_d^-1 * K_x
