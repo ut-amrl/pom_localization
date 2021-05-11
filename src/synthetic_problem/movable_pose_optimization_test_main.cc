@@ -61,8 +61,8 @@ std::vector<Pose2d> createGroundTruthPoses() {
     poses.emplace_back(createPose2d(4, 18, 0));
     poses.emplace_back(createPose2d(7, 18, 0));
 //    // TODO uncomment
-//    poses.emplace_back(createPose2d(10, 17.5, 0));
-//    poses.emplace_back(createPose2d(12, 15, -M_PI_4));
+    poses.emplace_back(createPose2d(10, 17.5, 0));
+    poses.emplace_back(createPose2d(12, 15, -M_PI_4));
 //    poses.emplace_back(createPose2d(12, 12, -M_PI_2));
 //    poses.emplace_back(createPose2d(11.5, 9, -M_PI_2));
 //    poses.emplace_back(createPose2d(11.7, 6, -M_PI_2));
@@ -616,13 +616,13 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     cost_function_params.mean_orientation_kernel_var_ = 1;
 
 
-    cost_function_params.default_obj_probability_input_variance_for_mean_ = 10;
+    cost_function_params.default_obj_probability_input_variance_for_mean_ = 100;
 
     cost_function_params.var_position_kernel_len_ = 1.8;
     cost_function_params.var_orientation_kernel_len_ = 10;
 
-    cost_function_params.var_position_kernel_var_ = 0.0003;
-    cost_function_params.var_orientation_kernel_var_ = 0.0003;
+    cost_function_params.var_position_kernel_var_ = 0.0004;
+    cost_function_params.var_orientation_kernel_var_ = 0.0004;
 
     cost_function_params.default_obj_probability_input_variance_for_var_ = 10;
     pose_optimization::PoseOptimizationParameters pose_optimization_params;
@@ -946,7 +946,7 @@ int main(int argc, char **argv) {
     std::string time_str = oss.str();
     std::string csv_file_name = "results/noise_eval_" + time_str + ".csv";
 //    GPCTest();
-    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 10);
+    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 5);
 //    LOG(INFO) << runSingleSyntheticProblem(manager);
 //    runSyntheticProblemWithConfigVariations(manager, createParkedCarPosesWithFrequency(), createGroundTruthPoses(),
 //                                            csv_file_name);

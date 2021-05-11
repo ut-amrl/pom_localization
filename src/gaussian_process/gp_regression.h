@@ -7,6 +7,7 @@
 
 #include <eigen3/Eigen/Dense>
 #include <glog/logging.h>
+#include <ceres/jet.h>
 
 namespace gp_regression {
     // Implement a Gaussian Process Regressor for N input dimensions, and M output
@@ -157,6 +158,9 @@ namespace gp_regression {
 //                    LOG(INFO) << " j  " << j;
                     Eigen::Matrix<T, N, 1> eval_input = x.col(j);
                     k_x_transp_mean_kernel(j, i) = mean_kernel_->evaluateKernel(input_i, eval_input);
+                    if (ceres::IsNaN(k_x_transp_mean_kernel(j, i))) {
+                        LOG(INFO) << "Kernel entry " << j << ", " << i << " is nan";
+                    }
                     kde_based_var(0, j) += variance_kernel_->evaluateKernel(input_i, eval_input);
                 }
             }
@@ -173,6 +177,9 @@ namespace gp_regression {
 
 //            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> kernel_times_inv_gram = k_x_transp * inv_gram_matrix_.cast<T>();
             Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> kernel_times_inv_gram_mean = k_x_transp_mean_kernel * inv_gram_matrix_mean_.cast<T>();
+//            LOG(INFO) << "Inv gram mat mean " << inv_gram_matrix_mean_;
+//            for (int i = )
+//            LOG(INFO) << "Kernel times in gram mat " << kernel_times_inv_gram_mean;
             LOG(INFO) << "Kernel times inv gram mat times mean adjusted " << kernel_times_inv_gram_mean * mean_adjusted_outputs_transp_.cast<T>();
             LOG(INFO) << "Kernel times inv gram m at times out " << kernel_times_inv_gram_mean * outputs_transp_.cast<T>();
             Eigen::Matrix<T, Eigen::Dynamic, M> mu_star_transp = prior_mean_mat_.cast<T>() + kernel_times_inv_gram_mean * mean_adjusted_outputs_transp_.cast<T>();
