@@ -118,15 +118,11 @@ namespace pose_optimization {
     double computeGaussianValue(const ObjectDetectionRelRobot<pose::Pose2d, 3> &obj_pose, const pose::Pose2d &sample_pose) {
         // TODO should we instead have a translation component that is normally distributed and a rotation component and just use the distance for each?
         // Assuming since each dimension is independent, that we can just evaluated the gaussian for each dim, and then multiply
-//        LOG(INFO) << "Obj pose " << obj_pose.pose_.first.x() << ", " << obj_pose.pose_.first.y() << ", " << obj_pose.pose_.second;
-//        LOG(INFO) << "Sample pose " << sample_pose.first.x() << ", " << sample_pose.first.y() << ", " << sample_pose.second;
-        LOG(INFO) << "Angle Variance " << obj_pose.object_pose_variance_(2);
         double prob = statistics::ProbabilityDensityGaussian(sample_pose.first.x(), obj_pose.pose_.first.x(),
                                                                2 * sqrt(obj_pose.object_pose_variance_(0)));
 //
 //        double prob = statistics::ProbabilityDensityGaussian(sample_pose.first.x(), obj_pose.pose_.first.x(),
 //                                                             sqrt(obj_pose.object_pose_variance_(0)));
-//        LOG(INFO) << "X prob: " << prob;
         double y_prob = statistics::ProbabilityDensityGaussian(sample_pose.first.y(), obj_pose.pose_.first.y(),
                                                                2 * sqrt(obj_pose.object_pose_variance_(1)));
 
@@ -141,7 +137,6 @@ namespace pose_optimization {
 //        double yaw_prob = statistics::ProbabilityDensityGaussian(yaw_diff, (double) 0, sqrt(obj_pose.object_pose_variance_(2)));
 //        LOG(INFO) << "Yaw prob: " << yaw_prob;
         prob *= yaw_prob;
-        LOG(INFO) << "sample value " << prob;
         return prob;
     }
 
@@ -163,13 +158,10 @@ namespace pose_optimization {
                                  const std::vector<ObjectDetectionRelRobot<PoseType, PoseParamCount>> &local_detections,
                                  const std::function<double(const double&)> &pdf_squashing_function) {
         double max_of_gaussians = 0;
-        LOG(INFO) << "Computing val for sample " << sample_pose.first.x() << ", " << sample_pose.first.y() << ", " << sample_pose.second;
         for (const ObjectDetectionRelRobot<PoseType, PoseParamCount> &object_detection : local_detections) {
-            max_of_gaussians = std::max(max_of_gaussians, pdf_squashing_function(computeGaussianValue(object_detection, sample_pose)));
-//            LOG(INFO) << "Max val " << max_of_gaussians;
+            max_of_gaussians = std::max(max_of_gaussians, computeGaussianValue(object_detection, sample_pose));
         }
-        LOG(INFO) << "Pose norm: " << sample_pose.first.norm()  << ", Value for sample "<< max_of_gaussians;
-        return max_of_gaussians;
+        return pdf_squashing_function(max_of_gaussians);
     }
 
 

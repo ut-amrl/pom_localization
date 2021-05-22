@@ -52,7 +52,7 @@ std::vector<Pose2d> createGroundTruthPoses() {
     std::vector<Pose2d> poses;
     poses.emplace_back(createPose2d(0, 0, 0)); // Should test how this deals with non-zero-origins?
     poses.emplace_back(createPose2d(0.1, 1, 0));
-    poses.emplace_back(createPose2d(0, 4, M_PI_2));
+    poses.emplace_back(createPose2d(0, 4, M_PI_4));
     poses.emplace_back(createPose2d(-.04, 7, M_PI_2));
     poses.emplace_back(createPose2d(0, 10, M_PI_2));
     poses.emplace_back(createPose2d(0.3, 13, M_PI_2));
@@ -63,14 +63,14 @@ std::vector<Pose2d> createGroundTruthPoses() {
 //    // TODO uncomment
     poses.emplace_back(createPose2d(10, 17.5, 0));
     poses.emplace_back(createPose2d(12, 15, -M_PI_4));
-//    poses.emplace_back(createPose2d(12, 12, -M_PI_2));
-//    poses.emplace_back(createPose2d(11.5, 9, -M_PI_2));
-//    poses.emplace_back(createPose2d(11.7, 6, -M_PI_2));
-//    poses.emplace_back(createPose2d(11.3, 3, -M_PI_2));
-//    poses.emplace_back(createPose2d(11, -1, -(M_PI_2 + M_PI_4)));
-//    poses.emplace_back(createPose2d(9, -0.0, M_PI));
-//    poses.emplace_back(createPose2d(6, -0.9, M_PI));
-//    poses.emplace_back(createPose2d(3, -0.7, M_PI));
+    poses.emplace_back(createPose2d(12, 12, -M_PI_2));
+    poses.emplace_back(createPose2d(11.5, 9, -M_PI_2));
+    poses.emplace_back(createPose2d(11.7, 6, -M_PI_2));
+    poses.emplace_back(createPose2d(11.3, 3, -M_PI_2));
+    poses.emplace_back(createPose2d(11, -1, -(M_PI_2 + M_PI_4)));
+    poses.emplace_back(createPose2d(9, -0.0, M_PI));
+    poses.emplace_back(createPose2d(6, -0.9, M_PI));
+    poses.emplace_back(createPose2d(3, -0.7, M_PI));
 
 //    poses.emplace_back(createPose2d(0, 0, 0)); // Should test how this deals with non-zero-origins?
 //    poses.emplace_back(createPose2d(0.1, 1, 0));
@@ -616,13 +616,13 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     cost_function_params.mean_orientation_kernel_var_ = 1;
 
 
-    cost_function_params.default_obj_probability_input_variance_for_mean_ = 100;
+    cost_function_params.default_obj_probability_input_variance_for_mean_ = 10;
 
     cost_function_params.var_position_kernel_len_ = 1.8;
     cost_function_params.var_orientation_kernel_len_ = 10;
 
-    cost_function_params.var_position_kernel_var_ = 0.0004;
-    cost_function_params.var_orientation_kernel_var_ = 0.0004;
+    cost_function_params.var_position_kernel_var_ = 0.00015;
+    cost_function_params.var_orientation_kernel_var_ = 0.00015;
 
     cost_function_params.default_obj_probability_input_variance_for_var_ = 10;
     pose_optimization::PoseOptimizationParameters pose_optimization_params;
@@ -645,7 +645,7 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     }
 
     std::unordered_map<std::string, std::pair<double, double>> valid_percent_filled_range;
-    valid_percent_filled_range[car_class] = std::make_pair(0.3, 0.8);
+    valid_percent_filled_range[car_class] = std::make_pair(0.3, 0.75);
 //    valid_percent_filled_range[car_class] = std::make_pair(1.0, 1.0);
 
     // TODO make more noisy
@@ -666,7 +666,7 @@ double runSyntheticProblemWithUncertainty(const std::shared_ptr<visualization::V
     std::unordered_map<std::string, pose_optimization::SampleGeneratorParams2d> sample_gen_params_by_class;
     sample_gen_params_by_class[car_class].num_samples_per_beam_ = 1;
     // TODO increase this
-    sample_gen_params_by_class[car_class].percent_beams_per_scan_ = 0.05;
+    sample_gen_params_by_class[car_class].percent_beams_per_scan_ = 0.03;
     sample_gen_params_by_class[car_class].percent_poses_to_include_ = 1.0;
 
 //    util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
@@ -946,7 +946,7 @@ int main(int argc, char **argv) {
     std::string time_str = oss.str();
     std::string csv_file_name = "results/noise_eval_" + time_str + ".csv";
 //    GPCTest();
-    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 5);
+    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 3);
 //    LOG(INFO) << runSingleSyntheticProblem(manager);
 //    runSyntheticProblemWithConfigVariations(manager, createParkedCarPosesWithFrequency(), createGroundTruthPoses(),
 //                                            csv_file_name);
