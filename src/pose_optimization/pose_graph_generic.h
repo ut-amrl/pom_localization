@@ -19,6 +19,9 @@
 #include <pose_optimization/pose_optimization_parameters.h>
 #include <gaussian_process/gp_classifier.h>
 
+#include <util/random.h>
+#include <util/kdtree.h>
+
 namespace pose_graph {
     typedef uint64_t NodeId;
 
@@ -191,8 +194,8 @@ namespace pose_graph {
                   const double &default_obj_probability_input_variance_for_mean,
                   const std::unordered_map<std::string, double> &obj_probability_input_variance_by_class_for_var,
                   const double &default_obj_probability_input_variance_for_var,
-                  MovObjKernelType &mean_kernel,
-                  MovObjKernelType &var_kernel) : rotation_local_parameterization_creator_(rotation_local_parameterization_creator),
+                  const std::shared_ptr<MovObjKernelType> &mean_kernel,
+                  const std::function<std::shared_ptr<MovObjKernelType>(const double &)> &var_kernel_creator) : rotation_local_parameterization_creator_(rotation_local_parameterization_creator),
                   obj_probability_prior_mean_by_class_(obj_probability_prior_mean_by_class),
                   default_obj_probability_prior_mean_(default_obj_probability_prior_mean),
                   obj_probability_input_variance_by_class_for_mean_(obj_probability_input_variance_by_class_for_mean),
@@ -200,7 +203,7 @@ namespace pose_graph {
                   obj_probability_input_variance_by_class_for_var_(obj_probability_input_variance_by_class_for_var),
                   default_obj_probability_input_variance_for_var_(default_obj_probability_input_variance_for_var),
                   mov_obj_mean_kernel_(mean_kernel),
-                  mov_obj_var_kernel_(var_kernel){
+                  var_kernel_creator_(var_kernel_creator){
 
         }
 
@@ -261,54 +264,97 @@ namespace pose_graph {
         void addMapFrameObservations(
                 const std::unordered_map<std::string, std::vector<MapObjectObservationType>> &observations_by_class) {
             for (const auto &obs_by_class : observations_by_class) {
-                Eigen::MatrixXd inputs;
-                Eigen::MatrixXd outputs;
-                if (getMatrixRepresentationOfDetections(obs_by_class.second, inputs)
-                        && getMatrixRepresentationOfDetectionSampleValue(obs_by_class.second, outputs)) {
-                    auto gpc_iter = movable_object_gpcs_by_class_.find(obs_by_class.first);
-                    std::shared_ptr<GpcType> gpc;
-                    if (gpc_iter != movable_object_gpcs_by_class_.end()) {
-                        gpc = gpc_iter->second;
-                        gpc->appendData(inputs, outputs);
-                    } else {
-                        double prior_mean = default_obj_probability_prior_mean_;
-                        if (obj_probability_prior_mean_by_class_.find(obs_by_class.first) != obj_probability_prior_mean_by_class_.end()) {
-                            double mean_for_class = obj_probability_prior_mean_by_class_.at(obs_by_class.first);
-                            if ((mean_for_class > 0) && (mean_for_class < 1)) {
-                                prior_mean = mean_for_class;
-                            }
-                        }
-                        double input_variance_for_mean = default_obj_probability_input_variance_for_mean_;
-                        if (obj_probability_input_variance_by_class_for_mean_.find(obs_by_class.first) != obj_probability_input_variance_by_class_for_mean_.end()) {
-                            double input_variance_for_class = obj_probability_input_variance_by_class_for_mean_.at(obs_by_class.first);
-                            if (input_variance_for_class > 0) {
-                                input_variance_for_mean = input_variance_for_class;
-                            }
-                        }
-                        double input_variance_for_var = default_obj_probability_input_variance_for_var_;
-                        if (obj_probability_input_variance_by_class_for_var_.find(obs_by_class.first) != obj_probability_input_variance_by_class_for_var_.end()) {
-                            double input_variance_for_class = obj_probability_input_variance_by_class_for_var_.at(obs_by_class.first);
-                            if (input_variance_for_class > 0) {
-                                input_variance_for_var = input_variance_for_class;
-                            }
-                        }
-                        LOG(INFO) << "Outputs size: " << outputs.size();
-                        gpc = std::make_shared<GpcType>(inputs, outputs, prior_mean, input_variance_for_mean,
-                                                        input_variance_for_var, &mov_obj_mean_kernel_,
-                                                        &mov_obj_var_kernel_);
+                // TODO if we do this a lot, it might make sense to just keep the kd node values for each class rather
+                //  than reconstructing them from the map by indices every time
+                // Assuming for now that we're not doing this often, so computation time is not a huge issue and we save
+                // memory this way
+                std::vector<util_kdtree::KDNodeValue<double, MovObjDistributionTranslationDim>> kd_observations;
+
+                std::unordered_map<int, MapObjectObservationType> observations_for_class_by_index;
+
+                // Get existing observations and populate KDNodeValue map
+                if (observations_by_index_.find(obs_by_class.first) != observations_by_index_.end()) {
+                    observations_for_class_by_index = observations_by_index_[obs_by_class.first];
+                    for (const auto &existing_obs_iter : observations_for_class_by_index) {
+                        kd_observations.emplace_back(getKdRepForObs(existing_obs_iter.second, existing_obs_iter.first));
                     }
-                    movable_object_gpcs_by_class_[obs_by_class.first] = gpc;
                 }
+
+                // Get next index
+                int next_index = getNextUnusedIdByClass(obs_by_class.first);
+
+                for (const MapObjectObservationType &observation : obs_by_class.second) {
+
+                    // Create new nodes for new values
+                    kd_observations.emplace_back(getKdRepForObs(observation, next_index));
+
+                    // Update indices map
+                    observations_for_class_by_index[next_index] = observation;
+                    next_index++;
+                }
+
+                // create KD tree
+                kd_trees_by_class_[obs_by_class.first] = std::make_shared<util_kdtree::KDTree<double, MovObjDistributionTranslationDim>>(kd_observations);
+                next_unused_obs_id_by_class_[obs_by_class.first] = next_index;
+                observations_by_index_[obs_by_class.first] = observations_for_class_by_index;
             }
         }
 
-        std::shared_ptr<GpcType> getMovableObjGpc(const std::string &class_label) {
-            auto gpc_iter = movable_object_gpcs_by_class_.find(class_label);
-            if (gpc_iter != movable_object_gpcs_by_class_.end()) {
-                return gpc_iter->second;
+        std::shared_ptr<GpcType> getMovableObjGpcWithinRadius(const std::string &class_label, const double &radius,
+                                                              const Eigen::Matrix<double, MovObjDistributionTranslationDim, 1> &search_point,
+                                                              const double &subsampling_ratio = 1.0,
+                                                              util_random::Random rand_gen = util_random::Random()) {
+
+            if (kd_trees_by_class_.find(class_label) == kd_trees_by_class_.empty()) {
+                LOG(WARNING) << "No KD tree found for class " << class_label;
+                return nullptr;
             }
-            LOG(WARNING) << "No Gaussian Process Classifier found for class " << class_label;
-            return nullptr;
+
+            if (observations_by_index_.find(class_label) == observations_by_index_.end()) {
+                LOG(WARNING) << "No Map observations found for class " << class_label;
+                return nullptr;
+            }
+
+            std::unordered_map<int, MapObjectObservationType> observations_for_class_by_index = observations_by_index_[class_label];
+
+            std::shared_ptr<util_kdtree::KDTree<double, MovObjDistributionTranslationDim>> kd_tree = kd_trees_by_class_[class_label];
+            std::vector<util_kdtree::KDNodeValue<double, MovObjDistributionTranslationDim>> kd_neighbors;
+            kd_tree->FindNeighborPoints(search_point, radius, kd_neighbors);
+
+            std::vector<MapObjectObservationType> observations_vec;
+            for (const util_kdtree::KDNodeValue<double, MovObjDistributionTranslationDim> &neighbor : kd_neighbors) {
+                if (subsampling_ratio == 1.0 || rand_gen.UniformRandom(0, 1) < subsampling_ratio) {
+                    int index = neighbor.index;
+                    auto index_iter = observations_for_class_by_index.find(index);
+                    if (index_iter == observations_for_class_by_index.end()) {
+                        LOG(INFO) << "Could not find observation for index " << index << " for semantic class "
+                                  << class_label << ", skipping entry";
+                    } else {
+                        observations_vec.emplace_back(index_iter.second);
+                    }
+                }
+            }
+
+            return getMovableObjGpcForObs(class_label, observations_vec, subsampling_ratio);
+        }
+
+        std::shared_ptr<GpcType> getMovableObjGpc(const std::string &class_label,
+                                                  const double &subsampling_ratio = 1.0,
+                                                  util_random::Random rand_gen = util_random::Random()) {
+            if (observations_by_index_.find(class_label) == observations_by_index_.end()) {
+                LOG(WARNING) << "No Map observations found for class " << class_label;
+                return nullptr;
+            }
+
+            std::unordered_map<int, MapObjectObservationType> observations_for_type = observations_by_index_[class_label];
+            std::vector<MapObjectObservationType> observations_vec;
+            for (const auto &obs_entry_for_type : observations_for_type) {
+                if (subsampling_ratio == 1.0 || rand_gen.UniformRandom(0, 1) < subsampling_ratio) {
+                    observations_vec.emplace_back(obs_entry_for_type.second);
+                }
+            }
+
+            return getMovableObjGpcForObs(class_label, observations_vec, subsampling_ratio);
         }
 
         /**
@@ -377,15 +423,21 @@ namespace pose_graph {
 
         double default_obj_probability_input_variance_for_var_;
 
-        /**
-         * Kernel for comparing 2d movable object pose similarity.
-         */
-        MovObjKernelType mov_obj_mean_kernel_;
+        std::unordered_map<std::string, int> next_unused_obs_id_by_class_;
+
+        std::unordered_map<std::string, std::unordered_map<int, MapObjectObservationType>> observations_by_index_;
+
+        std::unordered_map<std::string, std::shared_ptr<util_kdtree::KDTree<double, MovObjDistributionTranslationDim>>> kd_trees_by_class_;
 
         /**
          * Kernel for comparing 2d movable object pose similarity.
          */
-        MovObjKernelType mov_obj_var_kernel_;
+        std::shared_ptr<MovObjKernelType> mov_obj_mean_kernel_;
+
+        /**
+         * Kernel for comparing 2d movable object pose similarity.
+         */
+        std::function<std::shared_ptr<MovObjKernelType> (const double &)> var_kernel_creator_;
 
         /**
          * Map of node id to the nodes.
@@ -408,7 +460,7 @@ namespace pose_graph {
         /**
          * Movable object Gaussian Process Classifiers, by their semantic class.
          */
-        std::unordered_map<std::string, std::shared_ptr<GpcType>> movable_object_gpcs_by_class_;
+//        std::unordered_map<std::string, std::shared_ptr<GpcType>> movable_object_gpcs_by_class_;
 
         virtual bool getMatrixRepresentationOfDetections(
                 const std::vector<MapObjectObservationType> &pos_observations,
@@ -428,6 +480,59 @@ namespace pose_graph {
             }
             return true;
         }
+
+        int getNextUnusedIdByClass(const std::string &semantic_class) {
+            if (next_unused_obs_id_by_class_.find(semantic_class) == next_unused_obs_id_by_class_.end()) {
+                return 0;
+            }
+            return next_unused_obs_id_by_class_[semantic_class];
+        }
+
+        std::shared_ptr<GpcType> getMovableObjGpcForObs(const std::string &semantic_class,
+                                                        const std::vector<MapObjectObservationType> &observations,
+                                                        const double &subsampling_ratio) {
+            Eigen::MatrixXd inputs;
+            Eigen::MatrixXd outputs;
+
+            if (getMatrixRepresentationOfDetections(observations, inputs)
+                    && getMatrixRepresentationOfDetectionSampleValue(observations, outputs)) {
+                std::shared_ptr<GpcType> gpc;
+
+                double prior_mean = default_obj_probability_prior_mean_;
+                if (obj_probability_prior_mean_by_class_.find(semantic_class) != obj_probability_prior_mean_by_class_.end()) {
+                    double mean_for_class = obj_probability_prior_mean_by_class_.at(semantic_class);
+                    if ((mean_for_class > 0) && (mean_for_class < 1)) {
+                        prior_mean = mean_for_class;
+                    }
+                }
+                double input_variance_for_mean = default_obj_probability_input_variance_for_mean_;
+                if (obj_probability_input_variance_by_class_for_mean_.find(semantic_class) != obj_probability_input_variance_by_class_for_mean_.end()) {
+                    double input_variance_for_class = obj_probability_input_variance_by_class_for_mean_.at(semantic_class);
+                    if (input_variance_for_class > 0) {
+                        input_variance_for_mean = input_variance_for_class;
+                    }
+                }
+                double input_variance_for_var = default_obj_probability_input_variance_for_var_;
+                if (obj_probability_input_variance_by_class_for_var_.find(semantic_class) != obj_probability_input_variance_by_class_for_var_.end()) {
+                    double input_variance_for_class = obj_probability_input_variance_by_class_for_var_.at(semantic_class);
+                    if (input_variance_for_class > 0) {
+                        input_variance_for_var = input_variance_for_class;
+                    }
+                }
+
+                // TODO change variance kernel to reflect subsampling ratio
+                gpc = std::make_shared<GpcType>(inputs, outputs, prior_mean, input_variance_for_mean,
+                                                input_variance_for_var, mov_obj_mean_kernel_,
+                                                var_kernel_creator_(subsampling_ratio));
+
+                return gpc;
+            }
+            return nullptr;
+        }
+
+        virtual util_kdtree::KDNodeValue<double, MovObjDistributionTranslationDim> getKdRepForObs(
+                const MapObjectObservationType &pos_observation,
+                int index) const = 0;
     };
 }
 

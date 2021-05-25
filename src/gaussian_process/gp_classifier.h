@@ -36,8 +36,8 @@ namespace gp_regression {
                 const double &prior_mean,
                 const double &identity_noise_mean,
                 const double &identity_noise_var,
-                Kernel *mean_kernel,
-                Kernel *variance_kernel) : num_datapoints_(inputs.cols()), inputs_(inputs), outputs_(outputs) {
+                const std::shared_ptr<Kernel> &mean_kernel,
+                const std::shared_ptr<Kernel> &variance_kernel) : num_datapoints_(inputs.cols()), inputs_(inputs), outputs_(outputs) {
             CHECK_EQ(inputs.rows(), N);
             CHECK_EQ(outputs.rows(), 1);
             CHECK_EQ(inputs.cols(), outputs.cols());

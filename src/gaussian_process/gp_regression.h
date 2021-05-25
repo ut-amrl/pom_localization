@@ -36,8 +36,8 @@ namespace gp_regression {
                 const double &prior_mean,
                 const double &identity_noise_mean,
                 const double &identity_noise_var,
-                Kernel* mean_kernel,
-                Kernel *variance_kernel) : num_datapoints_(inputs.cols()), inputs_(inputs), mean_kernel_(mean_kernel), prior_mean_(prior_mean), identity_noise_mean_(identity_noise_mean),
+                const std::shared_ptr<Kernel> &mean_kernel,
+                const std::shared_ptr<Kernel> &variance_kernel) : num_datapoints_(inputs.cols()), inputs_(inputs), mean_kernel_(mean_kernel), prior_mean_(prior_mean), identity_noise_mean_(identity_noise_mean),
                 identity_noise_var_(identity_noise_var) {
             CHECK_EQ(inputs.rows(), N);
             CHECK_EQ(outputs.rows(), M);
@@ -94,7 +94,7 @@ namespace gp_regression {
             }
         }
 
-        void refreshInvGramMatrix(Kernel *kernel, Eigen::MatrixXd &inv_gram_mat, double identity_noise) {
+        void refreshInvGramMatrix(std::shared_ptr<Kernel> kernel, Eigen::MatrixXd &inv_gram_mat, double identity_noise) {
 
             LOG(INFO) << "Creating gram matrix";
             // Create the K matrix.
@@ -232,9 +232,9 @@ namespace gp_regression {
         /**
          * Kernel for evaluating the difference between two points.
          */
-        Kernel* mean_kernel_;
+        std::shared_ptr<Kernel> mean_kernel_;
 
-        Kernel *variance_kernel_;
+        std::shared_ptr<Kernel> variance_kernel_;
 
         /**
          * Prior mean.

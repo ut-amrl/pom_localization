@@ -836,29 +836,29 @@ void GPCTest() {
     gp_kernel::PeriodicGaussianKernel<1> mean_orientation_kernel(M_PI * 2,
                                                                  mean_orientation_kernel_var,
                                                                  mean_orientation_kernel_len);
-    gp_kernel::Pose2dKernel mean_pose_2d_kernel(mean_position_kernel, mean_orientation_kernel);
-
 
     gp_kernel::GaussianKernel<2> var_position_kernel(var_pos_kernel_len,
                                                      var_pos_kernel_var);
     gp_kernel::PeriodicGaussianKernel<1> var_orientation_kernel(M_PI * 2,
                                                                 var_orientation_kernel_var,
                                                                 var_orientation_kernel_len);
-    gp_kernel::Pose2dKernel var_pose_2d_kernel(var_position_kernel, var_orientation_kernel);
+
+    std::shared_ptr<gp_kernel::Pose2dKernel> mean_pose_2d_kernel = std::make_shared<gp_kernel::Pose2dKernel>(mean_position_kernel, mean_orientation_kernel);
+    std::shared_ptr<gp_kernel::Pose2dKernel> var_pose_2d_kernel = std::make_shared<gp_kernel::Pose2dKernel>(var_position_kernel, var_orientation_kernel);
 
     std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc =
             std::make_shared<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
                     larger_inputs, larger_outputs,
                     prior_mean, input_variance_for_mean,
-                    input_variance_for_var, &mean_pose_2d_kernel,
-                    &var_pose_2d_kernel);
+                    input_variance_for_var, mean_pose_2d_kernel,
+                    var_pose_2d_kernel);
 
     std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc_smaller_samples =
             std::make_shared<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
                     smaller_inputs, smaller_outputs,
                     prior_mean, input_variance_for_mean,
-                    input_variance_for_var, &mean_pose_2d_kernel,
-                    &var_pose_2d_kernel);
+                    input_variance_for_var, mean_pose_2d_kernel,
+                    var_pose_2d_kernel);
 
 
 
@@ -867,46 +867,46 @@ void GPCTest() {
     gp_kernel::PeriodicGaussianKernel<1> var_orientation_kernel_2(M_PI * 2,
                                                                 var_orientation_kernel_var_2,
                                                                 var_orientation_kernel_len);
-    gp_kernel::Pose2dKernel var_pose_2d_kernel_2(var_position_kernel_2, var_orientation_kernel_2);
+    std::shared_ptr<gp_kernel::Pose2dKernel> var_pose_2d_kernel_2 = std::make_shared<gp_kernel::Pose2dKernel>(var_position_kernel_2, var_orientation_kernel_2);
 
     LOG(INFO) << "Creating GP params 2, larger data set";
     std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> larger_gpc_params_2 =
             std::make_shared<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
                     larger_inputs, larger_outputs,
                     prior_mean, input_variance_for_mean,
-                    input_var_for_var_2, &mean_pose_2d_kernel,
-                    &var_pose_2d_kernel_2);
+                    input_var_for_var_2, mean_pose_2d_kernel,
+                    var_pose_2d_kernel_2);
 
     LOG(INFO) << "Creating GP params 2, smaller data set";
     std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc_smaller_samples_params_2 =
             std::make_shared<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
                     smaller_inputs, smaller_outputs,
                     prior_mean, input_variance_for_mean,
-                    input_var_for_var_2, &mean_pose_2d_kernel,
-                    &var_pose_2d_kernel_2);
+                    input_var_for_var_2, mean_pose_2d_kernel,
+                    var_pose_2d_kernel_2);
 
     gp_kernel::GaussianKernel<2> var_position_kernel_3(var_pos_kernel_len,
                                                        var_pos_kernel_var_3);
     gp_kernel::PeriodicGaussianKernel<1> var_orientation_kernel_3(M_PI * 2,
                                                                   var_orientation_kernel_var_3,
                                                                   var_orientation_kernel_len);
-    gp_kernel::Pose2dKernel var_pose_2d_kernel_3(var_position_kernel_3, var_orientation_kernel_3);
+    std::shared_ptr<gp_kernel::Pose2dKernel> var_pose_2d_kernel_3 = std::make_shared<gp_kernel::Pose2dKernel>(var_position_kernel_3, var_orientation_kernel_3);
 
     LOG(INFO) << "Creating GP params 3, larger data set";
     std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> larger_gpc_params_3 =
             std::make_shared<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
                     larger_inputs, larger_outputs,
                     prior_mean, input_variance_for_mean,
-                    input_var_for_var_3, &mean_pose_2d_kernel,
-                    &var_pose_2d_kernel_3);
+                    input_var_for_var_3, mean_pose_2d_kernel,
+                    var_pose_2d_kernel_3);
 
     LOG(INFO) << "Creating GP params 3, smaller data set";
     std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc_smaller_samples_params_3 =
             std::make_shared<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
                     smaller_inputs, smaller_outputs,
                     prior_mean, input_variance_for_mean,
-                    input_var_for_var_3, &mean_pose_2d_kernel,
-                    &var_pose_2d_kernel_3);
+                    input_var_for_var_3, mean_pose_2d_kernel,
+                    var_pose_2d_kernel_3);
 
     Eigen::Matrix<double, 3, Eigen::Dynamic> query_input(3, 1);
     query_input << 0.5, 0.5, M_PI;
@@ -946,7 +946,7 @@ int main(int argc, char **argv) {
     std::string time_str = oss.str();
     std::string csv_file_name = "results/noise_eval_" + time_str + ".csv";
 //    GPCTest();
-    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 3);
+    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 5);
 //    LOG(INFO) << runSingleSyntheticProblem(manager);
 //    runSyntheticProblemWithConfigVariations(manager, createParkedCarPosesWithFrequency(), createGroundTruthPoses(),
 //                                            csv_file_name);
