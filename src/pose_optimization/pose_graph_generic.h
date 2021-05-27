@@ -305,7 +305,7 @@ namespace pose_graph {
                                                               const double &subsampling_ratio = 1.0,
                                                               util_random::Random rand_gen = util_random::Random()) {
 
-            if (kd_trees_by_class_.find(class_label) == kd_trees_by_class_.empty()) {
+            if (kd_trees_by_class_.find(class_label) == kd_trees_by_class_.end()) {
                 LOG(WARNING) << "No KD tree found for class " << class_label;
                 return nullptr;
             }
@@ -319,7 +319,7 @@ namespace pose_graph {
 
             std::shared_ptr<util_kdtree::KDTree<double, MovObjDistributionTranslationDim>> kd_tree = kd_trees_by_class_[class_label];
             std::vector<util_kdtree::KDNodeValue<double, MovObjDistributionTranslationDim>> kd_neighbors;
-            kd_tree->FindNeighborPoints(search_point, radius, kd_neighbors);
+            kd_tree->FindNeighborPoints(search_point, radius, &kd_neighbors);
 
             std::vector<MapObjectObservationType> observations_vec;
             for (const util_kdtree::KDNodeValue<double, MovObjDistributionTranslationDim> &neighbor : kd_neighbors) {
@@ -330,7 +330,7 @@ namespace pose_graph {
                         LOG(INFO) << "Could not find observation for index " << index << " for semantic class "
                                   << class_label << ", skipping entry";
                     } else {
-                        observations_vec.emplace_back(index_iter.second);
+                        observations_vec.emplace_back(index_iter->second);
                     }
                 }
             }
@@ -402,6 +402,8 @@ namespace pose_graph {
         virtual std::pair<double*, double*> getPointersToUnderlyingData(
                 const std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
                 std::shared_ptr<MeasurementRotationType>> node_pose_pointers) const = 0;
+
+        virtual std::pair<double, Eigen::Matrix<double, MovObjDistributionTranslationDim, 1>> getSampleSearchCriteria(MovableObservationFactorType mov_obj_factor) const = 0;
 
     protected:
 
@@ -532,7 +534,7 @@ namespace pose_graph {
 
         virtual util_kdtree::KDNodeValue<double, MovObjDistributionTranslationDim> getKdRepForObs(
                 const MapObjectObservationType &pos_observation,
-                int index) const = 0;
+                const int &index) const = 0;
     };
 }
 

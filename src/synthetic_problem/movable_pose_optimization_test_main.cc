@@ -946,7 +946,7 @@ int main(int argc, char **argv) {
     std::string time_str = oss.str();
     std::string csv_file_name = "results/noise_eval_" + time_str + ".csv";
 //    GPCTest();
-    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 5);
+    LOG(INFO) << runSyntheticProblemWithUncertainty(manager, 10);
 //    LOG(INFO) << runSingleSyntheticProblem(manager);
 //    runSyntheticProblemWithConfigVariations(manager, createParkedCarPosesWithFrequency(), createGroundTruthPoses(),
 //                                            csv_file_name);

@@ -12,6 +12,7 @@
 //#include <pose_optimization/movable_observation_gp_cost_functor.h>
 #include <pose_optimization/sample_based_movable_observation_gp_cost_functor_3d.h>
 #include <pose_optimization/pose_optimization_parameters.h>
+#include <util/timer.h>
 
 namespace pose_optimization {
 
@@ -47,6 +48,8 @@ namespace pose_optimization {
                 const std::unordered_set<pose_graph::NodeId> &new_nodes_to_optimize,
                 const CostFunctionParameters &cost_function_params, ceres::Problem *problem) {
 
+            FunctionTimer ft(__PRETTY_FUNCTION__);
+
             ceres::LocalParameterization *rotation_parameterization = pose_graph.getRotationParameterization();
 
             std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
@@ -70,8 +73,10 @@ namespace pose_optimization {
                     continue;
                 }
 
+                std::pair<double, Eigen::Matrix<double, MovObjDistributionTranslationDim, 1>> search_criteria = pose_graph.getSampleSearchCriteria(factor);
+
                 std::shared_ptr<gp_regression::GaussianProcessClassifier<KernelDim, MovObjKernelType>> movable_object_gpc =
-                        pose_graph.getMovableObjGpc(factor.observation_.semantic_class_);
+                        pose_graph.getMovableObjGpcWithinRadius(factor.observation_.semantic_class_, search_criteria.first, search_criteria.second);
                 if (movable_object_gpc) {
 
                     ceres::CostFunction *cost_function =
