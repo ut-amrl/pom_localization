@@ -30,7 +30,7 @@ const std::string kTrajectoryOutputFileName = "traj_est_output_file";
 
 const std::string kGtTrajectoryFile = "gt_trajectory_file";
 
-const double kMinOdomVar = 1e-10;
+const double kMinOdomVar = 1e-5;
 
 pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams() {
     pose_optimization::PoseOptimizationParameters pose_opt_params;
@@ -228,9 +228,9 @@ createOdomFactorsFromInitOdomEst(const std::vector<pose::Pose2d> &init_traj_est,
         odom_factor.orientation_change_ = rel_pose.second;
 
         Eigen::Matrix<double, 3, 3> odom_cov_mat = Eigen::Matrix<double, 3, 3>::Zero();
-        odom_cov_mat(0, 0) = std::max(kMinOdomVar, pow(odometry_x_std_dev * rel_pose.first.x(), 2));
-        odom_cov_mat(1, 1) = std::max(kMinOdomVar, pow(odometry_y_std_dev * rel_pose.first.y(), 2));
-        odom_cov_mat(2, 2) = std::max(kMinOdomVar, pow(odometry_yaw_std_dev * rel_pose.second, 2));
+        odom_cov_mat(0, 0) = kMinOdomVar + pow(odometry_x_std_dev * rel_pose.first.x(), 2);
+        odom_cov_mat(1, 1) = kMinOdomVar + pow(odometry_y_std_dev * rel_pose.first.y(), 2);
+        odom_cov_mat(2, 2) = kMinOdomVar + pow(odometry_yaw_std_dev * rel_pose.second, 2);
 
 
         Eigen::Matrix<double, 3, 3> odom_sqrt_information_mat = odom_cov_mat.inverse().sqrt();
@@ -257,16 +257,20 @@ getTrajectoryEstimate(const std::vector<pose::Pose2d> &odom_est_trajectory,
     for (const pose_graph::MovableObservationFactor2d &movable_factor : movable_object_observations) {
         pose_graph::NodeId observed_at_node = movable_factor.observed_at_node_;
         std::string semantic_class = movable_factor.observation_.semantic_class_;
-        std::vector<std::vector<pose::Pose2d>> observations_for_class = noisy_observations_by_class[semantic_class];
-        while (observations_for_class.size() < (observed_at_node + 1)) {
-            observations_for_class.push_back({});
+
+        std::vector<std::vector<pose::Pose2d>> observations_for_class;
+        if (noisy_observations_by_class.find(semantic_class) == noisy_observations_by_class.end()) {
+            for (size_t node_num = 0; node_num < odom_est_trajectory.size(); node_num++) {
+                observations_for_class.push_back({});
+            }
+        } else {
+            observations_for_class = noisy_observations_by_class[semantic_class];
         }
         observations_for_class[observed_at_node].emplace_back(
                 std::make_pair(movable_factor.observation_.observation_transl_,
                                movable_factor.observation_.observation_orientation_));
         noisy_observations_by_class[semantic_class] = observations_for_class;
     }
-
 
     std::vector<pose_graph::Node<2, double>> initial_node_positions;
     for (pose_graph::NodeId i = 0; i < odom_est_trajectory.size(); i++) {
@@ -332,7 +336,7 @@ int main(int argc, char **argv) {
     double detection_variance_theta = 0.02;
     double odom_std_dev_transl_x = 0.1;
     double odom_std_dev_transl_y = 0.1;
-    double odom_std_dev_theta = 0.08;
+    double odom_std_dev_theta = 0.15;
 
     int pose_sample_ratio = 20;
 
