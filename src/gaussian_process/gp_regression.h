@@ -96,7 +96,7 @@ namespace gp_regression {
 
         void refreshInvGramMatrix(std::shared_ptr<Kernel> kernel, Eigen::MatrixXd &inv_gram_mat, double identity_noise) {
 
-            LOG(INFO) << "Creating gram matrix";
+//            LOG(INFO) << "Creating gram matrix";
             // Create the K matrix.
             Eigen::MatrixXd gram_matrix(num_datapoints_, num_datapoints_);
 
@@ -111,12 +111,12 @@ namespace gp_regression {
                 }
             }
             Eigen::MatrixXd self_var_mat = identity_noise * Eigen::MatrixXd::Identity(gram_matrix.rows(), gram_matrix.cols());
-            LOG(INFO) << "Adding mat " << self_var_mat;
+//            LOG(INFO) << "Adding mat " << self_var_mat;
 
             gram_matrix = gram_matrix + self_var_mat;
-            LOG(INFO) << "Diagonal: " << gram_matrix.diagonal();
-            LOG(INFO) << "Expected diag val " << (identity_noise + kernel->getKernelSelfValue());
-            LOG(INFO) << "Gram mat " << gram_matrix;
+//            LOG(INFO) << "Diagonal: " << gram_matrix.diagonal();
+//            LOG(INFO) << "Expected diag val " << (identity_noise + kernel->getKernelSelfValue());
+//            LOG(INFO) << "Gram mat " << gram_matrix;
 
 //            LOG(INFO) << "Inputs " << inputs_;
 //            LOG(INFO) << "Outputs " << mean_adjusted_outputs_transp_;
@@ -130,9 +130,9 @@ namespace gp_regression {
 //            LOG(INFO) << inv_gram_mat;
 //            LOG(INFO) << "Testing inversion";
             Eigen::MatrixXd matrix_times_inv = gram_matrix * inv_gram_mat;
-            LOG(INFO) << "Gram matrix determinant " << gram_matrix.determinant();
+//            LOG(INFO) << "Gram matrix determinant " << gram_matrix.determinant();
             LOG(INFO) << matrix_times_inv;
-            LOG(INFO) << "Diag entry " << matrix_times_inv(matrix_times_inv.rows() - 1, matrix_times_inv.cols() - 1);
+//            LOG(INFO) << "Diag entry " << matrix_times_inv(matrix_times_inv.rows() - 1, matrix_times_inv.cols() - 1);
         }
 
         /**
@@ -180,8 +180,8 @@ namespace gp_regression {
 //            LOG(INFO) << "Inv gram mat mean " << inv_gram_matrix_mean_;
 //            for (int i = )
 //            LOG(INFO) << "Kernel times in gram mat " << kernel_times_inv_gram_mean;
-            LOG(INFO) << "Kernel times inv gram mat times mean adjusted " << kernel_times_inv_gram_mean * mean_adjusted_outputs_transp_.cast<T>();
-            LOG(INFO) << "Kernel times inv gram m at times out " << kernel_times_inv_gram_mean * outputs_transp_.cast<T>();
+//            LOG(INFO) << "Kernel times inv gram mat times mean adjusted " << kernel_times_inv_gram_mean * mean_adjusted_outputs_transp_.cast<T>();
+//            LOG(INFO) << "Kernel times inv gram m at times out " << kernel_times_inv_gram_mean * outputs_transp_.cast<T>();
             Eigen::Matrix<T, Eigen::Dynamic, M> mu_star_transp = prior_mean_mat_.cast<T>() + kernel_times_inv_gram_mean * mean_adjusted_outputs_transp_.cast<T>();
 
             // Compute variance: k_xx + K_x^T * K_d^-1 * K_x

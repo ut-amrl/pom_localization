@@ -427,7 +427,7 @@ double runSingleSyntheticProblem(const std::shared_ptr<visualization::Visualizat
 
 
 void outputResultsHeader(const std::string &file_name) {
-    std::ofstream csv_file(file_name, std::ios::app);
+    std::ofstream csv_file(file_name, std::ios::trunc);
     csv_file << "position_kernel_len" << ", " << "orientation_kernel_len"
              << ", " << "odometry_x_std_dev" << ", " << "odometry_y_std_dev" << ", "
              << "max_observable_moving_obj_distance" << ", "

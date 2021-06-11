@@ -5,7 +5,7 @@
 #include <glog/logging.h>
 #include <ros/ros.h>
 
-#include <h3d_dataset/lidar_odom.h>
+#include <file_io/lidar_odom.h>
 #include <h3d_dataset/h3d_file_operations.h>
 #include <h3d_dataset/gps.h>
 #include <h3d_dataset/obj_detections.h>

@@ -29,6 +29,7 @@ SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 SET(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 find_package(PCL 1.3 REQUIRED)
+find_package(rosbag REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_search_module(EIGEN REQUIRED eigen3)
 
@@ -38,7 +39,7 @@ find_package(Ceres REQUIRED)
 
 option(TESTING "Build tests" ON)
 
-SET(libs roslib roscpp rosbag glog gflags amrl_shared_lib lua5.1 ceres
+SET(libs roslib roscpp boost_system rosbag glog gflags amrl_shared_lib lua5.1 ceres
     pthread)
 
 INCLUDE_DIRECTORIES(src/shared)
@@ -56,18 +57,42 @@ TARGET_LINK_LIBRARIES(autodiff_gp ${libs})
 #
 #ROSBUILD_ADD_EXECUTABLE(momo_pose_optimization src/pose_optimization/pose_optimization_main.cc)
 #TARGET_LINK_LIBRARIES(momo_pose_optimization ${libs})
+#
+#ROSBUILD_ADD_EXECUTABLE(momo_pose_optimization_test src/synthetic_problem/movable_pose_optimization_test_main.cc)
+#TARGET_LINK_LIBRARIES(momo_pose_optimization_test ${libs})
 
-ROSBUILD_ADD_EXECUTABLE(momo_pose_optimization_test src/synthetic_problem/movable_pose_optimization_test_main.cc)
-TARGET_LINK_LIBRARIES(momo_pose_optimization_test ${libs})
+#ROSBUILD_ADD_EXECUTABLE(read_h3d_point_cloud src/h3d_dataset/read_h3d_point_cloud.cc)
+#TARGET_LINK_LIBRARIES(read_h3d_point_cloud ${libs} ${PCL_LIBRARIES} stdc++fs)
+#
+#ROSBUILD_ADD_EXECUTABLE(run_on_h3d_detections src/h3d_dataset/run_on_h3d_detections.cc)
+#TARGET_LINK_LIBRARIES(run_on_h3d_detections ${libs} ${PCL_LIBRARIES} stdc++fs)
 
-ROSBUILD_ADD_EXECUTABLE(read_h3d_point_cloud src/h3d_dataset/read_h3d_point_cloud.cc)
-TARGET_LINK_LIBRARIES(read_h3d_point_cloud ${libs} ${PCL_LIBRARIES} stdc++fs)
+ROSBUILD_ADD_EXECUTABLE(evaluation_main src/evaluation/evaluation_main.cc)
+TARGET_LINK_LIBRARIES(evaluation_main ${libs} stdc++fs)
 
-ROSBUILD_ADD_EXECUTABLE(run_on_h3d_detections src/h3d_dataset/run_on_h3d_detections.cc)
-TARGET_LINK_LIBRARIES(run_on_h3d_detections ${libs} ${PCL_LIBRARIES} stdc++fs)
+#ROSBUILD_ADD_EXECUTABLE(output_first_gps_entries src/h3d_dataset/output_first_gps_entries.cc)
+#TARGET_LINK_LIBRARIES(output_first_gps_entries ${libs} stdc++fs)
 
-ROSBUILD_ADD_EXECUTABLE(output_first_gps_entries src/h3d_dataset/output_first_gps_entries.cc)
-TARGET_LINK_LIBRARIES(output_first_gps_entries ${libs} stdc++fs)
+ROSBUILD_ADD_EXECUTABLE(parking_spot_plotter src/evaluation/parking_spot_3d_plotter.cc)
+TARGET_LINK_LIBRARIES(parking_spot_plotter ${libs} stdc++fs)
+
+ROSBUILD_ADD_EXECUTABLE(wheel_odom_extractor src/evaluation/wheel_odom_rosbag_extraction.cc)
+TARGET_LINK_LIBRARIES(wheel_odom_extractor ${libs} stdc++fs)
+
+ROSBUILD_ADD_EXECUTABLE(kitti_to_trajectory_2d src/evaluation/kitti_to_trajectory_2d.cc)
+TARGET_LINK_LIBRARIES(kitti_to_trajectory_2d ${libs} stdc++fs)
+
+ROSBUILD_ADD_EXECUTABLE(lidarodom_to_trajectory_2d src/evaluation/lidar_odom_to_trajectory_2d.cc)
+TARGET_LINK_LIBRARIES(lidarodom_to_trajectory_2d ${libs} stdc++fs)
+
+ROSBUILD_ADD_EXECUTABLE(create_distribution_from_global_obj_poses src/evaluation/create_distribution_from_global_obj_poses.cc)
+TARGET_LINK_LIBRARIES(create_distribution_from_global_obj_poses ${libs} stdc++fs)
+
+ROSBUILD_ADD_EXECUTABLE(distribution_gen_config_writer src/evaluation/distribution_generation_config_writer.cc)
+TARGET_LINK_LIBRARIES(distribution_gen_config_writer ${libs} stdc++fs)
+
+ROSBUILD_ADD_EXECUTABLE(local_detections_creator src/evaluation/create_local_detections_from_global_detections.cc)
+TARGET_LINK_LIBRARIES(local_detections_creator ${libs} stdc++fs)
 
 #ROSBUILD_ADD_EXECUTABLE(uncertainty_aware_localization_test src/synthetic_problem/uncertainty_aware/uncertainty_aware_synthetic_problem_localization_test_main.cc)
 #TARGET_LINK_LIBRARIES(uncertainty_aware_localization_test ${libs})

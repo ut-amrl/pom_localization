@@ -62,6 +62,52 @@ namespace pose {
         return std::make_pair(transl, rot);
     }
 
+    Eigen::Vector3d toEulerAngles(const Eigen::Quaterniond &q) {
+
+        // roll (x-axis rotation)
+        double sinr_cosp = 2 * (q.w() * q.x() + q.y() * q.z());
+        double cosr_cosp = 1 - 2 * (q.x() * q.x() + q.y() * q.y());
+        double roll = std::atan2(sinr_cosp, cosr_cosp);
+
+        // pitch (y-axis rotation)
+        double sinp = 2 * (q.w() * q.y() - q.z() * q.x());
+        double pitch;
+        if (std::abs(sinp) >= 1)
+            pitch = std::copysign(M_PI / 2, sinp); // use 90 degrees if out of range
+        else
+            pitch = std::asin(sinp);
+
+        // yaw (z-axis rotation)
+        double siny_cosp = 2 * (q.w() * q.z() + q.x() * q.y());
+        double cosy_cosp = 1 - 2 * (q.y() * q.y() + q.z() * q.z());
+        double yaw = std::atan2(siny_cosp, cosy_cosp);
+
+        if (roll < -M_PI_2) {
+            roll -= M_PI;
+            yaw -= M_PI;
+            pitch = -pitch;
+        } else if (roll > M_PI_2) {
+            roll += M_PI;
+            yaw += M_PI;
+            pitch = -pitch;
+        }
+
+        return Eigen::Vector3d(roll, pitch, yaw);
+    }
+
+    Pose2d toPose2d(Pose3d pose_3d) {
+        Eigen::Vector3d euler_angles = toEulerAngles(pose_3d.second);
+        double yaw = euler_angles[2];
+        if ((abs(euler_angles[0]) > 0.2) || (abs(euler_angles[1]) > 0.2)) {
+
+            LOG(INFO) << "Roll " << euler_angles[0];
+            LOG(INFO) << "Pitch " << euler_angles[1];
+            LOG(INFO) << "Yaw " << euler_angles[2];
+        }
+        pose::Pose2d pose = pose::createPose2d(pose_3d.first.x(), pose_3d.first.y(), yaw);
+        return pose;
+    }
+
 /**
  * Get the pose of object 2 in the frame that pose 1 is relative to.
  *

@@ -161,7 +161,7 @@ namespace pose_graph {
             pose::Pose3d obs_pos = std::make_pair(mov_obj_factor.observation_.observation_transl_,
                                                   mov_obj_factor.observation_.observation_orientation_);
             pose::Pose3d obs_pos_map_frame = pose::combinePoses(node_pos, obs_pos);
-            return std::make_pair(mov_obj_factor.observation_.observation_transl_.norm(),
+            return std::make_pair(mov_obj_factor.observation_.observation_transl_.norm() * 0.75,
                                   Eigen::Vector2d(obs_pos_map_frame.first.x(), obs_pos_map_frame.first.y()));
         }
     };

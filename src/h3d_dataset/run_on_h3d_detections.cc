@@ -8,7 +8,7 @@
 #include <glog/logging.h>
 #include <ros/ros.h>
 
-#include <h3d_dataset/lidar_odom.h>
+#include <file_io/lidar_odom.h>
 #include <h3d_dataset/h3d_file_operations.h>
 #include <h3d_dataset/gps.h>
 #include <h3d_dataset/obj_detections.h>
@@ -361,9 +361,9 @@ int main(int argc, char** argv) {
     pose::Pose2d velodyne_pose_rel_gps = pose::createPose2d(0, 0, M_PI_2);
 
     std::unordered_map<pose_graph::NodeId, double> timestamps_by_node_id;
-    std::vector<h3d::GaussianBinaryFactor2d> lidar_odom_factors;
+    std::vector<pose_graph::GaussianBinaryFactor2d> lidar_odom_factors;
 
-    h3d::getLidar2dConstraintsFromLidarFile(lidar_odom_file, timestamps_by_node_id,
+    file_io::getLidar2dConstraintsFromLidarFile(lidar_odom_file, timestamps_by_node_id,
                                             lidar_odom_factors);
 
     LOG(INFO) << "Num odom factors " << lidar_odom_factors.size();
@@ -514,7 +514,7 @@ int main(int argc, char** argv) {
 
     for (pose_graph::NodeId i = 1; i < timestamps_by_node_id.size(); i++) {
         // Relying on these being in order
-        h3d::GaussianBinaryFactor2d lidar_odom_factor = lidar_odom_factors[i-1];
+        pose_graph::GaussianBinaryFactor2d lidar_odom_factor = lidar_odom_factors[i-1];
 
         pose_graph::Node<2, double> new_node;
         new_node.id_ = i;

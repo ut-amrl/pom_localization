@@ -50,19 +50,19 @@ namespace gp_regression {
 //            LOG(INFO) << "Outputs " << outputs;
             transformZeroToOneOutputsToRealRange(outputs, output_data_transformed_);
 //            LOG(INFO) << "Transformed outputs " << output_data_transformed_;
-            for (int i = 0; i < outputs.cols(); i++) {
-                LOG(INFO) << "Original, transformed " << outputs(0, i) << ", " << output_data_transformed_(0, i);
-            }
+//            for (int i = 0; i < outputs.cols(); i++) {
+//                LOG(INFO) << "Original, transformed " << outputs(0, i) << ", " << output_data_transformed_(0, i);
+//            }
 
             prior_mean_regressor_range_ = transformed_prior_mean;
 
-            LOG(INFO) << "Creating regressor";
+//            LOG(INFO) << "Creating regressor";
             gp_regressor_ = std::make_shared<GaussianProcessRegression<N, 1, Kernel>>(inputs, output_data_transformed_,
                                                                                       transformed_prior_mean,
                                                                                       identity_noise_mean,
                                                                                       identity_noise_var, mean_kernel,
                                                                                       variance_kernel);
-            LOG(INFO) << "Done creating regressor";
+//            LOG(INFO) << "Done creating regressor";
         }
 
         void appendData(const Eigen::MatrixXd &new_inputs, const Eigen::MatrixXd &new_outputs) {
@@ -102,8 +102,8 @@ namespace gp_regression {
 
             std::pair<Eigen::Matrix<T, 1, Eigen::Dynamic>, Eigen::Matrix<T, 1, Eigen::Dynamic>> regressor_out = gp_regressor_->Inference(
                     x);
-            LOG(INFO) << "Regressor out mean " << regressor_out.first;
-            LOG(INFO) << "Regressor out variance " << regressor_out.second;
+//            LOG(INFO) << "Regressor out mean " << regressor_out.first;
+//            LOG(INFO) << "Regressor out variance " << regressor_out.second;
 
             Eigen::Matrix<T, 1, Eigen::Dynamic> classification_output = Eigen::Matrix<T, 1, Eigen::Dynamic>(1,
                                                                                                             x.cols());

@@ -12,9 +12,7 @@
 
 #include <unsupported/Eigen/MatrixFunctions>
 
-namespace h3d {
-
-    typedef pose_graph::GaussianBinaryFactor<2, double, 3> GaussianBinaryFactor2d;
+namespace file_io {
 
     struct RawAbsoluteLidarOdomNode3D {
         double timestamp_;
@@ -82,7 +80,7 @@ namespace h3d {
 
     void getLidar2dConstraintsFromLidarFile(const std::string &file_name,
                                             std::unordered_map<pose_graph::NodeId, double> &timestamps_by_node_id,
-                                            std::vector<GaussianBinaryFactor2d> &lidar_odom) {
+                                            std::vector<pose_graph::GaussianBinaryFactor<2, double, 3>> &lidar_odom) {
         std::vector<RawAbsoluteLidarOdomNode3D> odom_ests_map_frame_3d;
         readRawLidarOdomFromFile(file_name, odom_ests_map_frame_3d);
 
@@ -122,7 +120,7 @@ namespace h3d {
             double variance_y = prev_est.noise_variance_5_;
             double variance_yaw = prev_est.noise_variance_3_;
 
-            GaussianBinaryFactor2d factor_2d;
+            pose_graph::GaussianBinaryFactor<2, double, 3> factor_2d;
             factor_2d.from_node_ = i - 1;
             factor_2d.to_node_ = i;
             factor_2d.translation_change_ = pose_difference_2d.first;
