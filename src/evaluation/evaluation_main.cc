@@ -30,6 +30,8 @@ const std::string kTrajectoryOutputFileName = "traj_est_output_file";
 
 const std::string kGtTrajectoryFile = "gt_trajectory_file";
 
+const double kMinOdomVar = 1e-10;
+
 pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams() {
     pose_optimization::PoseOptimizationParameters pose_opt_params;
     pose_optimization::CostFunctionParameters cost_function_params;
@@ -226,9 +228,9 @@ createOdomFactorsFromInitOdomEst(const std::vector<pose::Pose2d> &init_traj_est,
         odom_factor.orientation_change_ = rel_pose.second;
 
         Eigen::Matrix<double, 3, 3> odom_cov_mat = Eigen::Matrix<double, 3, 3>::Zero();
-        odom_cov_mat(0, 0) = pow(odometry_x_std_dev * rel_pose.first.x(), 2);
-        odom_cov_mat(1, 1) = pow(odometry_y_std_dev * rel_pose.first.y(), 2);
-        odom_cov_mat(2, 2) = pow(odometry_yaw_std_dev * rel_pose.second, 2);
+        odom_cov_mat(0, 0) = std::max(kMinOdomVar, pow(odometry_x_std_dev * rel_pose.first.x(), 2));
+        odom_cov_mat(1, 1) = std::max(kMinOdomVar, pow(odometry_y_std_dev * rel_pose.first.y(), 2));
+        odom_cov_mat(2, 2) = std::max(kMinOdomVar, pow(odometry_yaw_std_dev * rel_pose.second, 2));
 
 
         Eigen::Matrix<double, 3, 3> odom_sqrt_information_mat = odom_cov_mat.inverse().sqrt();
