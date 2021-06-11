@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
               "create_distribution_from_global_obj_poses");
     ros::NodeHandle n;
 
-    std::shared_ptr<visualization::VisualizationManager> vis_manager = std::make_shared<visualization::VisualizationManager>(n);
+//    std::shared_ptr<visualization::VisualizationManager> vis_manager = std::make_shared<visualization::VisualizationManager>(n);
     google::InitGoogleLogging(argv[0]);
     FLAGS_logtostderr = true;
 
@@ -173,9 +173,9 @@ int main(int argc, char **argv) {
     };
 
     // TODO visualize?
-    vis_manager->displayTrueObjPoses(parking_spots_global_frame, car_class);
-    LOG(INFO) << samples_for_prev_trajectories[car_class].size();
-    vis_manager->displayPastSampleValues(car_class, samples_for_prev_trajectories[car_class]);
+//    vis_manager->displayTrueObjPoses(parking_spots_global_frame, car_class);
+//    LOG(INFO) << samples_for_prev_trajectories[car_class].size();
+//    vis_manager->displayPastSampleValues(car_class, samples_for_prev_trajectories[car_class]);
 
     writePastSamples2dToFile(sample_output_file, past_samples_to_write);
 

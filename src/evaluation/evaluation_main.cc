@@ -28,14 +28,16 @@ const std::string kObjDetectionsCurrTrajectoryFileParamName = "obj_det_curr_traj
 
 const std::string kTrajectoryOutputFileName = "traj_est_output_file";
 
+const std::string kGtTrajectoryFile = "gt_trajectory_file";
+
 pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams() {
     pose_optimization::PoseOptimizationParameters pose_opt_params;
     pose_optimization::CostFunctionParameters cost_function_params;
     // TODO configure
 
-    cost_function_params.mean_position_kernel_len_ = 0.5;
-    cost_function_params.mean_orientation_kernel_len_ = 0.4; // TODO fix
-    cost_function_params.mean_orientation_kernel_len_ = 10000;
+    cost_function_params.mean_position_kernel_len_ = 1;
+    cost_function_params.mean_orientation_kernel_len_ = 0.5; // TODO fix
+//    cost_function_params.mean_orientation_kernel_len_ = 10000;
 //    cost_function_params.mean_position_kernel_var_ = 30;
 //    cost_function_params.mean_orientation_kernel_var_ = 30;
 
@@ -46,10 +48,10 @@ pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams() {
     cost_function_params.default_obj_probability_input_variance_for_mean_ = 10;
 
     cost_function_params.var_position_kernel_len_ = 1.8;
-    cost_function_params.var_orientation_kernel_len_ = 10;
+    cost_function_params.var_orientation_kernel_len_ = 0.5;
 
-    cost_function_params.var_position_kernel_var_ = 0.00015;
-    cost_function_params.var_orientation_kernel_var_ = 0.00015;
+    cost_function_params.var_position_kernel_var_ = 3;
+    cost_function_params.var_orientation_kernel_var_ = 3;
 
     cost_function_params.default_obj_probability_input_variance_for_var_ = 10;
 
@@ -167,32 +169,35 @@ std::vector<pose_graph::MovableObservationFactor2d> getMovableObservationFactors
         const double &detection_variance_transl_x,
         const double &detection_variance_transl_y,
         const double &detection_variance_theta,
-        const std::string &object_detections_file_name) {
+        const std::string &object_detections_file_name,
+        const int &pose_sample_ratio) {
 
     std::vector<file_io::ObjectPositionByPose> raw_obj_detections;
     file_io::readObjectPositionsByPoseFromFile(object_detections_file_name, raw_obj_detections);
 
     std::vector<pose_graph::MovableObservationFactor2d> observation_factors;
     for (const file_io::ObjectPositionByPose &raw_detection : raw_obj_detections) {
-        pose_graph::MovableObservation2d observation;
-        observation.semantic_class_ = semantic_class;
-        observation.observation_transl_ = Eigen::Vector2d(raw_detection.transl_x_, raw_detection.transl_y_);
-        observation.observation_orientation_ = raw_detection.theta_;
+        if ((raw_detection.pose_number_ % pose_sample_ratio) == 0) {
+            pose_graph::MovableObservation2d observation;
+            observation.semantic_class_ = semantic_class;
+            observation.observation_transl_ = Eigen::Vector2d(raw_detection.transl_x_, raw_detection.transl_y_);
+            observation.observation_orientation_ = raw_detection.theta_;
 
-        Eigen::Matrix3d observation_cov = Eigen::Matrix3d::Zero();
-        observation_cov(0, 0) = detection_variance_transl_x;
-        observation_cov(1, 1) = detection_variance_transl_y;
-        observation_cov(2, 2) = detection_variance_theta;
+            Eigen::Matrix3d observation_cov = Eigen::Matrix3d::Zero();
+            observation_cov(0, 0) = detection_variance_transl_x;
+            observation_cov(1, 1) = detection_variance_transl_y;
+            observation_cov(2, 2) = detection_variance_theta;
 
-        observation.observation_covariance_ = observation_cov;
+            observation.observation_covariance_ = observation_cov;
 
-        observation_factors.emplace_back(
-                pose_graph::MovableObservationFactor2d(raw_detection.pose_number_, observation));
+            observation_factors.emplace_back(
+                    pose_graph::MovableObservationFactor2d(raw_detection.pose_number_, observation));
+        }
     }
     return observation_factors;
 }
 
-std::vector<pose::Pose2d> getOdomTrajectoryEstimate(const std::string &file_name) {
+std::vector<pose::Pose2d> readTrajFromFile(const std::string &file_name) {
     std::vector<file_io::TrajectoryNode2d> trajectory_nodes;
     file_io::readRawTrajectory2dFromFile(file_name, trajectory_nodes);
 
@@ -225,8 +230,11 @@ createOdomFactorsFromInitOdomEst(const std::vector<pose::Pose2d> &init_traj_est,
         odom_cov_mat(1, 1) = pow(odometry_y_std_dev * rel_pose.first.y(), 2);
         odom_cov_mat(2, 2) = pow(odometry_yaw_std_dev * rel_pose.second, 2);
 
+
         Eigen::Matrix<double, 3, 3> odom_sqrt_information_mat = odom_cov_mat.inverse().sqrt();
+        LOG(INFO) << odom_sqrt_information_mat;
         odom_factor.sqrt_information_ = odom_sqrt_information_mat;
+        odom_factors.emplace_back(odom_factor);
 
         prev_pose = curr_pose;
     }
@@ -235,6 +243,7 @@ createOdomFactorsFromInitOdomEst(const std::vector<pose::Pose2d> &init_traj_est,
 
 std::unordered_map<pose_graph::NodeId, pose::Pose2d>
 getTrajectoryEstimate(const std::vector<pose::Pose2d> &odom_est_trajectory,
+                      const std::vector<pose::Pose2d> &gt_trajectory,
                       const std::shared_ptr<visualization::VisualizationManager> &manager,
                       const std::vector<pose_graph::GaussianBinaryFactor2d> &odom_factors,
                       const std::vector<pose_graph::MapObjectObservation2d> &samples,
@@ -289,7 +298,7 @@ getTrajectoryEstimate(const std::vector<pose::Pose2d> &odom_est_trajectory,
                        const offline_optimization::VisualizationTypeEnum &)> visualization_callback =
             std::bind(runOptimizationVisualization, manager,
                       std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
-                      (std::vector<pose::Pose2d>) {}, odom_est_trajectory,
+                      gt_trajectory, odom_est_trajectory,
                       noisy_observations_by_class);
 
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> optimization_results = offline_optimizer.runOfflineOptimization(
@@ -316,17 +325,20 @@ int main(int argc, char **argv) {
     std::string car_semantic_class = "car";
 
     // Configuration params -- need to play around with these
-    double detection_variance_transl_x;
-    double detection_variance_transl_y;
-    double detection_variance_theta;
-    double odom_std_dev_transl_x;
-    double odom_std_dev_transl_y;
-    double odom_std_dev_theta;
+    double detection_variance_transl_x = 0.01;
+    double detection_variance_transl_y = 0.01;
+    double detection_variance_theta = 0.02;
+    double odom_std_dev_transl_x = 0.1;
+    double odom_std_dev_transl_y = 0.1;
+    double odom_std_dev_theta = 0.08;
+
+    int pose_sample_ratio = 20;
 
     std::vector<std::string> past_sample_files;
     std::string odom_estimates_file_name;
     std::string object_detections_file_name;
     std::string traj_est_output_file;
+    std::string gt_traj_file;
 
     if (!n.getParam(kPastSamplesFilesParamName, past_sample_files)) {
         LOG(INFO) << "No parameter value set for parameter with name " << kPastSamplesFilesParamName;
@@ -348,9 +360,13 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
+    std::vector<pose::Pose2d> gt_trajectory;
+    if (n.getParam(kGtTrajectoryFile, gt_traj_file)) {
+        gt_trajectory = readTrajFromFile(gt_traj_file);
+    }
+
     // Read initial 2d initial estimates
-    std::vector<pose::Pose2d> initial_trajectory_estimates = getOdomTrajectoryEstimate(odom_estimates_file_name);
-    LOG(INFO) << "Init traj est 0 " << initial_trajectory_estimates[0].first.x()  << ", " << initial_trajectory_estimates[0].first.y() << ", " << initial_trajectory_estimates[0].second ;
+    std::vector<pose::Pose2d> initial_trajectory_estimates = readTrajFromFile(odom_estimates_file_name);
 
     // Convert to odom factors
     std::vector<pose_graph::GaussianBinaryFactor2d> odom_factors = createOdomFactorsFromInitOdomEst(
@@ -383,10 +399,11 @@ int main(int argc, char **argv) {
             detection_variance_transl_x,
             detection_variance_transl_y,
             detection_variance_theta,
-            object_detections_file_name);
+            object_detections_file_name,
+            pose_sample_ratio);
 
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> optimization_results = getTrajectoryEstimate(
-            initial_trajectory_estimates, manager, odom_factors, samples, movable_observation_factors);
+            initial_trajectory_estimates, gt_trajectory, manager, odom_factors, samples, movable_observation_factors);
 
     std::vector<file_io::TrajectoryNode2d> trajectory_nodes;
     for (pose_graph::NodeId node_id = 0; node_id < optimization_results.size(); node_id++) {

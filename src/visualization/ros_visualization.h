@@ -26,10 +26,10 @@ namespace visualization {
     public:
 
         VisualizationManager(ros::NodeHandle &node_handle) : node_handle_(node_handle) {
-            gt_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("gt_visualization_marker", 1000);
-            other_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("other_visualization_marker", 1000);
-            est_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("est_pos_marker", 1000);
-            odom_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("odom_pos_marker", 1000);
+            gt_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("gt_visualization_marker", 10000);
+            other_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("other_visualization_marker", 10000);
+            est_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("est_pos_marker", 10000);
+            odom_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("odom_pos_marker", 10000);
             regressor_max_val_for_pos_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>(
                     "regressor_max_val_for_pos", 2);
             variance_max_val_for_pos_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>("variance_max_val_for_pos",
@@ -38,9 +38,9 @@ namespace visualization {
                     "classifier_max_val_for_pos", 2);
             robot_pose_max_val_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>("robot_pose_max_val", 2);
 
-            parking_spot_3d_pub_ = node_handle_.advertise<visualization_msgs::Marker>("parking_spots_3d", 1000);
+            parking_spot_3d_pub_ = node_handle_.advertise<visualization_msgs::Marker>("parking_spots_3d", 10000);
             LOG(INFO) << "Vis manager 1";
-            ros::Duration(5).sleep();
+            ros::Duration(2).sleep();
             LOG(INFO) << "Vis manager 2";
 //            for (int id = 0; id < kRobotEstPosesMax; id++) {
 //                LOG(INFO) << "Vis manager 2a";
@@ -77,7 +77,7 @@ namespace visualization {
                         robot_pose_topic_name, 2);
             }
             LOG(INFO) << "Vis manager 5";
-            ros::Duration(5).sleep();
+            ros::Duration(2).sleep();
             LOG(INFO) << "Vis manager 6";
             // TODO consider removing all existing markers trajectory topics
         }
@@ -898,7 +898,6 @@ namespace visualization {
                 std::string topic_name = getStringRepForTrajType(trajectory_type) + "_" + obj_class + "_obs_marker";
                 ros::Publisher new_pub_for_class = node_handle_.advertise<visualization_msgs::Marker>(topic_name,
                                                                                                       kObservationPubQueueSize);
-                LOG(INFO) << "Topic name " << topic_name;
                 pubs_for_traj_type_[obj_class] = new_pub_for_class;
                 obs_marker_pubs_by_class_by_traj_type_[trajectory_type] = pubs_for_traj_type_;
                 ros::Duration(2).sleep();
@@ -917,9 +916,8 @@ namespace visualization {
 
             if (sample_pubs_by_class_.find(obj_class) == sample_pubs_by_class_.end()) {
                 std::string topic_name = obj_class + "_past_sample_markers";
-                LOG(INFO) << "Topic name " << topic_name;
                 ros::Publisher new_pub_for_class = node_handle_.advertise<visualization_msgs::Marker>(topic_name,
-                                                                                                      10000);
+                                                                                                      50000);
                 sample_pubs_by_class_[obj_class] = new_pub_for_class;
                 ros::Duration(2).sleep();
                 for (int id = 0; id < kRobotEstPosesMax; id++) {

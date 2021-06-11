@@ -83,7 +83,7 @@ namespace pose_optimization {
                 Eigen::Rotation2D<T> obj_rot_world(world_frame_obj_tf.linear());
                 obj_pose_vector << world_frame_obj_tf.translation().x(), world_frame_obj_tf.translation().y(), obj_rot_world.angle();
                 T new_sample_prob = probability_evaluator_->template Inference<T>(obj_pose_vector)(0, 0);
-                LOG(INFO) << "New sample prob " << new_sample_prob;
+//                LOG(INFO) << "New sample prob " << new_sample_prob;
                 cumulative_probability += new_sample_prob;
             }
 
@@ -96,7 +96,7 @@ namespace pose_optimization {
 //            LOG(INFO) << "Cumulative prob " << cumulative_probability;
 
             residuals[0] = sqrt(T(-2.0) * log(cumulative_probability));
-            LOG(INFO) << "residual " << residuals[0];
+//            LOG(INFO) << "residual " << residuals[0];
 
             return true;
         }

@@ -23,11 +23,11 @@ int main(int argc, char **argv) {
     distribution_config.num_samples_per_beam_ = 1;
     distribution_config.scan_num_beams_ = 100;
 
-    distribution_config.parking_spot_generation_std_dev_x_ = 0;
-    distribution_config.parking_spot_generation_std_dev_y_ = 0;
-    distribution_config.parking_spot_generation_std_dev_theta_ = 0;
+    distribution_config.parking_spot_generation_std_dev_x_ = 20;
+    distribution_config.parking_spot_generation_std_dev_y_ = 20;
+    distribution_config.parking_spot_generation_std_dev_theta_ = 20;
 
-    distribution_config.percent_parking_spots_filled_ = 1.0;
+    distribution_config.percent_parking_spots_filled_ = 0.8;
 
     distribution_config.trajectory_variation_std_dev_x_ = 0;
     distribution_config.trajectory_variation_std_dev_y_ = 0;
