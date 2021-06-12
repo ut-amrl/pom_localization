@@ -20,6 +20,8 @@
 
 using namespace pose;
 
+DEFINE_string(param_prefix, "", "param_prefix");
+
 const std::string kPastSamplesFilesParamName = "past_samples_files";
 
 const std::string kOdomTrajectoryEstimatesFileParamName = "odom_traj_est_file";
@@ -319,16 +321,20 @@ getTrajectoryEstimate(const std::vector<pose::Pose2d> &odom_est_trajectory,
 
 int main(int argc, char **argv) {
 
+    google::ParseCommandLineFlags(&argc, &argv, false);
+
     google::InitGoogleLogging(argv[0]);
     FLAGS_logtostderr = true;
     ros::init(argc, argv,
               "movable_obj_trajectory_estimation");
     ros::NodeHandle n;
-    std::shared_ptr<visualization::VisualizationManager> manager = std::make_shared<visualization::VisualizationManager>(
-            n);
 
     // Known config params
     std::string car_semantic_class = "car";
+    std::string prefix = FLAGS_param_prefix;
+    if (!prefix.empty()) {
+        prefix = "/" + prefix + "/";
+    }
 
     // Configuration params -- need to play around with these
     double detection_variance_transl_x = 0.01;
@@ -346,25 +352,27 @@ int main(int argc, char **argv) {
     std::string traj_est_output_file;
     std::string gt_traj_file;
 
-    if (!n.getParam(kPastSamplesFilesParamName, past_sample_files)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << kPastSamplesFilesParamName;
+    if (!n.getParam(prefix + kPastSamplesFilesParamName, past_sample_files)) {
+        LOG(INFO) << "No parameter value set for parameter with name " << prefix + kPastSamplesFilesParamName;
         exit(1);
     }
 
-    if (!n.getParam(kOdomTrajectoryEstimatesFileParamName, odom_estimates_file_name)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << kOdomTrajectoryEstimatesFileParamName;
+    if (!n.getParam(prefix + kOdomTrajectoryEstimatesFileParamName, odom_estimates_file_name)) {
+        LOG(INFO) << "No parameter value set for parameter with name " << prefix + kOdomTrajectoryEstimatesFileParamName;
         exit(1);
     }
 
-    if (!n.getParam(kObjDetectionsCurrTrajectoryFileParamName, object_detections_file_name)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << kObjDetectionsCurrTrajectoryFileParamName;
+    if (!n.getParam(prefix + kObjDetectionsCurrTrajectoryFileParamName, object_detections_file_name)) {
+        LOG(INFO) << "No parameter value set for parameter with name " << prefix + kObjDetectionsCurrTrajectoryFileParamName;
         exit(1);
     }
 
-    if (!n.getParam(kTrajectoryOutputFileName, traj_est_output_file)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << kTrajectoryOutputFileName;
+    if (!n.getParam(prefix + kTrajectoryOutputFileName, traj_est_output_file)) {
+        LOG(INFO) << "No parameter value set for parameter with name " << prefix + kTrajectoryOutputFileName;
         exit(1);
     }
+    std::shared_ptr<visualization::VisualizationManager> manager = std::make_shared<visualization::VisualizationManager>(
+            n);
 
     std::vector<pose::Pose2d> gt_trajectory;
     if (n.getParam(kGtTrajectoryFile, gt_traj_file)) {
