@@ -129,7 +129,7 @@ namespace gp_regression {
 
 //            LOG(INFO) << inv_gram_mat;
 //            LOG(INFO) << "Testing inversion";
-            Eigen::MatrixXd matrix_times_inv = gram_matrix * inv_gram_mat;
+//            Eigen::MatrixXd matrix_times_inv = gram_matrix * inv_gram_mat;
 //            LOG(INFO) << "Gram matrix determinant " << gram_matrix.determinant();
 //            LOG(INFO) << matrix_times_inv;
 //            LOG(INFO) << "Diag entry " << matrix_times_inv(matrix_times_inv.rows() - 1, matrix_times_inv.cols() - 1);

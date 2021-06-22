@@ -7,7 +7,7 @@ MESSAGE(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 MESSAGE(STATUS "Arch: ${CMAKE_SYSTEM_PROCESSOR}")
 
 #SET(CMAKE_CXX_FLAGS "-std=c++11 -Wall")
-SET(CMAKE_CXX_FLAGS "-std=c++17 -lstdc++fs -Wall -Werror -O2")
+SET(CMAKE_CXX_FLAGS "-std=c++17 -lstdc++fs -Wall -Wno-unused-function -Werror -O2")
 
 IF(${CMAKE_BUILD_TYPE} MATCHES "Release")
   MESSAGE(STATUS "Additional Flags for Release mode")
@@ -93,6 +93,12 @@ TARGET_LINK_LIBRARIES(distribution_gen_config_writer ${libs} stdc++fs)
 
 ROSBUILD_ADD_EXECUTABLE(local_detections_creator src/evaluation/create_local_detections_from_global_detections.cc)
 TARGET_LINK_LIBRARIES(local_detections_creator ${libs} stdc++fs)
+
+ROSBUILD_ADD_EXECUTABLE(convert_object_detections_from_yaml src/evaluation/convert_object_detections_from_yaml.cc)
+TARGET_LINK_LIBRARIES(convert_object_detections_from_yaml ${libs} stdc++fs yaml-cpp)
+
+ROSBUILD_ADD_EXECUTABLE(plot_results src/evaluation/plot_results.cc)
+TARGET_LINK_LIBRARIES(plot_results ${libs} stdc++fs)
 
 #ROSBUILD_ADD_EXECUTABLE(uncertainty_aware_localization_test src/synthetic_problem/uncertainty_aware/uncertainty_aware_synthetic_problem_localization_test_main.cc)
 #TARGET_LINK_LIBRARIES(uncertainty_aware_localization_test ${libs})
