@@ -146,16 +146,13 @@ namespace gp_regression {
          */
         template<typename T>
         std::pair<Eigen::Matrix<T, M, Eigen::Dynamic>, Eigen::Matrix<T, 1, Eigen::Dynamic>> Inference(const Eigen::Matrix<T, N, Eigen::Dynamic>& x) {
-//            LOG(INFO) << "O " << O;
 
             Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> k_x_transp_mean_kernel(x.cols(), num_datapoints_);
-//            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> k_x_transp_var_kernel(x.cols(), num_datapoints_);
 
             Eigen::Matrix<T, 1, Eigen::Dynamic> kde_based_var = Eigen::Matrix<T, 1, Eigen::Dynamic>::Zero(1, x.cols());
             for (int i = 0; i < num_datapoints_; i++) {
                 Eigen::Matrix<T, N, 1> input_i = inputs_.col(i).cast<T>();
                 for (int j = 0; j < x.cols(); j++) {
-//                    LOG(INFO) << " j  " << j;
                     Eigen::Matrix<T, N, 1> eval_input = x.col(j);
                     k_x_transp_mean_kernel(j, i) = mean_kernel_->evaluateKernel(input_i, eval_input);
                     if (ceres::IsNaN(k_x_transp_mean_kernel(j, i))) {
@@ -165,42 +162,9 @@ namespace gp_regression {
                 }
             }
 
-//            Eigen::Matrix<T, Eigen::Dynamic, 1> input_variance = Eigen::Matrix<T, Eigen::Dynamic, 1>(x.cols(), 1);
-//            input_variance.setConstant(T(identity_noise_var_ + kernel_self_value_));
-//            LOG(INFO) << "Self variance " << input_variance;
-//            for (int j = 0; j < x.cols(); j++) {
-//                Eigen::Matrix<T, N, 1> eval_input = x.col(j);
-//                input_variance(j, 1) = kernel_->evaluateKernel(eval_input, eval_input);
-//            }
-
-//            LOG(INFO) << "Input variance " << input_variance;
-
-//            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> kernel_times_inv_gram = k_x_transp * inv_gram_matrix_.cast<T>();
             Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> kernel_times_inv_gram_mean = k_x_transp_mean_kernel * inv_gram_matrix_mean_.cast<T>();
-//            LOG(INFO) << "Inv gram mat mean " << inv_gram_matrix_mean_;
-//            for (int i = )
-//            LOG(INFO) << "Kernel times in gram mat " << kernel_times_inv_gram_mean;
-//            LOG(INFO) << "Kernel times inv gram mat times mean adjusted " << kernel_times_inv_gram_mean * mean_adjusted_outputs_transp_.cast<T>();
-//            LOG(INFO) << "Kernel times inv gram m at times out " << kernel_times_inv_gram_mean * outputs_transp_.cast<T>();
             Eigen::Matrix<T, Eigen::Dynamic, M> mu_star_transp = prior_mean_mat_.cast<T>() + kernel_times_inv_gram_mean * mean_adjusted_outputs_transp_.cast<T>();
 
-            // Compute variance: k_xx + K_x^T * K_d^-1 * K_x
-
-//            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> kernel_times_inv_gram_var = k_x_transp_var_kernel * inv_gram_matrix_variance_.cast<T>();
-//            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> non_self_variance = (kernel_times_inv_gram_var * (k_x_transp_var_kernel.transpose().asDiagonal())).rowwise().sum();
-//            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> non_self_variance = kernel_times_inv_gram_var * k_x_transp_var_kernel.transpose();
-//            LOG(INFO) << "Non-self variance: " << non_self_variance;
-//            Eigen::Matrix<T, Eigen::Dynamic, 1> variance_column_vec = input_variance - non_self_variance;
-//            LOG(INFO) << "Var " << variance_column_vec;
-//            if (variance_column_vec.minCoeff()  < T(0)) {
-//                LOG(INFO) << "Min coeff is negative: " << variance_column_vec;
-//            }
-            // TODO!!!! Need to add self-variance back in -- currently causing NaNs
-//            Eigen::Matrix<T, Eigen::Dynamic, 1> variance_column_vec =  ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
-//            LOG(INFO) << "Non-self-variance " << ((kernel_times_inv_gram.cwiseProduct(k_x_transp)).rowwise().sum());
-//            LOG(INFO) << "Variance col vec " << variance_column_vec;
-
-//            return std::make_pair(mu_star_transp.transpose(), variance_column_vec.transpose());
             return std::make_pair(mu_star_transp.transpose(), kde_based_var.array().inverse().matrix());
         }
 
