@@ -128,12 +128,12 @@ namespace synthetic_problem {
             }
         }
 
-        ceres::IterationCallback* createCeresIterationCallback(
+        std::shared_ptr<ceres::IterationCallback> createCeresIterationCallback(
                 const pose_graph::NodeId &node_id,
                 const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>> &pose_graph,
                 const std::unordered_map<std::string, std::vector<std::vector<pose::Pose2d>>> noisy_observations_by_class) {
             if (run_visualization_) {
-                return new offline_optimization::CeresVisualizationCallback2d(
+                return std::make_shared<offline_optimization::CeresVisualizationCallback2d>(
                         pose_graph, vis_manager_, node_id, noisy_observations_by_class);
             } else {
                 return nullptr;

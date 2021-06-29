@@ -23,9 +23,9 @@ namespace offline_optimization {
 
         }
 
-        ~CeresVisualizationCallback2d() {}
+        ~CeresVisualizationCallback2d() override = default;
 
-        ceres::CallbackReturnType operator()(const ceres::IterationSummary& summary) {
+        ceres::CallbackReturnType operator()(const ceres::IterationSummary& summary) override {
 
             std::unordered_map<pose_graph::NodeId, pose::Pose2d> node_poses;
             pose_graph_->getNodePoses(node_poses);

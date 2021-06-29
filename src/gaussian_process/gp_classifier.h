@@ -37,7 +37,13 @@ namespace gp_regression {
                 const double &identity_noise_mean,
                 const double &identity_noise_var,
                 const std::shared_ptr<Kernel> &mean_kernel,
-                const std::shared_ptr<Kernel> &variance_kernel) : num_datapoints_(inputs.cols()), inputs_(inputs), outputs_(outputs) {
+                const std::shared_ptr<Kernel> &variance_kernel,
+                std::shared_ptr<CumulativeFunctionTimer> jet_mat_mult_timer,
+                std::shared_ptr<CumulativeFunctionTimer> jet_kernel_eval_timer,
+                std::shared_ptr<CumulativeFunctionTimer> jet_overall_timer,
+                std::shared_ptr<CumulativeFunctionTimer> double_mat_mult_timer,
+                std::shared_ptr<CumulativeFunctionTimer> double_kernel_eval_timer,
+                std::shared_ptr<CumulativeFunctionTimer> double_overall_timer) : num_datapoints_(inputs.cols()), inputs_(inputs), outputs_(outputs) {
             CHECK_EQ(inputs.rows(), N);
             CHECK_EQ(outputs.rows(), 1);
             CHECK_EQ(inputs.cols(), outputs.cols());
@@ -61,7 +67,13 @@ namespace gp_regression {
                                                                                       transformed_prior_mean,
                                                                                       identity_noise_mean,
                                                                                       identity_noise_var, mean_kernel,
-                                                                                      variance_kernel);
+                                                                                      variance_kernel,
+                                                                                      jet_mat_mult_timer,
+                                                                                      jet_kernel_eval_timer,
+                                                                                      jet_overall_timer,
+                                                                                      double_mat_mult_timer,
+                                                                                      double_kernel_eval_timer,
+                                                                                      double_overall_timer);
 //            LOG(INFO) << "Done creating regressor";
         }
 

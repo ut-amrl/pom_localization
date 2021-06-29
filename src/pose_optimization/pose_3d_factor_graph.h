@@ -58,7 +58,7 @@ namespace pose_graph {
                                       mean_kernel,
                                       var_kernel_creator) {}
 
-        ~PoseGraphXdMovObjDistribution2d() override {}
+        ~PoseGraphXdMovObjDistribution2d() override = default;
 
         bool getMatrixRepresentationOfDetections(
                 const std::vector<MapObjectObservation2d> &pos_observations,
@@ -187,6 +187,8 @@ namespace pose_graph {
                 mean_kernel,
                 var_kernel_creator) {
         }
+
+        ~PoseGraph2dMovObjDistribution2d() override = default;
 
         ceres::CostFunction *createMovableObjectCostFunctor(
                 const std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> &movable_object_gpc,

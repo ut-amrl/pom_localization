@@ -76,16 +76,22 @@ namespace pose_optimization {
 
             T cumulative_probability = T(0.0);
 
+            Eigen::Matrix<T, 3, Eigen::Dynamic> obj_pose_vectors(3, observation_transforms_.size());
 
+//            for (size_t i = 0; i < observation_transforms_.size(); i++) {
             for (const Eigen::Affine2f &obs_sample_tf : observation_transforms_) {
                 Eigen::Transform<T, 2, Eigen::Affine> world_frame_obj_tf = robot_tf * obs_sample_tf.cast<T>();
+//                Eigen::Transform<T, 2, Eigen::Affine> world_frame_obj_tf = robot_tf * observation_transforms_[i].cast<T>();
                 Eigen::Matrix<T, 3, 1> obj_pose_vector;
                 Eigen::Rotation2D<T> obj_rot_world(world_frame_obj_tf.linear());
                 obj_pose_vector << world_frame_obj_tf.translation().x(), world_frame_obj_tf.translation().y(), obj_rot_world.angle();
+//                Eigen::Matrix<T, 3, 1> world_tf_for_obs = Eigen::Matrix<T, 3, 1>(world_frame_obj_tf.translation().x(), world_frame_obj_tf.translation().y(), obj_rot_world.angle());
+//                obj_pose_vectors.col(i) = world_tf_for_obs;
                 T new_sample_prob = probability_evaluator_->template Inference<T>(obj_pose_vector)(0, 0);
 //                LOG(INFO) << "New sample prob " << new_sample_prob;
                 cumulative_probability += new_sample_prob;
             }
+//            cumulative_probability = probability_evaluator_->template Inference<T>(obj_pose_vectors).sum();
 
             // TODO Do we need to divide by length scale or are we relying on KDE to do that?
             // TODO Do we need to multiply by 1/<number of samples> - shouldn't change overall result, but perhaps would allow probability to exceed 1 (BAD)

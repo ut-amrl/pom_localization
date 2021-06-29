@@ -40,10 +40,12 @@ namespace offline_optimization {
         OfflinePoseOptimizer() {
         }
 
+        ~OfflinePoseOptimizer() = default;
+
         std::unordered_map<pose_graph::NodeId, PoseType> runOfflineOptimization(const OfflineProblemDataType &problem_data,
                                     const pose_optimization::PoseOptimizationParameters &problem_params,
                                     const std::function<std::shared_ptr<PoseGraphType> (const pose_optimization::CostFunctionParameters &)> pose_graph_creator,
-                                    const std::function<ceres::IterationCallback*(const pose_graph::NodeId&, const std::shared_ptr<PoseGraphType>&)> callback_creator,
+                                    const std::function<std::shared_ptr<ceres::IterationCallback>(const pose_graph::NodeId&, const std::shared_ptr<PoseGraphType>&)> callback_creator,
                                     const std::function<void(const pose_graph::NodeId&, const std::shared_ptr<PoseGraphType>&, const VisualizationTypeEnum&)> visualization_callback) {
 
             // Create pose graph
@@ -147,9 +149,9 @@ namespace offline_optimization {
                 optimizer.buildPoseGraphOptimizationProblem(*(pose_graph.get()), nodes_to_optimize, new_nodes_to_optimize, problem_params.cost_function_params_, &problem);
 
                 std::vector<ceres::IterationCallback *> ceres_callbacks;
-                ceres::IterationCallback *callback = callback_creator(next_pose_to_optimize, pose_graph);
-                if (callback != nullptr) {
-                    ceres_callbacks.emplace_back(callback);
+                std::shared_ptr<ceres::IterationCallback> callback = callback_creator(next_pose_to_optimize, pose_graph);
+                if (callback.get() != nullptr) {
+                    ceres_callbacks.emplace_back(callback.get());
                 }
 
                 // Set up callback for visualization

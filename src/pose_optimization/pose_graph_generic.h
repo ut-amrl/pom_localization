@@ -207,7 +207,7 @@ namespace pose_graph {
 
         }
 
-        virtual ~PoseGraph() {}
+        virtual ~PoseGraph() = default;
 
         /**
          * Add a node.
@@ -407,6 +407,8 @@ namespace pose_graph {
 
     protected:
 
+
+
         // TODO there has to be a better way than just inserting samples at a variety of orientations
         const uint8_t kNumDiscreteOrientationsNegObservations = 5;
 
@@ -457,6 +459,14 @@ namespace pose_graph {
          * Factors relating two nodes that assume gaussian noise.
          */
         std::vector<GaussianBinaryFactorType> binary_factors_;
+
+
+        std::shared_ptr<CumulativeFunctionTimer> jet_mat_mult_timer_ = std::make_shared<CumulativeFunctionTimer>("Jet mat mult");
+        std::shared_ptr<CumulativeFunctionTimer> jet_kernel_eval_timer_ = std::make_shared<CumulativeFunctionTimer>("Jet kernel eval");
+        std::shared_ptr<CumulativeFunctionTimer> jet_overall_timer_ = std::make_shared<CumulativeFunctionTimer>("Jet overall");
+        std::shared_ptr<CumulativeFunctionTimer> double_mat_mult_timer_ = std::make_shared<CumulativeFunctionTimer>("Double mat mult");
+        std::shared_ptr<CumulativeFunctionTimer> double_kernel_eval_timer_ = std::make_shared<CumulativeFunctionTimer>("Double kernel eval");
+        std::shared_ptr<CumulativeFunctionTimer> double_overall_timer_ = std::make_shared<CumulativeFunctionTimer>("Double overall");
 
         // TODO convert class labels to enum?
         /**
@@ -525,7 +535,12 @@ namespace pose_graph {
                 // TODO change variance kernel to reflect subsampling ratio
                 gpc = std::make_shared<GpcType>(inputs, outputs, prior_mean, input_variance_for_mean,
                                                 input_variance_for_var, mov_obj_mean_kernel_,
-                                                var_kernel_creator_(subsampling_ratio));
+                                                var_kernel_creator_(subsampling_ratio),
+                                                 jet_mat_mult_timer_, jet_kernel_eval_timer_,
+                                                 jet_overall_timer_,
+                                                 double_mat_mult_timer_,
+                                                 double_kernel_eval_timer_,
+                                                 double_overall_timer_);
 
                 return gpc;
             }

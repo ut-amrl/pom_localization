@@ -293,11 +293,11 @@ getTrajectoryEstimate(const std::vector<pose::Pose2d> &odom_est_trajectory,
     offline_problem_data.movable_observation_factors_ = movable_object_observations;
     offline_problem_data.initial_node_positions_ = initial_node_positions;
 
-    std::function<ceres::IterationCallback *(const pose_graph::NodeId &,
-                                             const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>> &)> callback_creator = [manager, noisy_observations_by_class](
+    std::function<std::shared_ptr<ceres::IterationCallback>(const pose_graph::NodeId &,
+                                                            const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>> &)> callback_creator = [manager, noisy_observations_by_class](
             const pose_graph::NodeId &node_id,
             const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>> &pose_graph) {
-        return new offline_optimization::CeresVisualizationCallback2d(
+        return std::make_shared<offline_optimization::CeresVisualizationCallback2d>(
                 pose_graph, manager, node_id, noisy_observations_by_class);
     };
 
@@ -364,12 +364,14 @@ int main(int argc, char **argv) {
     }
 
     if (!n.getParam(param_prefix + kOdomTrajectoryEstimatesFileParamName, odom_estimates_file_name)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kOdomTrajectoryEstimatesFileParamName;
+        LOG(INFO) << "No parameter value set for parameter with name "
+                  << param_prefix + kOdomTrajectoryEstimatesFileParamName;
         exit(1);
     }
 
     if (!n.getParam(param_prefix + kObjDetectionsCurrTrajectoryFileParamName, object_detections_file_name)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kObjDetectionsCurrTrajectoryFileParamName;
+        LOG(INFO) << "No parameter value set for parameter with name "
+                  << param_prefix + kObjDetectionsCurrTrajectoryFileParamName;
         exit(1);
     }
 
@@ -381,7 +383,7 @@ int main(int argc, char **argv) {
             n);
 
     std::vector<pose::Pose2d> gt_trajectory;
-    if (n.getParam(kGtTrajectoryFile, gt_traj_file)) {
+    if (n.getParam(param_prefix + kGtTrajectoryFile, gt_traj_file)) {
         gt_trajectory = readTrajFromFile(gt_traj_file);
     }
 
@@ -423,7 +425,8 @@ int main(int argc, char **argv) {
             pose_sample_ratio);
 
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> optimization_results = getTrajectoryEstimate(
-            initial_trajectory_estimates, gt_trajectory, manager, odom_factors, samples, movable_observation_factors);
+            initial_trajectory_estimates, gt_trajectory, manager, odom_factors, samples,
+            movable_observation_factors);
 
     std::vector<file_io::TrajectoryNode2d> trajectory_nodes;
     for (pose_graph::NodeId node_id = 0; node_id < optimization_results.size(); node_id++) {
