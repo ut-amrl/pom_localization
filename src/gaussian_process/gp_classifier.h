@@ -43,7 +43,12 @@ namespace gp_regression {
                 std::shared_ptr<CumulativeFunctionTimer> jet_overall_timer,
                 std::shared_ptr<CumulativeFunctionTimer> double_mat_mult_timer,
                 std::shared_ptr<CumulativeFunctionTimer> double_kernel_eval_timer,
-                std::shared_ptr<CumulativeFunctionTimer> double_overall_timer) : num_datapoints_(inputs.cols()), inputs_(inputs), outputs_(outputs) {
+                std::shared_ptr<CumulativeFunctionTimer> double_overall_timer,
+                std::shared_ptr<CumulativeFunctionTimer> jet_gpc_timer,
+                std::shared_ptr<CumulativeFunctionTimer> double_gpc_timer) : num_datapoints_(inputs.cols()),
+                                                                             inputs_(inputs), outputs_(outputs),
+                                                                             jet_gpc_timer_(jet_gpc_timer),
+                                                                             double_gpc_timer_(double_gpc_timer) {
             CHECK_EQ(inputs.rows(), N);
             CHECK_EQ(outputs.rows(), 1);
             CHECK_EQ(inputs.cols(), outputs.cols());
@@ -109,16 +114,48 @@ namespace gp_regression {
          *
          * @return Estimated output value for the given input.
          */
-        template<typename T>
-        Eigen::Matrix<T, 1, Eigen::Dynamic> Inference(const Eigen::Matrix<T, N, Eigen::Dynamic> &x) {
+//        template<typename T>
+//        Eigen::Matrix<T, 1, Eigen::Dynamic> Inference(const Eigen::Matrix<T, N, Eigen::Dynamic> &x) {
+//
+//            std::pair<Eigen::Matrix<T, 1, Eigen::Dynamic>, Eigen::Matrix<T, 1, Eigen::Dynamic>> regressor_out = gp_regressor_->Inference(
+//                    x);
+////            LOG(INFO) << "Regressor out mean " << regressor_out.first;
+////            LOG(INFO) << "Regressor out variance " << regressor_out.second;
+//
+//            Eigen::Matrix<T, 1, Eigen::Dynamic> classification_output = Eigen::Matrix<T, 1, Eigen::Dynamic>(1,
+//                                                                                                            x.cols());
+//            sigmoidNormalConvolution(regressor_out.first, regressor_out.second, classification_output);
+////            LOG(INFO) << "Classification output " << classification_output;
+//
+//            return classification_output;
+//        }
 
-            std::pair<Eigen::Matrix<T, 1, Eigen::Dynamic>, Eigen::Matrix<T, 1, Eigen::Dynamic>> regressor_out = gp_regressor_->Inference(
+        Eigen::Matrix<double, 1, Eigen::Dynamic> Inference(const Eigen::Matrix<double, N, Eigen::Dynamic> &x) {
+            CumulativeFunctionTimer::Invocation invoc(double_gpc_timer_.get());
+            std::pair<Eigen::Matrix<double, 1, Eigen::Dynamic>, Eigen::Matrix<double, 1, Eigen::Dynamic>> regressor_out = gp_regressor_->Inference(
                     x);
 //            LOG(INFO) << "Regressor out mean " << regressor_out.first;
 //            LOG(INFO) << "Regressor out variance " << regressor_out.second;
 
-            Eigen::Matrix<T, 1, Eigen::Dynamic> classification_output = Eigen::Matrix<T, 1, Eigen::Dynamic>(1,
-                                                                                                            x.cols());
+            Eigen::Matrix<double, 1, Eigen::Dynamic> classification_output = Eigen::Matrix<double, 1, Eigen::Dynamic>(1,
+                                                                                                                      x.cols());
+            sigmoidNormalConvolution(regressor_out.first, regressor_out.second, classification_output);
+//            LOG(INFO) << "Classification output " << classification_output;
+
+            return classification_output;
+        }
+
+        template<int JetDim>
+        Eigen::Matrix<ceres::Jet<double, JetDim>, 1, Eigen::Dynamic>
+        Inference(const Eigen::Matrix<ceres::Jet<double, JetDim>, N, Eigen::Dynamic> &x) {
+            CumulativeFunctionTimer::Invocation invoc(jet_gpc_timer_.get());
+            std::pair<Eigen::Matrix<ceres::Jet<double, JetDim>, 1, Eigen::Dynamic>, Eigen::Matrix<ceres::Jet<double, JetDim>, 1, Eigen::Dynamic>> regressor_out = gp_regressor_->Inference(
+                    x);
+//            LOG(INFO) << "Regressor out mean " << regressor_out.first;
+//            LOG(INFO) << "Regressor out variance " << regressor_out.second;
+
+            Eigen::Matrix<ceres::Jet<double, JetDim>, 1, Eigen::Dynamic> classification_output =
+                    Eigen::Matrix<ceres::Jet<double, JetDim>, 1, Eigen::Dynamic>(1, x.cols());
             sigmoidNormalConvolution(regressor_out.first, regressor_out.second, classification_output);
 //            LOG(INFO) << "Classification output " << classification_output;
 
@@ -165,6 +202,10 @@ namespace gp_regression {
          * TODO do we need to maintain this or should we just transform and pass it off to the regressor.
          */
         Eigen::MatrixXd output_data_transformed_;
+
+        std::shared_ptr<CumulativeFunctionTimer> jet_gpc_timer_;
+
+        std::shared_ptr<CumulativeFunctionTimer> double_gpc_timer_;
 
         // TODO need to figure out how to have non-zero mean
 

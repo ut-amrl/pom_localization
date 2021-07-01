@@ -213,7 +213,9 @@ namespace pose_graph {
             return new ceres::AutoDiffCostFunction<pose_optimization::SampleBasedMovableObservationCostFunctor2D<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>, 1, 2, 1>(
                     new pose_optimization::SampleBasedMovableObservationCostFunctor2D<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
                             movable_object_gpc,
-                            observation_samples));
+                            observation_samples,
+                            jet_cost_functor_timer_,
+                            double_cost_functor_timer_));
         }
 
         ceres::CostFunction *createGaussianBinaryCostFunctor(

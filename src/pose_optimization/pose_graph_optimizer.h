@@ -69,7 +69,8 @@ namespace pose_optimization {
                     continue;
                 }
 
-                if (new_nodes_to_optimize.find(factor.observed_at_node_) == new_nodes_to_optimize.end()) {
+//                if (new_nodes_to_optimize.find(factor.observed_at_node_) == new_nodes_to_optimize.end()) {
+                if (nodes_to_optimize.find(factor.observed_at_node_) == nodes_to_optimize.end()) {
                     continue;
                 }
 
@@ -100,9 +101,13 @@ namespace pose_optimization {
             // Add residuals from odometry (visual, lidar, or wheel) factors
             for (pose_graph::GaussianBinaryFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> &factor
             : pose_graph.getBinaryFactors()) {
+//
+//                bool from_node_new = (new_nodes_to_optimize.find(factor.from_node_) != new_nodes_to_optimize.end());
+//                bool to_node_new = (new_nodes_to_optimize.find(factor.to_node_) != new_nodes_to_optimize.end());
 
-                bool from_node_new = (new_nodes_to_optimize.find(factor.from_node_) != new_nodes_to_optimize.end());
-                bool to_node_new = (new_nodes_to_optimize.find(factor.to_node_) != new_nodes_to_optimize.end());
+
+                bool from_node_new = (nodes_to_optimize.find(factor.from_node_) != nodes_to_optimize.end());
+                bool to_node_new = (nodes_to_optimize.find(factor.to_node_) != nodes_to_optimize.end());
 
                 // Either the to or from node has to be a new node
                 // The other node must be a node in nodes to optimize (new or not)
@@ -154,8 +159,8 @@ namespace pose_optimization {
             }
 
 
-            if (new_nodes_to_optimize.find(0) != new_nodes_to_optimize.end()) {
-
+//            if (new_nodes_to_optimize.find(0) != new_nodes_to_optimize.end()) {
+            if (nodes_to_optimize.find(0) != nodes_to_optimize.end()) {
                 problem->AddParameterBlock(raw_pointers_for_start_node_data.first, MeasurementTranslationDim);
                 problem->AddParameterBlock(raw_pointers_for_start_node_data.second, (CovDim - MeasurementTranslationDim));
 

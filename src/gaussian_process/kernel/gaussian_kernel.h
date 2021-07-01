@@ -33,13 +33,11 @@ namespace gp_kernel {
          * @param variance  Variance parameter.
          */
         explicit GaussianKernel(const float &length, const float &variance) : Kernel<N>(),
-                length_(length), variance_(variance) {}
+                norm_factor_(-0.5 / math_util::Sq(length)), variance_(variance) {}
 
         template<typename T>
         T evaluateKernel(const InputType<T>& x1, const InputType<T>& x2) {
-
-            T scaled_distance = ((x1 - x2).squaredNorm() / math_util::Sq(static_cast<T>(length_)));
-            return static_cast<T>(variance_) * exp(-0.5 * scaled_distance);
+            return static_cast<T>(variance_) * exp(T(norm_factor_) * (x1 - x2).squaredNorm());
         }
 
         double getKernelSelfValue() {
@@ -53,7 +51,7 @@ namespace gp_kernel {
          *
          * Distance between points is divided by the square of this value.
          */
-        float length_;
+        double norm_factor_;
 
         /**
          * Variance parameter.

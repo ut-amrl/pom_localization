@@ -72,11 +72,12 @@ namespace gp_regression {
             kernel_self_value_ = variance_kernel_->getKernelSelfValue();
 
             refreshInvGramMatrix(mean_kernel_, inv_gram_matrix_mean_, identity_noise_mean_);
-            if (variance_kernel_ != mean_kernel_) {
-                refreshInvGramMatrix(variance_kernel_, inv_gram_matrix_variance_, identity_noise_var_);
-            } else {
-                inv_gram_matrix_variance_ = inv_gram_matrix_mean_;
-            }
+            inv_mat_times_outputs_ = inv_gram_matrix_mean_ * mean_adjusted_outputs_transp_;
+//            if (variance_kernel_ != mean_kernel_) {
+//                refreshInvGramMatrix(variance_kernel_, inv_gram_matrix_variance_, identity_noise_var_);
+//            } else {
+//                inv_gram_matrix_variance_ = inv_gram_matrix_mean_;
+//            }
         }
 
         void appendData(const Eigen::MatrixXd &new_inputs, const Eigen::MatrixXd &new_outputs) {
@@ -100,11 +101,12 @@ namespace gp_regression {
 
             mean_adjusted_outputs_transp_ = (outputs_transp_.array() - prior_mean_).matrix();
             refreshInvGramMatrix(mean_kernel_, inv_gram_matrix_mean_, identity_noise_mean_);
-            if (variance_kernel_ != mean_kernel_) {
-                refreshInvGramMatrix(variance_kernel_, inv_gram_matrix_variance_, identity_noise_var_);
-            } else {
-                inv_gram_matrix_variance_ = inv_gram_matrix_mean_;
-            }
+            inv_mat_times_outputs_ = inv_gram_matrix_mean_ * mean_adjusted_outputs_transp_;
+//            if (variance_kernel_ != mean_kernel_) {
+//                refreshInvGramMatrix(variance_kernel_, inv_gram_matrix_variance_, identity_noise_var_);
+//            } else {
+//                inv_gram_matrix_variance_ = inv_gram_matrix_mean_;
+//            }
         }
 
         void
@@ -248,9 +250,10 @@ namespace gp_regression {
         Eigen::Matrix<double, Eigen::Dynamic, M> MatrixMult(const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &k_x_transp_mean_kernel) {
 
             CumulativeFunctionTimer::Invocation invoc(double_mat_mult_timer_.get());
-            Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> kernel_times_inv_gram_mean =
-                    k_x_transp_mean_kernel * inv_gram_matrix_mean_.cast<double>();
-            Eigen::Matrix<double, Eigen::Dynamic, M> mu_star_transp = kernel_times_inv_gram_mean * mean_adjusted_outputs_transp_.cast<double>().array().matrix();
+//            Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> kernel_times_inv_gram_mean =
+//                    k_x_transp_mean_kernel * inv_gram_matrix_mean_.cast<double>();
+//            Eigen::Matrix<double, Eigen::Dynamic, M> mu_star_transp = kernel_times_inv_gram_mean * mean_adjusted_outputs_transp_.cast<double>().array().matrix();
+            Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mu_star_transp = k_x_transp_mean_kernel * inv_mat_times_outputs_.cast<double>();
             mu_star_transp = (prior_mean_ + mu_star_transp.array()).matrix();
             return mu_star_transp;
 //            return prior_mean_mat_.cast<double>() +
@@ -329,9 +332,10 @@ namespace gp_regression {
         Eigen::Matrix<ceres::Jet<double, JetDim>, Eigen::Dynamic, M> MatrixMult(const Eigen::Matrix<ceres::Jet<double, JetDim>, Eigen::Dynamic, Eigen::Dynamic> &k_x_transp_mean_kernel) {
 
             CumulativeFunctionTimer::Invocation invoc(jet_mat_mult_timer_.get());
-            Eigen::Matrix<ceres::Jet<double, JetDim>, Eigen::Dynamic, Eigen::Dynamic> kernel_times_inv_gram_mean =
-                    k_x_transp_mean_kernel * inv_gram_matrix_mean_.cast<ceres::Jet<double, JetDim>>();
-            Eigen::Matrix<ceres::Jet<double, JetDim>, Eigen::Dynamic, M> mu_star_transp = kernel_times_inv_gram_mean * mean_adjusted_outputs_transp_.cast<ceres::Jet<double, JetDim>>();
+//            Eigen::Matrix<ceres::Jet<double, JetDim>, Eigen::Dynamic, Eigen::Dynamic> kernel_times_inv_gram_mean =
+//                    k_x_transp_mean_kernel * inv_gram_matrix_mean_.cast<ceres::Jet<double, JetDim>>();
+//            Eigen::Matrix<ceres::Jet<double, JetDim>, Eigen::Dynamic, M> mu_star_transp = kernel_times_inv_gram_mean * mean_adjusted_outputs_transp_.cast<ceres::Jet<double, JetDim>>();
+            Eigen::Matrix<ceres::Jet<double, JetDim>, Eigen::Dynamic, Eigen::Dynamic> mu_star_transp = k_x_transp_mean_kernel * inv_mat_times_outputs_.cast<ceres::Jet<double, JetDim>>();
             mu_star_transp = (ceres::Jet<double, JetDim>(prior_mean_) + mu_star_transp.array()).matrix();
             return mu_star_transp;
 //            return prior_mean_mat_.cast<ceres::Jet<double, JetDim>>() +
@@ -339,9 +343,6 @@ namespace gp_regression {
         }
 
     private:
-//        static constexpr const char* kJetMatMultTimerName = "Jet mat mult";
-//        const char* kJetEvalTimerName = "Jet eval mult";
-//        const char* kJetOverallTimerName = "Jet overall";
 
 //        Eigen::MatrixXd prior_mean_mat_;
 
@@ -364,6 +365,8 @@ namespace gp_regression {
          * Transpose of the output data (observations at the input points).
          */
         Eigen::MatrixXd mean_adjusted_outputs_transp_;
+
+        Eigen::MatrixXd inv_mat_times_outputs_;
 
         /**
          * Kernel for evaluating the difference between two points.

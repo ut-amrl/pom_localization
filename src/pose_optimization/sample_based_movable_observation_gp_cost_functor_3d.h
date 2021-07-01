@@ -48,37 +48,101 @@ namespace pose_optimization {
             transform.rotate(rotation);
             return transform;
         }
+//
+//        template <typename T>
+//        bool operator()(const T* const robot_position_ptr, const T* const robot_orientation_ptr, T* residuals) const {
+//
+//            Eigen::Map<const Eigen::Matrix<T, 3, 1>> robot_position(robot_position_ptr);
+//            Eigen::Map<const Eigen::Quaternion<T>> robot_orientation(robot_orientation_ptr);
+//
+//            Eigen::Transform<T, 3, Eigen::Affine> robot_tf =
+//                    convertTranslationAndRotationToMatrix<T>(robot_position, robot_orientation);
+//
+//            T cumulative_probability = T(0.0);
+//
+//            for (const Eigen::Affine3f &obs_sample_tf : observation_transforms_) {
+//                Eigen::Transform<T, 3, Eigen::Affine> world_frame_obj_tf = robot_tf * obs_sample_tf.cast<T>();
+//                Eigen::Matrix<T, 3, 1> obj_pose_vector;
+//
+//                T yaw = world_frame_obj_tf.linear().eulerAngles(0, 1, 2)[2];
+//
+//                obj_pose_vector << world_frame_obj_tf.translation().x(), world_frame_obj_tf.translation().y(), yaw;
+//                cumulative_probability += probability_evaluator_->template Inference<T>(obj_pose_vector)(0, 0);
+//            }
+//
+//            // TODO Do we need to divide by length scale or are we relying on KDE to do that?
+//            // TODO Do we need to multiply by 1/<number of samples> - shouldn't change overall result, but perhaps would allow probability to exceed 1 (BAD)
+//            cumulative_probability = cumulative_probability / T(num_samples_);
+//            // Dividing by number of observations in KDE is already done by KDE
+//
+//            residuals[0] = sqrt(T(-2.0) * log(cumulative_probability));
+//
+//            return true;
+//        }
 
-        template <typename T>
-        bool operator()(const T* const robot_position_ptr, const T* const robot_orientation_ptr, T* residuals) const {
 
-            Eigen::Map<const Eigen::Matrix<T, 3, 1>> robot_position(robot_position_ptr);
-            Eigen::Map<const Eigen::Quaternion<T>> robot_orientation(robot_orientation_ptr);
+        bool operator()(const double* const robot_position_ptr, const double* const robot_orientation_ptr, double* residuals) const {
 
-            Eigen::Transform<T, 3, Eigen::Affine> robot_tf =
-                    convertTranslationAndRotationToMatrix<T>(robot_position, robot_orientation);
+            Eigen::Map<const Eigen::Matrix<double, 3, 1>> robot_position(robot_position_ptr);
+            Eigen::Map<const Eigen::Quaternion<double>> robot_orientation(robot_orientation_ptr);
 
-            T cumulative_probability = T(0.0);
+            Eigen::Transform<double, 3, Eigen::Affine> robot_tf =
+                    convertTranslationAndRotationToMatrix<double>(robot_position, robot_orientation);
+
+            double cumulative_probability = double(0.0);
 
             for (const Eigen::Affine3f &obs_sample_tf : observation_transforms_) {
-                Eigen::Transform<T, 3, Eigen::Affine> world_frame_obj_tf = robot_tf * obs_sample_tf.cast<T>();
-                Eigen::Matrix<T, 3, 1> obj_pose_vector;
+                Eigen::Transform<double, 3, Eigen::Affine> world_frame_obj_tf = robot_tf * obs_sample_tf.cast<double>();
+                Eigen::Matrix<double, 3, 1> obj_pose_vector;
 
-                T yaw = world_frame_obj_tf.linear().eulerAngles(0, 1, 2)[2];
+                double yaw = world_frame_obj_tf.linear().eulerAngles(0, 1, 2)[2];
 
                 obj_pose_vector << world_frame_obj_tf.translation().x(), world_frame_obj_tf.translation().y(), yaw;
-                cumulative_probability += probability_evaluator_->template Inference<T>(obj_pose_vector)(0, 0);
+                cumulative_probability += probability_evaluator_->Inference(obj_pose_vector)(0, 0);
             }
 
             // TODO Do we need to divide by length scale or are we relying on KDE to do that?
             // TODO Do we need to multiply by 1/<number of samples> - shouldn't change overall result, but perhaps would allow probability to exceed 1 (BAD)
-            cumulative_probability = cumulative_probability / T(num_samples_);
+            cumulative_probability = cumulative_probability / double(num_samples_);
             // Dividing by number of observations in KDE is already done by KDE
 
-            residuals[0] = sqrt(T(-2.0) * log(cumulative_probability));
+            residuals[0] = sqrt(double(-2.0) * log(cumulative_probability));
 
             return true;
         }
+
+
+        template <int JetDim>
+        bool operator()(const ceres::Jet<double, JetDim>* const robot_position_ptr, const ceres::Jet<double, JetDim>* const robot_orientation_ptr, ceres::Jet<double, JetDim>* residuals) const {
+
+            Eigen::Map<const Eigen::Matrix<ceres::Jet<double, JetDim>, 3, 1>> robot_position(robot_position_ptr);
+            Eigen::Map<const Eigen::Quaternion<ceres::Jet<double, JetDim>>> robot_orientation(robot_orientation_ptr);
+
+            Eigen::Transform<ceres::Jet<double, JetDim>, 3, Eigen::Affine> robot_tf =
+                    convertTranslationAndRotationToMatrix<ceres::Jet<double, JetDim>>(robot_position, robot_orientation);
+
+            ceres::Jet<double, JetDim> cumulative_probability = ceres::Jet<double, JetDim>(0.0);
+
+            for (const Eigen::Affine3f &obs_sample_tf : observation_transforms_) {
+                Eigen::Transform<ceres::Jet<double, JetDim>, 3, Eigen::Affine> world_frame_obj_tf = robot_tf * obs_sample_tf.cast<ceres::Jet<double, JetDim>>();
+                Eigen::Matrix<ceres::Jet<double, JetDim>, 3, 1> obj_pose_vector;
+
+                ceres::Jet<double, JetDim> yaw = world_frame_obj_tf.linear().eulerAngles(0, 1, 2)[2];
+
+                obj_pose_vector << world_frame_obj_tf.translation().x(), world_frame_obj_tf.translation().y(), yaw;
+                cumulative_probability += probability_evaluator_->template Inference<JetDim>(obj_pose_vector)(0, 0);
+            }
+
+            // TODO Do we need to divide by length scale or are we relying on KDE to do that?
+            // TODO Do we need to multiply by 1/<number of samples> - shouldn't change overall result, but perhaps would allow probability to exceed 1 (BAD)
+            cumulative_probability = cumulative_probability / ceres::Jet<double, JetDim>(num_samples_);
+            // Dividing by number of observations in KDE is already done by KDE
+
+            residuals[0] = sqrt(ceres::Jet<double, JetDim>(-2.0) * log(cumulative_probability));
+
+            return true;
+        }
+
 //
 //        /**
 //         * Gaussian process regressor for evaluating the likelihood of the 2D projection of the object detection in

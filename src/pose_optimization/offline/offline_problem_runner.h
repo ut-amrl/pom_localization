@@ -98,12 +98,12 @@ namespace offline_optimization {
 
             pose_optimization::PoseGraphOptimizer optimizer;
 
-            ceres::Problem problem;
 
             std::unordered_set<pose_graph::NodeId> nodes_to_optimize;
             nodes_to_optimize.insert(0);
             for (pose_graph::NodeId next_pose_to_optimize = 1;
                  next_pose_to_optimize <= max_node_id; next_pose_to_optimize++) {
+                ceres::Problem problem;
 
                 // Recompute the initial pose for this node based on the
                 std::pair<std::shared_ptr<TranslType>, std::shared_ptr<MeasurementRotationType>> pose_vars;

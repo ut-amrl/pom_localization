@@ -468,6 +468,12 @@ namespace pose_graph {
         std::shared_ptr<CumulativeFunctionTimer> double_kernel_eval_timer_ = std::make_shared<CumulativeFunctionTimer>("Double kernel eval");
         std::shared_ptr<CumulativeFunctionTimer> double_overall_timer_ = std::make_shared<CumulativeFunctionTimer>("Double overall");
 
+        std::shared_ptr<CumulativeFunctionTimer> jet_gpc_timer_ = std::make_shared<CumulativeFunctionTimer>("Jet gpc");
+        std::shared_ptr<CumulativeFunctionTimer> double_gpc_timer_ = std::make_shared<CumulativeFunctionTimer>("Double gpc");
+
+        std::shared_ptr<CumulativeFunctionTimer> jet_cost_functor_timer_ = std::make_shared<CumulativeFunctionTimer>("Jet cost functor");
+        std::shared_ptr<CumulativeFunctionTimer> double_cost_functor_timer_ = std::make_shared<CumulativeFunctionTimer>("Double cost functor");
+
         // TODO convert class labels to enum?
         /**
          * Movable object Gaussian Process Classifiers, by their semantic class.
@@ -540,7 +546,9 @@ namespace pose_graph {
                                                  jet_overall_timer_,
                                                  double_mat_mult_timer_,
                                                  double_kernel_eval_timer_,
-                                                 double_overall_timer_);
+                                                 double_overall_timer_,
+                                                 jet_gpc_timer_,
+                                                 double_gpc_timer_);
 
                 return gpc;
             }
