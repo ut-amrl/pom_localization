@@ -16,6 +16,8 @@
 
 namespace pose_optimization {
 
+    template<typename MovObjKernelType, int MeasurementTranslationDim, typename MeasurementRotationType, int CovDim,
+            int MovObjDistributionTranslationDim, typename MovObjDistributionRotationType, int KernelDim>
     class PoseGraphOptimizer {
     public:
         PoseGraphOptimizer() = default;
@@ -39,13 +41,11 @@ namespace pose_optimization {
          * @param cost_function_params
          * @param problem
          */
-        template<typename MovObjKernelType, int MeasurementTranslationDim, typename MeasurementRotationType, int CovDim,
-                int MovObjDistributionTranslationDim, typename MovObjDistributionRotationType, int KernelDim>
         void buildPoseGraphOptimizationProblem(
                 pose_graph::PoseGraph<MovObjKernelType, MeasurementTranslationDim, MeasurementRotationType, CovDim,
-                MovObjDistributionTranslationDim, MovObjDistributionRotationType, KernelDim> &pose_graph,
+                        MovObjDistributionTranslationDim, MovObjDistributionRotationType, KernelDim> &pose_graph,
+                const pose_graph::NodeId &min_node_id,
                 const std::unordered_set<pose_graph::NodeId> &nodes_to_optimize,
-                const std::unordered_set<pose_graph::NodeId> &new_nodes_to_optimize,
                 const CostFunctionParameters &cost_function_params, ceres::Problem *problem) {
 
             FunctionTimer ft(__PRETTY_FUNCTION__);
@@ -54,104 +54,204 @@ namespace pose_optimization {
 
             std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
                     std::shared_ptr<MeasurementRotationType>> start_pose_vars_;
-            pose_graph.getNodePosePointers(0, start_pose_vars_);
+
+            for (const pose_graph::NodeId &old_node_id : last_optimized_nodes_) {
+                if (nodes_to_optimize.find(old_node_id) == nodes_to_optimize.end()) {
+                    LOG(INFO) << "Removing node " << old_node_id;
+                    std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
+                            std::shared_ptr<MeasurementRotationType>> pose_vars;
+                    pose_graph.getNodePosePointers(old_node_id, pose_vars);
+                    pose_graph.getPointersToUnderlyingData(pose_vars);
+                    std::pair<double *, double *> raw_pointers_for_node = pose_graph.getPointersToUnderlyingData(
+                            pose_vars);
+                    problem->RemoveParameterBlock(raw_pointers_for_node.first);
+                    problem->RemoveParameterBlock(raw_pointers_for_node.second);
+                }
+            }
+
+            pose_graph.getNodePosePointers(min_node_id, start_pose_vars_);
             std::pair<double *, double *> raw_pointers_for_start_node_data = pose_graph.getPointersToUnderlyingData(
                     start_pose_vars_);
 
             // Add residuals from movable object observations
-            for (pose_graph::MovableObservationFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim>
-                    &factor : pose_graph.getMovableObservationFactors()) {
+            for (auto &factor : pose_graph.getMovableObservationFactors()) {
+
+                bool include_factor = true;
 
                 std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
                         std::shared_ptr<MeasurementRotationType>> pose_vars_;
-                if (!pose_graph.getNodePosePointers(factor.observed_at_node_, pose_vars_)) {
-                    LOG(ERROR) << "Node " << factor.observed_at_node_ << " did not exist in the pose graph. Skipping movable object observation";
-                    continue;
+                if (!pose_graph.getNodePosePointers(factor.second.observed_at_node_, pose_vars_)) {
+                    LOG(ERROR) << "Node " << factor.second.observed_at_node_
+                               << " did not exist in the pose graph. Skipping movable object observation";
+                    include_factor = false;
                 }
 
 //                if (new_nodes_to_optimize.find(factor.observed_at_node_) == new_nodes_to_optimize.end()) {
-                if (nodes_to_optimize.find(factor.observed_at_node_) == nodes_to_optimize.end()) {
+                if (nodes_to_optimize.find(factor.second.observed_at_node_) == nodes_to_optimize.end()) {
+                    include_factor = false;
+                }
+
+                std::pair<double, Eigen::Matrix<double, MovObjDistributionTranslationDim, 1>> search_criteria =
+                        pose_graph.getSampleSearchCriteria(factor.second);
+
+                bool refresh_gpc = false;
+                if (include_factor) {
+                    if (factor_id_to_search_criteria_.find(factor.first) == factor_id_to_search_criteria_.end()) {
+                        refresh_gpc = true;
+                    } else {
+                        std::pair<double, Eigen::Matrix<double, MovObjDistributionTranslationDim, 1>> prev_search_criteria = factor_id_to_search_criteria_.at(
+                                factor.first);
+                        if ((abs(search_criteria.first - prev_search_criteria.first) >
+                             cost_function_params.gp_radius_change_tolerance_)
+                            || ((search_criteria.second - prev_search_criteria.second).norm() >
+                                cost_function_params.gp_position_change_tolerance_)) {
+                            refresh_gpc = true;
+                        }
+                    }
+                }
+
+                bool remove_old_residual = false;
+                bool old_residual_present =
+                        factor_id_to_residual_block_.find(factor.first) != factor_id_to_residual_block_.end();
+                if (!include_factor || refresh_gpc) {
+                    if (old_residual_present) {
+                        remove_old_residual = true;
+                    }
+                }
+
+                if (remove_old_residual) {
+                    LOG(INFO) << "Removing residual block for node " << factor.second.observed_at_node_ << " factor id "
+                              << factor.first;
+                    if (nodes_to_optimize.find(factor.second.observed_at_node_) != nodes_to_optimize.end()) {
+                        problem->RemoveResidualBlock(factor_id_to_residual_block_.at(factor.first));
+                    }
+                    factor_id_to_residual_block_.erase(factor.first);
+                }
+
+                if (!include_factor) {
                     continue;
                 }
 
-                std::pair<double, Eigen::Matrix<double, MovObjDistributionTranslationDim, 1>> search_criteria = pose_graph.getSampleSearchCriteria(factor);
+                std::shared_ptr<gp_regression::GaussianProcessClassifier<KernelDim, MovObjKernelType>> movable_object_gpc;
+                if (!refresh_gpc && !old_residual_present) {
+                    movable_object_gpc = factor_id_to_gpc_[factor.first];
+                } else if (!refresh_gpc) {
+                    LOG(INFO) << "Using old GP for node " << factor.second.observed_at_node_;
+                    continue;
+                } else {
+                    LOG(INFO) << "Refreshing GP for observation from node " << factor.second.observed_at_node_;
+                    movable_object_gpc = pose_graph.getMovableObjGpcWithinRadius(
+                            factor.second.observation_.semantic_class_, search_criteria.first, search_criteria.second);
 
-                std::shared_ptr<gp_regression::GaussianProcessClassifier<KernelDim, MovObjKernelType>> movable_object_gpc =
-                        pose_graph.getMovableObjGpcWithinRadius(factor.observation_.semantic_class_, search_criteria.first, search_criteria.second);
+                    factor_id_to_gpc_[factor.first] = movable_object_gpc;
+                    factor_id_to_search_criteria_[factor.first] = search_criteria;
+                }
                 if (movable_object_gpc) {
 
                     ceres::CostFunction *cost_function =
-                            pose_graph.createMovableObjectCostFunctor(movable_object_gpc, factor, cost_function_params);
+                            pose_graph.createMovableObjectCostFunctor(movable_object_gpc, factor.second,
+                                                                      cost_function_params);
 
-                    std::pair<double*, double*> raw_pointers_for_node_data = pose_graph.getPointersToUnderlyingData(pose_vars_);
+                    std::pair<double *, double *> raw_pointers_for_node_data = pose_graph.getPointersToUnderlyingData(
+                            pose_vars_);
 
-                    problem->AddResidualBlock(cost_function, nullptr, raw_pointers_for_node_data.first,
-                                              raw_pointers_for_node_data.second);
+                    factor_id_to_residual_block_[factor.first] = problem->AddResidualBlock(
+                            cost_function, nullptr, raw_pointers_for_node_data.first,
+                            raw_pointers_for_node_data.second);
 
                     if (rotation_parameterization != nullptr) {
-                        problem->SetParameterization(raw_pointers_for_node_data.second,
-                                                     rotation_parameterization);
+                        if (last_optimized_nodes_.find(factor.second.observed_at_node_) ==
+                            last_optimized_nodes_.end()) {
+                            problem->SetParameterization(raw_pointers_for_node_data.second,
+                                                         rotation_parameterization);
+                        }
                     }
                 } else {
-                    LOG(WARNING) << "No gp regressor for semantic class " << factor.observation_.semantic_class_;
+                    LOG(WARNING) << "No gp regressor for semantic class " << factor.second.observation_.semantic_class_;
                 }
             }
 
-
             // Add residuals from odometry (visual, lidar, or wheel) factors
-            for (pose_graph::GaussianBinaryFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> &factor
-            : pose_graph.getBinaryFactors()) {
+            for (auto &factor : pose_graph.getBinaryFactors()) {
 //
 //                bool from_node_new = (new_nodes_to_optimize.find(factor.from_node_) != new_nodes_to_optimize.end());
 //                bool to_node_new = (new_nodes_to_optimize.find(factor.to_node_) != new_nodes_to_optimize.end());
 
+                bool include_factor = true;
 
-                bool from_node_new = (nodes_to_optimize.find(factor.from_node_) != nodes_to_optimize.end());
-                bool to_node_new = (nodes_to_optimize.find(factor.to_node_) != nodes_to_optimize.end());
+                bool from_node_new = (nodes_to_optimize.find(factor.second.from_node_) != nodes_to_optimize.end());
+                bool to_node_new = (nodes_to_optimize.find(factor.second.to_node_) != nodes_to_optimize.end());
 
                 // Either the to or from node has to be a new node
                 // The other node must be a node in nodes to optimize (new or not)
                 if (!(from_node_new || to_node_new)) {
-                    continue;
+                    include_factor = false;
                 }
 
-                if (nodes_to_optimize.find(factor.to_node_) == nodes_to_optimize.end()) {
-                    continue;
+                if (nodes_to_optimize.find(factor.second.to_node_) == nodes_to_optimize.end()) {
+                    include_factor = false;
                 }
 
-                if (nodes_to_optimize.find(factor.from_node_) == nodes_to_optimize.end()) {
-                    continue;
+                if (nodes_to_optimize.find(factor.second.from_node_) == nodes_to_optimize.end()) {
+                    include_factor = false;
                 }
                 std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
                         std::shared_ptr<MeasurementRotationType>> from_pose_vars_;
-                if (!pose_graph.getNodePosePointers(factor.from_node_, from_pose_vars_)) {
-                    LOG(ERROR) << "From node " << factor.from_node_ << " did not exist in the pose graph. Skipping odometry observation";
-                    continue;
+                if (!pose_graph.getNodePosePointers(factor.second.from_node_, from_pose_vars_)) {
+                    LOG(ERROR) << "From node " << factor.second.from_node_
+                               << " did not exist in the pose graph. Skipping odometry observation";
+                    include_factor = false;
                 }
 
                 std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
                         std::shared_ptr<MeasurementRotationType>> to_pose_vars_;
-                if (!pose_graph.getNodePosePointers(factor.to_node_, to_pose_vars_)) {
-                    LOG(ERROR) << "To node " << factor.to_node_ << " did not exist in the pose graph. Skipping odometry observation";
+                if (!pose_graph.getNodePosePointers(factor.second.to_node_, to_pose_vars_)) {
+                    LOG(ERROR) << "To node " << factor.second.to_node_
+                               << " did not exist in the pose graph. Skipping odometry observation";
+                    include_factor = false;
+                }
+
+                bool remove_old_residual = false;
+                if (!include_factor) {
+                    if (factor_id_to_residual_block_.find(factor.first) != factor_id_to_residual_block_.end()) {
+                        remove_old_residual = true;
+                    }
+                }
+
+                if (remove_old_residual) {
+
+                    LOG(INFO) << "Removing residual block for nodes " << factor.second.from_node_ << ", "
+                              << factor.second.to_node_;
+                    if ((nodes_to_optimize.find(factor.second.from_node_) != nodes_to_optimize.end()) &&
+                        (nodes_to_optimize.find(factor.second.to_node_) != nodes_to_optimize.end())) {
+                        problem->RemoveResidualBlock(factor_id_to_residual_block_.at(factor.first));
+                    }
+                    factor_id_to_residual_block_.erase(factor.first);
+                }
+
+                if (!include_factor) {
                     continue;
                 }
 
-                ceres::CostFunction *cost_function = pose_graph.createGaussianBinaryCostFunctor(factor);
+                ceres::CostFunction *cost_function = pose_graph.createGaussianBinaryCostFunctor(factor.second);
 
-                std::pair<double*, double*> raw_pointers_for_from_node_data = pose_graph.getPointersToUnderlyingData(from_pose_vars_);
-                std::pair<double*, double*> raw_pointers_for_to_node_data = pose_graph.getPointersToUnderlyingData(to_pose_vars_);
+                std::pair<double *, double *> raw_pointers_for_from_node_data = pose_graph.getPointersToUnderlyingData(
+                        from_pose_vars_);
+                std::pair<double *, double *> raw_pointers_for_to_node_data = pose_graph.getPointersToUnderlyingData(
+                        to_pose_vars_);
 
-                problem->AddResidualBlock(cost_function, nullptr, raw_pointers_for_from_node_data.first,
-                                          raw_pointers_for_from_node_data.second,
-                                          raw_pointers_for_to_node_data.first,
-                                          raw_pointers_for_to_node_data.second);
+                factor_id_to_residual_block_[factor.first] = problem->AddResidualBlock(cost_function, nullptr,
+                                                                                       raw_pointers_for_from_node_data.first,
+                                                                                       raw_pointers_for_from_node_data.second,
+                                                                                       raw_pointers_for_to_node_data.first,
+                                                                                       raw_pointers_for_to_node_data.second);
 
                 if (rotation_parameterization != nullptr) {
-                    if (from_node_new) {
+                    if (last_optimized_nodes_.find(factor.second.from_node_) == last_optimized_nodes_.end()) {
                         problem->SetParameterization(raw_pointers_for_from_node_data.second,
                                                      rotation_parameterization);
                     }
-                    if (to_node_new) {
+                    if (last_optimized_nodes_.find(factor.second.to_node_) == last_optimized_nodes_.end()) {
                         problem->SetParameterization(raw_pointers_for_to_node_data.second,
                                                      rotation_parameterization);
                     }
@@ -160,20 +260,41 @@ namespace pose_optimization {
 
 
 //            if (new_nodes_to_optimize.find(0) != new_nodes_to_optimize.end()) {
-            if (nodes_to_optimize.find(0) != nodes_to_optimize.end()) {
+            // TODO adjust to first node to optimize
+            if (last_optimized_nodes_.find(min_node_id) == last_optimized_nodes_.end()) {
                 problem->AddParameterBlock(raw_pointers_for_start_node_data.first, MeasurementTranslationDim);
-                problem->AddParameterBlock(raw_pointers_for_start_node_data.second, (CovDim - MeasurementTranslationDim));
+                problem->AddParameterBlock(raw_pointers_for_start_node_data.second,
+                                           (CovDim - MeasurementTranslationDim));
 
                 if (rotation_parameterization != nullptr) {
                     problem->SetParameterization(raw_pointers_for_start_node_data.second, rotation_parameterization);
                 }
             }
 
-            problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.first);
-            problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.second);
+//            if ((!last_optimized_nodes_.empty()) && (last_min_pose_id_ != min_node_id) &&
+//                (nodes_to_optimize.find(last_min_pose_id_) != nodes_to_optimize.end())) {
+//
+//                std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
+//                        std::shared_ptr<MeasurementRotationType>> pose_vars;
+//                pose_graph.getNodePosePointers(last_min_pose_id_, pose_vars);
+//                pose_graph.getPointersToUnderlyingData(pose_vars);
+//                std::pair<double *, double *> raw_pointers_for_node = pose_graph.getPointersToUnderlyingData(
+//                        pose_vars);
+//
+//                problem->SetParameterBlockVariable(raw_pointers_for_node.first);
+//                problem->SetParameterBlockVariable(raw_pointers_for_node.second);
+//            }
+
+            if (min_node_id == 0) {
+                problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.first);
+                problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.second);
+            }
+
+            last_optimized_nodes_ = nodes_to_optimize;
+
         }
 
-        bool SolveOptimizationProblem(ceres::Problem* problem, std::vector<ceres::IterationCallback*> callbacks) {
+        bool SolveOptimizationProblem(ceres::Problem *problem, std::vector<ceres::IterationCallback *> callbacks) {
             CHECK(problem != NULL);
             ceres::Solver::Options options;
 //            options.max_num_iterations = 100000;
@@ -198,6 +319,17 @@ namespace pose_optimization {
 
             return summary.IsSolutionUsable();
         }
+
+    private:
+        std::unordered_set<pose_graph::NodeId> last_optimized_nodes_;
+
+        pose_graph::NodeId last_min_pose_id_ = 0;
+
+        std::unordered_map<uint64_t, ceres::ResidualBlockId> factor_id_to_residual_block_;
+
+        std::unordered_map<uint64_t, std::shared_ptr<gp_regression::GaussianProcessClassifier<KernelDim, MovObjKernelType>>> factor_id_to_gpc_;
+
+        std::unordered_map<uint64_t, std::pair<double, Eigen::Matrix<double, MovObjDistributionTranslationDim, 1>>> factor_id_to_search_criteria_;
     };
 
 }

@@ -28,7 +28,7 @@ namespace offline_optimization {
                 MeasurementTranslationDim, MeasurementRotationType, CovDim,
                 MovObjDistributionTranslationDim, MovObjDistributionRotationType, KernelDim> PoseGraphType;
         typedef OfflineProblemData<MeasurementTranslationDim, MeasurementRotationType, CovDim,
-        MovObjDistributionTranslationDim, MovObjDistributionRotationType> OfflineProblemDataType;
+                MovObjDistributionTranslationDim, MovObjDistributionRotationType> OfflineProblemDataType;
         typedef pose_graph::Node<MeasurementTranslationDim, MeasurementRotationType> NodeType;
         typedef pose_graph::GaussianBinaryFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> GaussianBinaryFactorType;
         typedef pose_graph::MovableObservationFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> MovableObservationFactorType;
@@ -42,11 +42,16 @@ namespace offline_optimization {
 
         ~OfflinePoseOptimizer() = default;
 
-        std::unordered_map<pose_graph::NodeId, PoseType> runOfflineOptimization(const OfflineProblemDataType &problem_data,
-                                    const pose_optimization::PoseOptimizationParameters &problem_params,
-                                    const std::function<std::shared_ptr<PoseGraphType> (const pose_optimization::CostFunctionParameters &)> pose_graph_creator,
-                                    const std::function<std::shared_ptr<ceres::IterationCallback>(const pose_graph::NodeId&, const std::shared_ptr<PoseGraphType>&)> callback_creator,
-                                    const std::function<void(const pose_graph::NodeId&, const std::shared_ptr<PoseGraphType>&, const VisualizationTypeEnum&)> visualization_callback) {
+        std::unordered_map<pose_graph::NodeId, PoseType>
+        runOfflineOptimization(const OfflineProblemDataType &problem_data,
+                               const pose_optimization::PoseOptimizationParameters &problem_params,
+                               const std::function<std::shared_ptr<PoseGraphType>(
+                                       const pose_optimization::CostFunctionParameters &)> pose_graph_creator,
+                               const std::function<std::shared_ptr<ceres::IterationCallback>(const pose_graph::NodeId &,
+                                                                                             const std::shared_ptr<PoseGraphType> &)> callback_creator,
+                               const std::function<void(const pose_graph::NodeId &,
+                                                        const std::shared_ptr<PoseGraphType> &,
+                                                        const VisualizationTypeEnum &)> visualization_callback) {
 
             // Create pose graph
             std::shared_ptr<PoseGraphType> pose_graph = pose_graph_creator(problem_params.cost_function_params_);
@@ -96,29 +101,50 @@ namespace offline_optimization {
             // node
             // TODO consider just adding prior to 0 instead of making it non-optimizable
 
-            pose_optimization::PoseGraphOptimizer optimizer;
+            pose_optimization::PoseGraphOptimizer<MovObjKernelType, MeasurementTranslationDim, MeasurementRotationType,
+            CovDim, MovObjDistributionTranslationDim, MovObjDistributionRotationType, KernelDim> optimizer;
+            ceres::Problem problem;
 
-
-            std::unordered_set<pose_graph::NodeId> nodes_to_optimize;
-            nodes_to_optimize.insert(0);
+//            std::unordered_set<pose_graph::NodeId> nodes_to_optimize;
+//            nodes_to_optimize.insert(0);
             for (pose_graph::NodeId next_pose_to_optimize = 1;
                  next_pose_to_optimize <= max_node_id; next_pose_to_optimize++) {
-                ceres::Problem problem;
+
+
+                std::unordered_set<pose_graph::NodeId> nodes_to_optimize;
+                pose_graph::NodeId start_node_to_optimize;
+                if (((next_pose_to_optimize % problem_params.cost_function_params_.full_optimization_interval_) == 0) || (next_pose_to_optimize == max_node_id)) {
+                    start_node_to_optimize = 0;
+                } else {
+                    if ((next_pose_to_optimize) >= (problem_params.cost_function_params_.num_nodes_in_optimization_window_ - 1)) {
+                        start_node_to_optimize = next_pose_to_optimize - (problem_params.cost_function_params_.num_nodes_in_optimization_window_ - 1);
+                    } else {
+                        start_node_to_optimize = 0;
+                    }
+                }
+                LOG(INFO) << "Starting node " << start_node_to_optimize;
+                for (pose_graph::NodeId node_to_include = start_node_to_optimize; node_to_include <= next_pose_to_optimize; node_to_include++) {
+//                    LOG(INFO) << "Adding node " << node_to_include;
+                    nodes_to_optimize.insert(node_to_include);
+                }
 
                 // Recompute the initial pose for this node based on the
                 std::pair<std::shared_ptr<TranslType>, std::shared_ptr<MeasurementRotationType>> pose_vars;
                 if (!pose_graph->getNodePosePointers(next_pose_to_optimize, pose_vars)) {
-                    LOG(ERROR) << "Node " << next_pose_to_optimize << " did not exist in the pose graph.This shouldn't happen";
+                    LOG(ERROR) << "Node " << next_pose_to_optimize
+                               << " did not exist in the pose graph.This shouldn't happen";
                     continue;
                 }
                 LOG(INFO) << "Initial initial pose " << *(pose_vars.first) << ", " << *(pose_vars.second);
-                for (pose_graph::GaussianBinaryFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> &factor
-                        : pose_graph->getBinaryFactors()) {
+                for (auto &factor_with_id : pose_graph->getBinaryFactors()) {
+                    auto factor = factor_with_id.second;
                     if (factor.to_node_ == next_pose_to_optimize) {
                         std::pair<std::shared_ptr<TranslType>, std::shared_ptr<MeasurementRotationType>> from_pose_vars;
-                        if ((pose_graph->getNodePosePointers(factor.from_node_, from_pose_vars)) && (nodes_to_optimize.find(factor.from_node_) != nodes_to_optimize.end())) {
-                            PoseType updated_init_est = pose::combinePoses(std::make_pair(*(from_pose_vars.first), *(from_pose_vars.second)),
-                            std::make_pair(factor.translation_change_, factor.orientation_change_));
+                        if ((pose_graph->getNodePosePointers(factor.from_node_, from_pose_vars)) &&
+                            (nodes_to_optimize.find(factor.from_node_) != nodes_to_optimize.end())) {
+                            PoseType updated_init_est = pose::combinePoses(
+                                    std::make_pair(*(from_pose_vars.first), *(from_pose_vars.second)),
+                                    std::make_pair(factor.translation_change_, factor.orientation_change_));
                             *(pose_vars.first) = updated_init_est.first;
                             *(pose_vars.second) = updated_init_est.second;
                             break;
@@ -127,10 +153,12 @@ namespace offline_optimization {
                 }
                 std::pair<std::shared_ptr<TranslType>, std::shared_ptr<MeasurementRotationType>> updated_pose_vars;
                 if (!pose_graph->getNodePosePointers(next_pose_to_optimize, updated_pose_vars)) {
-                    LOG(ERROR) << "Node " << next_pose_to_optimize << " did not exist in the pose graph.This shouldn't happen";
+                    LOG(ERROR) << "Node " << next_pose_to_optimize
+                               << " did not exist in the pose graph.This shouldn't happen";
                     continue;
                 } else {
-                    LOG(INFO) << "Revised initial pose " << *(updated_pose_vars.first) << ", " << *(updated_pose_vars.second);
+                    LOG(INFO) << "Revised initial pose " << *(updated_pose_vars.first) << ", "
+                              << *(updated_pose_vars.second);
                 }
 
                 nodes_to_optimize.insert(next_pose_to_optimize);
@@ -142,14 +170,16 @@ namespace offline_optimization {
                 // TODO Modify the pose graph optimizer to incrementally add data instead of needing to rebuild
                 //  the ceres problem every time
 
-                std::unordered_set<pose_graph::NodeId> new_nodes_to_optimize = {next_pose_to_optimize};
-                if (next_pose_to_optimize == 1) {
-                    new_nodes_to_optimize.insert(0);
-                }
-                optimizer.buildPoseGraphOptimizationProblem(*(pose_graph.get()), nodes_to_optimize, new_nodes_to_optimize, problem_params.cost_function_params_, &problem);
+//                std::unordered_set<pose_graph::NodeId> new_nodes_to_optimize = {next_pose_to_optimize};
+//                if (next_pose_to_optimize == 1) {
+//                    new_nodes_to_optimize.insert(0);
+//                }
+                optimizer.buildPoseGraphOptimizationProblem(*(pose_graph.get()), start_node_to_optimize, nodes_to_optimize,
+                                                            problem_params.cost_function_params_, &problem);
 
                 std::vector<ceres::IterationCallback *> ceres_callbacks;
-                std::shared_ptr<ceres::IterationCallback> callback = callback_creator(next_pose_to_optimize, pose_graph);
+                std::shared_ptr<ceres::IterationCallback> callback = callback_creator(next_pose_to_optimize,
+                                                                                      pose_graph);
                 if (callback.get() != nullptr) {
                     ceres_callbacks.emplace_back(callback.get());
                 }

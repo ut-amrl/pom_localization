@@ -150,6 +150,9 @@ namespace pose_graph {
                                  const MovableObservation<TranslationDim, RotationType, CovDim> &observation) :
                 observed_at_node_(node_id), observation_(observation) {}
 
+//        MovableObservationFactor(const MovableObservationFactor<TranslationDim, RotationType, CovDim> &observation_factor) :
+//                observed_at_node_(observation_factor.observed_at_node_), observation_(observation_factor.observation_) {}
+
         // TODO should this contain one observation or all at the node?
 
         /**
@@ -196,14 +199,15 @@ namespace pose_graph {
                   const double &default_obj_probability_input_variance_for_var,
                   const std::shared_ptr<MovObjKernelType> &mean_kernel,
                   const std::function<std::shared_ptr<MovObjKernelType>(const double &)> &var_kernel_creator) : rotation_local_parameterization_creator_(rotation_local_parameterization_creator),
-                  obj_probability_prior_mean_by_class_(obj_probability_prior_mean_by_class),
-                  default_obj_probability_prior_mean_(default_obj_probability_prior_mean),
-                  obj_probability_input_variance_by_class_for_mean_(obj_probability_input_variance_by_class_for_mean),
-                  default_obj_probability_input_variance_for_mean_(default_obj_probability_input_variance_for_mean),
-                  obj_probability_input_variance_by_class_for_var_(obj_probability_input_variance_by_class_for_var),
-                  default_obj_probability_input_variance_for_var_(default_obj_probability_input_variance_for_var),
-                  mov_obj_mean_kernel_(mean_kernel),
-                  var_kernel_creator_(var_kernel_creator){
+                                                                                                                obj_probability_prior_mean_by_class_(obj_probability_prior_mean_by_class),
+                                                                                                                default_obj_probability_prior_mean_(default_obj_probability_prior_mean),
+                                                                                                                obj_probability_input_variance_by_class_for_mean_(obj_probability_input_variance_by_class_for_mean),
+                                                                                                                default_obj_probability_input_variance_for_mean_(default_obj_probability_input_variance_for_mean),
+                                                                                                                obj_probability_input_variance_by_class_for_var_(obj_probability_input_variance_by_class_for_var),
+                                                                                                                default_obj_probability_input_variance_for_var_(default_obj_probability_input_variance_for_var),
+                                                                                                                mov_obj_mean_kernel_(mean_kernel),
+                                                                                                                var_kernel_creator_(var_kernel_creator),
+                                                                                                                next_factor_id_(0) {
 
         }
 
@@ -226,12 +230,16 @@ namespace pose_graph {
          */
         void addMovableObservationFactors(const NodeId &node_id, const std::vector<MovableObservationType> &observations_at_node) {
             for (const MovableObservationType &observation : observations_at_node) {
-                observation_factors_.emplace_back(node_id, observation);
+                observation_factors_[next_factor_id_] = MovableObservationFactorType(node_id, observation);
+                next_factor_id_++;
             }
         }
 
         void addMovableObservationFactors(const std::vector<MovableObservationFactorType> &movable_observation_factors) {
-            observation_factors_.insert(observation_factors_.end(), movable_observation_factors.begin(), movable_observation_factors.end());
+            for (const MovableObservationFactorType &factor : movable_observation_factors) {
+                observation_factors_.insert({next_factor_id_, factor});
+                next_factor_id_++;
+            }
         }
 
         /**
@@ -240,7 +248,8 @@ namespace pose_graph {
          * @param binary_factor Binary factor to add
          */
         void addGaussianBinaryFactor(const GaussianBinaryFactorType &binary_factor) {
-            binary_factors_.push_back(binary_factor);
+            binary_factors_.insert({next_factor_id_, binary_factor});
+            next_factor_id_++;
         }
 
         /**
@@ -248,7 +257,7 @@ namespace pose_graph {
          *
          * @return movable observation factors.
          */
-        std::vector<MovableObservationFactorType> getMovableObservationFactors() {
+        std::unordered_map<uint64_t, MovableObservationFactorType> getMovableObservationFactors() {
             return observation_factors_;
         }
 
@@ -257,7 +266,7 @@ namespace pose_graph {
          *
          * @return binary factors with gaussian noise.
          */
-        std::vector<GaussianBinaryFactorType> getBinaryFactors() {
+        std::unordered_map<uint64_t, GaussianBinaryFactorType> getBinaryFactors() {
             return binary_factors_;
         }
 
@@ -453,12 +462,14 @@ namespace pose_graph {
          *
          * TODO should we store this in some more intelligent data structure? (Unordered map by viewing node id?).
          */
-        std::vector<MovableObservationFactorType> observation_factors_;
+        std::unordered_map<uint64_t, MovableObservationFactorType> observation_factors_;
+
+        uint64_t next_factor_id_;
 
         /**
          * Factors relating two nodes that assume gaussian noise.
          */
-        std::vector<GaussianBinaryFactorType> binary_factors_;
+        std::unordered_map<uint64_t, GaussianBinaryFactorType> binary_factors_;
 
 
         std::shared_ptr<CumulativeFunctionTimer> jet_mat_mult_timer_ = std::make_shared<CumulativeFunctionTimer>("Jet mat mult");
