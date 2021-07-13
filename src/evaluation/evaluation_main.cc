@@ -32,7 +32,7 @@ const std::string kTrajectoryOutputFileName = "traj_est_output_file";
 
 const std::string kGtTrajectoryFile = "gt_trajectory_file";
 
-const double kMinOdomVar = 1e-5;
+const double kMinOdomVar = 1e-7;
 
 pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams() {
     pose_optimization::PoseOptimizationParameters pose_opt_params;
@@ -45,17 +45,20 @@ pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams() {
 //    cost_function_params.mean_position_kernel_var_ = 30;
 //    cost_function_params.mean_orientation_kernel_var_ = 30;
 
-    cost_function_params.mean_position_kernel_var_ = 9;
+//    cost_function_params.mean_position_kernel_var_ = 9;
+
+    cost_function_params.mean_position_kernel_var_ = 0.045;
     cost_function_params.mean_orientation_kernel_var_ = 1;
 
 
     cost_function_params.default_obj_probability_input_variance_for_mean_ = 10;
 
-    cost_function_params.var_position_kernel_len_ = 1.8;
-    cost_function_params.var_orientation_kernel_len_ = 0.5;
+//    cost_function_params.var_position_kernel_len_ = 1.8;
+    cost_function_params.var_position_kernel_len_ = 25;
+    cost_function_params.var_orientation_kernel_len_ = 20;
 
-    cost_function_params.var_position_kernel_var_ = 3;
-    cost_function_params.var_orientation_kernel_var_ = 3;
+    cost_function_params.var_position_kernel_var_ = 0.003;
+    cost_function_params.var_orientation_kernel_var_ = 0.003;
 
     cost_function_params.default_obj_probability_input_variance_for_var_ = 10;
 
@@ -98,15 +101,19 @@ void runOptimizationVisualization(
                                 poses_global_frame.emplace_back(pose::combinePoses(robot_pose, obj_pose));
                             }
                         }
-                    }
 
-//                std::pair<Eigen::Vector2d, Eigen::Vector2d> min_max_points_to_display =
-//                        visualization::VisualizationManager::getMinMaxCornersForDistributionVisualization(poses_global_frame);
-//                vis_manager->displayMaxGpRegressorOutput(pose_graph->getMovableObjGpc(car_class), 0.6, // TODO revert
-//                                                         min_max_points_to_display.first.x(),
-//                                                         min_max_points_to_display.second.x(),
-//                                                         min_max_points_to_display.first.y(),
-//                                                         min_max_points_to_display.second.y());
+
+//                        std::pair<Eigen::Vector2d, Eigen::Vector2d> min_max_points_to_display =
+//                                visualization::VisualizationManager::getMinMaxCornersForDistributionVisualization(
+//                                        poses_global_frame);
+//                        vis_manager->displayMaxGpRegressorOutput(pose_graph->getMovableObjGpc("car"),
+////                                                                 0.3, // TODO revert
+//                                                                 1.0,
+//                                                                 min_max_points_to_display.first.x(),
+//                                                                 min_max_points_to_display.second.x(),
+//                                                                 min_max_points_to_display.first.y(),
+//                                                                 min_max_points_to_display.second.y());
+                    }
                 }
             }
 
@@ -214,8 +221,13 @@ std::vector<pose::Pose2d> readTrajFromFile(const std::string &file_name) {
 }
 
 std::vector<pose_graph::GaussianBinaryFactor2d>
-createOdomFactorsFromInitOdomEst(const std::vector<pose::Pose2d> &init_traj_est, const double &odometry_x_std_dev,
-                                 const double &odometry_y_std_dev, const double &odometry_yaw_std_dev) {
+createOdomFactorsFromInitOdomEst(const std::vector<pose::Pose2d> &init_traj_est,
+                                 const double &k1,
+                                 const double &k2,
+                                 const double &k3,
+                                 const double &k4,
+                                 const double &k5,
+                                 const double &k6) {
 
     std::vector<pose_graph::GaussianBinaryFactor2d> odom_factors;
     pose::Pose2d prev_pose = init_traj_est[0];
@@ -228,11 +240,16 @@ createOdomFactorsFromInitOdomEst(const std::vector<pose::Pose2d> &init_traj_est,
         odom_factor.to_node_ = i;
         odom_factor.translation_change_ = rel_pose.first;
         odom_factor.orientation_change_ = rel_pose.second;
-
+        LOG(INFO) << "Orientation change " << odom_factor.orientation_change_;
         Eigen::Matrix<double, 3, 3> odom_cov_mat = Eigen::Matrix<double, 3, 3>::Zero();
-        odom_cov_mat(0, 0) = kMinOdomVar + pow(odometry_x_std_dev * rel_pose.first.x(), 2);
-        odom_cov_mat(1, 1) = kMinOdomVar + pow(odometry_y_std_dev * rel_pose.first.y(), 2);
-        odom_cov_mat(2, 2) = kMinOdomVar + pow(odometry_yaw_std_dev * rel_pose.second, 2);
+        odom_cov_mat(0, 0) = pow(k1 * rel_pose.first.norm() + k2 * abs(rel_pose.second), 2);
+        odom_cov_mat(1, 1) = pow(k3 * rel_pose.first.norm() + k4 * abs(rel_pose.second), 2);
+        odom_cov_mat(2, 2) = pow(k5 * rel_pose.first.norm() + k6 * abs(rel_pose.second), 2);
+
+//        odom_cov_mat(0, 0) = kMinOdomVar + pow(odometry_x_std_dev * rel_pose.first.x(), 2);
+//        odom_cov_mat(1, 1) = kMinOdomVar + pow(odometry_y_std_dev * rel_pose.first.y(), 2);
+//        odom_cov_mat(2, 2) = kMinOdomVar + pow(odometry_yaw_std_dev * rel_pose.second, 2);
+        LOG(INFO) << "Odom cov " << odom_cov_mat.diagonal();
 
 
         Eigen::Matrix<double, 3, 3> odom_sqrt_information_mat = odom_cov_mat.inverse().sqrt();
@@ -346,10 +363,22 @@ int main(int argc, char **argv) {
     double detection_variance_transl_x = 0.01;
     double detection_variance_transl_y = 0.01;
     double detection_variance_theta = 0.02;
-    double odom_std_dev_transl_x = 0.1;
-    double odom_std_dev_transl_y = 0.1;
-    double odom_std_dev_theta = 0.15;
+//    double odom_std_dev_transl_x = 0.1;
+//    double odom_std_dev_transl_y = 0.1;
+//    double odom_std_dev_theta = 0.15;
+//        double odom_std_dev_transl_x = 1e-3;
+//    double odom_std_dev_transl_y = 1e-3;
+//    double odom_std_dev_theta = 1e-5;
 
+    double odom_k1 = 0.1;
+    double odom_k2 = 0.001;
+    double odom_k3 = 0.01;
+    double odom_k4 = 0.0001;
+    double odom_k5 = 0.001;
+    double odom_k6 = 0.01;
+//    double odom_std_dev_transl_x = 1;
+//    double odom_std_dev_transl_y = 1;
+//    double odom_std_dev_theta = 1;
     int pose_sample_ratio = 20;
 
     std::vector<std::string> past_sample_files;
@@ -392,7 +421,7 @@ int main(int argc, char **argv) {
 
     // Convert to odom factors
     std::vector<pose_graph::GaussianBinaryFactor2d> odom_factors = createOdomFactorsFromInitOdomEst(
-            initial_trajectory_estimates, odom_std_dev_transl_x, odom_std_dev_transl_y, odom_std_dev_theta);
+            initial_trajectory_estimates, odom_k1, odom_k2, odom_k3, odom_k4, odom_k5, odom_k6);
 
     // Read samples
     std::vector<pose_graph::MapObjectObservation2d> samples;

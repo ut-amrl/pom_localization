@@ -7,7 +7,7 @@ MESSAGE(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 MESSAGE(STATUS "Arch: ${CMAKE_SYSTEM_PROCESSOR}")
 
 #SET(CMAKE_CXX_FLAGS "-std=c++11 -Wall")
-SET(CMAKE_CXX_FLAGS "-std=c++17 -lstdc++fs -Wall -Wno-unused-function -Werror -O2")
+SET(CMAKE_CXX_FLAGS "-std=c++17 -lstdc++fs -Wall -Wno-unused-function -Wno-unused-variable -Werror -O2")
 
 IF(${CMAKE_BUILD_TYPE} MATCHES "Release")
   MESSAGE(STATUS "Additional Flags for Release mode")

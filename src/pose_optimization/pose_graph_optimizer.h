@@ -55,6 +55,9 @@ namespace pose_optimization {
             std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
                     std::shared_ptr<MeasurementRotationType>> start_pose_vars_;
 
+
+//            std::unordered_set<pose_graph::NodeId> nodes_to_remove;
+//            for (const pose_graph::NodeId &old_node_id : nodes_with_obs_) {
             for (const pose_graph::NodeId &old_node_id : last_optimized_nodes_) {
                 if (nodes_to_optimize.find(old_node_id) == nodes_to_optimize.end()) {
                     LOG(INFO) << "Removing node " << old_node_id;
@@ -66,8 +69,13 @@ namespace pose_optimization {
                             pose_vars);
                     problem->RemoveParameterBlock(raw_pointers_for_node.first);
                     problem->RemoveParameterBlock(raw_pointers_for_node.second);
+//                    nodes_to_remove.insert(old_node_id);
                 }
             }
+
+//            for (const pose_graph::NodeId node_to_remove : nodes_to_remove) {
+//                nodes_with_obs_.erase(node_to_remove);
+//            }
 
             pose_graph.getNodePosePointers(min_node_id, start_pose_vars_);
             std::pair<double *, double *> raw_pointers_for_start_node_data = pose_graph.getPointersToUnderlyingData(
@@ -158,6 +166,7 @@ namespace pose_optimization {
                     factor_id_to_residual_block_[factor.first] = problem->AddResidualBlock(
                             cost_function, nullptr, raw_pointers_for_node_data.first,
                             raw_pointers_for_node_data.second);
+//                    nodes_with_obs_.insert(factor.second.observed_at_node_);
 
                     if (rotation_parameterization != nullptr) {
                         if (last_optimized_nodes_.find(factor.second.observed_at_node_) ==
@@ -271,25 +280,31 @@ namespace pose_optimization {
                 }
             }
 
-//            if ((!last_optimized_nodes_.empty()) && (last_min_pose_id_ != min_node_id) &&
-//                (nodes_to_optimize.find(last_min_pose_id_) != nodes_to_optimize.end())) {
-//
-//                std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
-//                        std::shared_ptr<MeasurementRotationType>> pose_vars;
-//                pose_graph.getNodePosePointers(last_min_pose_id_, pose_vars);
-//                pose_graph.getPointersToUnderlyingData(pose_vars);
-//                std::pair<double *, double *> raw_pointers_for_node = pose_graph.getPointersToUnderlyingData(
-//                        pose_vars);
-//
-//                problem->SetParameterBlockVariable(raw_pointers_for_node.first);
-//                problem->SetParameterBlockVariable(raw_pointers_for_node.second);
-//            }
+//            if (!last_optimized_nodes_.empty()) {
+//                LOG(INFO) << "Last optimized nodes empty";
+//                if (last_min_pose_id_ != min_node_id) {}
+            if (((!last_optimized_nodes_.empty()) && (last_min_pose_id_ != min_node_id) &&
+                (nodes_to_optimize.find(last_min_pose_id_) != nodes_to_optimize.end())) && (last_min_pose_id_ != 0)) {
 
-            if (min_node_id == 0) {
-                problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.first);
-                problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.second);
+                std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
+                        std::shared_ptr<MeasurementRotationType>> pose_vars;
+                pose_graph.getNodePosePointers(last_min_pose_id_, pose_vars);
+                pose_graph.getPointersToUnderlyingData(pose_vars);
+                std::pair<double *, double *> raw_pointers_for_node = pose_graph.getPointersToUnderlyingData(
+                        pose_vars);
+
+                LOG(INFO) << "Setting parameter block variable for node " << last_min_pose_id_;
+                problem->SetParameterBlockVariable(raw_pointers_for_node.first);
+                problem->SetParameterBlockVariable(raw_pointers_for_node.second);
             }
 
+//            if (min_node_id == 0) {
+//            if (nodes_with_obs_.find(min_node_id) != nodes_with_obs_.end()) {
+                problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.first);
+                problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.second);
+//            }
+//            }
+            last_min_pose_id_ = min_node_id;
             last_optimized_nodes_ = nodes_to_optimize;
 
         }
@@ -330,6 +345,8 @@ namespace pose_optimization {
         std::unordered_map<uint64_t, std::shared_ptr<gp_regression::GaussianProcessClassifier<KernelDim, MovObjKernelType>>> factor_id_to_gpc_;
 
         std::unordered_map<uint64_t, std::pair<double, Eigen::Matrix<double, MovObjDistributionTranslationDim, 1>>> factor_id_to_search_criteria_;
+
+//        std::unordered_set<pose_graph::NodeId> nodes_with_obs_;
     };
 
 }

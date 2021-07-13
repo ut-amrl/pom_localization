@@ -166,7 +166,8 @@ namespace gp_regression {
 //
 //            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> k_x_transp_mean_kernel(x.cols(), num_datapoints_);
 //
-//            Eigen::Matrix<T, 1, Eigen::Dynamic> kde_based_var = Eigen::Matrix<T, 1, Eigen::Dynamic>::Zero(1, x.cols());
+//        Eigen::Matrix<double, 1, Eigen::Dynamic> kde_based_var = Eigen::Matrix<double, 1, Eigen::Dynamic>::Constant(1,
+//                                                                                                                    x.cols(), T(min_val_));
 //            for (int i = 0; i < num_datapoints_; i++) {
 //                Eigen::Matrix<T, N, 1> input_i = inputs_.col(i).cast<T>();
 //                for (int j = 0; j < x.cols(); j++) {
@@ -230,8 +231,8 @@ namespace gp_regression {
 
             Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> k_x_transp_mean_kernel(x.cols(), num_datapoints_);
 
-            Eigen::Matrix<double, 1, Eigen::Dynamic> kde_based_var = Eigen::Matrix<double, 1, Eigen::Dynamic>::Zero(1,
-                                                                                                                    x.cols());
+            Eigen::Matrix<double, 1, Eigen::Dynamic> kde_based_var = Eigen::Matrix<double, 1, Eigen::Dynamic>::Constant(1,
+                                                                                                                    x.cols(), min_val_);
             for (int i = 0; i < num_datapoints_; i++) {
                 Eigen::Matrix<double, N, 1> input_i = inputs_.col(i).cast<double>();
                 for (int j = 0; j < x.cols(); j++) {
@@ -243,6 +244,7 @@ namespace gp_regression {
                     kde_based_var(0, j) += variance_kernel_->evaluateKernel(input_i, eval_input);
                 }
             }
+//            LOG(INFO) << kde_based_var;
 
             return std::make_pair(k_x_transp_mean_kernel, kde_based_var);
         }
@@ -310,8 +312,8 @@ namespace gp_regression {
             Eigen::Matrix<ceres::Jet<double, JetDim>, Eigen::Dynamic, Eigen::Dynamic> k_x_transp_mean_kernel(x.cols(),
                                                                                                              num_datapoints_);
 
-            Eigen::Matrix<ceres::Jet<double, JetDim>, 1, Eigen::Dynamic> kde_based_var = Eigen::Matrix<ceres::Jet<double, JetDim>, 1, Eigen::Dynamic>::Zero(
-                    1, x.cols());
+            Eigen::Matrix<ceres::Jet<double, JetDim>, 1, Eigen::Dynamic> kde_based_var = Eigen::Matrix<ceres::Jet<double, JetDim>, 1, Eigen::Dynamic>::Constant(
+                    1, x.cols(), ceres::Jet<double, JetDim>(min_val_));
             for (int i = 0; i < num_datapoints_; i++) {
                 Eigen::Matrix<ceres::Jet<double, JetDim>, N, 1> input_i = inputs_.col(
                         i).cast<ceres::Jet<double, JetDim>>();
@@ -384,6 +386,8 @@ namespace gp_regression {
         double identity_noise_var_;
 
         double kernel_self_value_;
+
+        double min_val_ = std::numeric_limits<double>::min();
 
         /**
          * Inverse of the gram matrix (kernel values for each pair of inputs).
