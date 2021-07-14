@@ -100,6 +100,9 @@ TARGET_LINK_LIBRARIES(convert_object_detections_from_yaml ${libs} stdc++fs yaml-
 ROSBUILD_ADD_EXECUTABLE(plot_results src/evaluation/plot_results.cc)
 TARGET_LINK_LIBRARIES(plot_results ${libs} stdc++fs)
 
+ROSBUILD_ADD_EXECUTABLE(compute_kitti_results src/evaluation/compute_kitti_results.cc)
+TARGET_LINK_LIBRARIES(compute_kitti_results ${libs} stdc++fs)
+
 #ROSBUILD_ADD_EXECUTABLE(uncertainty_aware_localization_test src/synthetic_problem/uncertainty_aware/uncertainty_aware_synthetic_problem_localization_test_main.cc)
 #TARGET_LINK_LIBRARIES(uncertainty_aware_localization_test ${libs})
 

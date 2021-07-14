@@ -25,20 +25,20 @@ namespace visualization {
     class VisualizationManager {
     public:
 
-        VisualizationManager(ros::NodeHandle &node_handle) : node_handle_(node_handle) {
-            gt_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("gt_visualization_marker", 10000);
-            other_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("other_visualization_marker", 10000);
-            est_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("est_pos_marker", 10000);
-            odom_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>("odom_pos_marker", 10000);
+        VisualizationManager(ros::NodeHandle &node_handle, const std::string &prefix = "") : node_handle_(node_handle), prefix_(prefix) {
+            gt_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>(prefix + "gt_visualization_marker", 10000);
+            other_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>(prefix + "other_visualization_marker", 10000);
+            est_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>(prefix + "est_pos_marker", 10000);
+            odom_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>(prefix + "odom_pos_marker", 10000);
             regressor_max_val_for_pos_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>(
-                    "regressor_max_val_for_pos", 2);
-            variance_max_val_for_pos_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>("variance_max_val_for_pos",
+                    prefix + "regressor_max_val_for_pos", 2);
+            variance_max_val_for_pos_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>(prefix + "variance_max_val_for_pos",
                                                                                             2);
             classifier_max_val_for_pos_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>(
-                    "classifier_max_val_for_pos", 2);
-            robot_pose_max_val_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>("robot_pose_max_val", 2);
+                    prefix + "classifier_max_val_for_pos", 2);
+            robot_pose_max_val_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>(prefix +"robot_pose_max_val", 2);
 
-            parking_spot_3d_pub_ = node_handle_.advertise<visualization_msgs::Marker>("parking_spots_3d", 10000);
+            parking_spot_3d_pub_ = node_handle_.advertise<visualization_msgs::Marker>(prefix + "parking_spots_3d", 10000);
             LOG(INFO) << "Vis manager 1";
             ros::Duration(2).sleep();
             LOG(INFO) << "Vis manager 2";
@@ -68,13 +68,13 @@ namespace visualization {
                 std::string variance_heat_topic_name = "classifier_" + angle_name + "_val";
                 std::string robot_pose_topic_name = "robot_pose_" + angle_name + "_val";
                 classifier_for_angle_mult_[i] = node_handle_.advertise<nav_msgs::OccupancyGrid>(
-                        classifier_heat_topic_name, 2);
+                        prefix + classifier_heat_topic_name, 2);
                 regressor_for_angle_mult_[i] = node_handle_.advertise<nav_msgs::OccupancyGrid>(
-                        regressor_heat_topic_name, 2);
-                variance_for_angle_mult_[i] = node_handle_.advertise<nav_msgs::OccupancyGrid>(variance_heat_topic_name,
-                                                                                              2);
+                        prefix + regressor_heat_topic_name, 2);
+                variance_for_angle_mult_[i] = node_handle_.advertise<nav_msgs::OccupancyGrid>(
+                        prefix + variance_heat_topic_name,2);
                 robot_pose_pub_for_angle_mult_[i] = node_handle_.advertise<nav_msgs::OccupancyGrid>(
-                        robot_pose_topic_name, 2);
+                        prefix + robot_pose_topic_name, 2);
             }
             LOG(INFO) << "Vis manager 5";
             ros::Duration(2).sleep();
@@ -850,6 +850,8 @@ namespace visualization {
          */
         ros::NodeHandle node_handle_;
 
+        std::string prefix_;
+
         ros::Publisher other_marker_pub_;
         ros::Publisher gt_marker_pub_;
         ros::Publisher est_marker_pub_;
@@ -895,7 +897,7 @@ namespace visualization {
             }
 
             if (pubs_for_traj_type_.find(obj_class) == pubs_for_traj_type_.end()) {
-                std::string topic_name = getStringRepForTrajType(trajectory_type) + "_" + obj_class + "_obs_marker";
+                std::string topic_name = prefix_ + getStringRepForTrajType(trajectory_type) + "_" + obj_class + "_obs_marker";
                 ros::Publisher new_pub_for_class = node_handle_.advertise<visualization_msgs::Marker>(topic_name,
                                                                                                       kObservationPubQueueSize);
                 pubs_for_traj_type_[obj_class] = new_pub_for_class;
@@ -915,7 +917,7 @@ namespace visualization {
         void getOrCreatePublisherForSamples(const std::string &obj_class, ros::Publisher &pub) {
 
             if (sample_pubs_by_class_.find(obj_class) == sample_pubs_by_class_.end()) {
-                std::string topic_name = obj_class + "_past_sample_markers";
+                std::string topic_name = prefix_ + obj_class + "_past_sample_markers";
                 ros::Publisher new_pub_for_class = node_handle_.advertise<visualization_msgs::Marker>(topic_name,
                                                                                                       50000);
                 sample_pubs_by_class_[obj_class] = new_pub_for_class;

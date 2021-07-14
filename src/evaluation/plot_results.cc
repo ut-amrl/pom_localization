@@ -124,7 +124,7 @@ int main(int argc, char **argv) {
     }
 
     std::shared_ptr<visualization::VisualizationManager> manager = std::make_shared<visualization::VisualizationManager>(
-            n);
+            n, param_prefix);
 
     // Read initial 2d initial estimates
     std::vector<pose::Pose2d> odom_trajectory = readTrajFromFile(odom_estimates_file_name);
