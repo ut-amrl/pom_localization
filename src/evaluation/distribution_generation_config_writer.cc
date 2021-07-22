@@ -19,19 +19,19 @@ int main(int argc, char **argv) {
     // Get config ----------------------------------------------------------------------------------------------------
     std::string distribution_gen_config_file = FLAGS_cfg_file_name;
     file_io::SyntheticDistributionGenerationConfig distribution_config;
-    distribution_config.num_trajectories_ = 1;
+    distribution_config.num_trajectories_ = 5;
     distribution_config.num_samples_per_beam_ = 1;
     distribution_config.scan_num_beams_ = 100;
 
-    distribution_config.parking_spot_generation_std_dev_x_ = 20;
-    distribution_config.parking_spot_generation_std_dev_y_ = 20;
-    distribution_config.parking_spot_generation_std_dev_theta_ = 20;
+    distribution_config.parking_spot_generation_std_dev_x_ = 0.25;
+    distribution_config.parking_spot_generation_std_dev_y_ = 0.25;
+    distribution_config.parking_spot_generation_std_dev_theta_ = 0.15;
 
-    distribution_config.percent_parking_spots_filled_ = 0.8;
+    distribution_config.percent_parking_spots_filled_ = 1;
 
-    distribution_config.trajectory_variation_std_dev_x_ = 0;
-    distribution_config.trajectory_variation_std_dev_y_ = 0;
-    distribution_config.trajectory_variation_std_dev_theta_ = 0;
+    distribution_config.trajectory_variation_std_dev_x_ = 5;
+    distribution_config.trajectory_variation_std_dev_y_ = 5;
+    distribution_config.trajectory_variation_std_dev_theta_ = 1.0;
 
     // TODO revisit these
     distribution_config.object_detection_variance_per_len_x_ = 0.02;

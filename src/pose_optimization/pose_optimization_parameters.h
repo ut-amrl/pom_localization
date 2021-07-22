@@ -57,6 +57,8 @@ namespace pose_optimization {
 
         uint64_t num_nodes_in_optimization_window_ = 60;
         uint64_t full_optimization_interval_ = 60;
+
+        uint64_t max_gpc_samples_ = std::numeric_limits<uint64_t>::max();
     };
 
     /**

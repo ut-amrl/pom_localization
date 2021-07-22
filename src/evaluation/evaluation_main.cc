@@ -5,7 +5,6 @@
 #include <ros/ros.h>
 
 #include <iostream>
-#include <iomanip>
 #include <ctime>
 
 #include <file_io/past_sample_io.h>
@@ -32,7 +31,7 @@ const std::string kTrajectoryOutputFileName = "traj_est_output_file";
 
 const std::string kGtTrajectoryFile = "gt_trajectory_file";
 
-const double kMinOdomVar = 1e-7;
+const double kMinOdomVar = pow(std::numeric_limits<double>::min(), 0.3);
 
 pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams() {
     pose_optimization::PoseOptimizationParameters pose_opt_params;
@@ -57,15 +56,24 @@ pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams() {
     cost_function_params.var_position_kernel_len_ = 25;
     cost_function_params.var_orientation_kernel_len_ = 20;
 
-    cost_function_params.var_position_kernel_var_ = 0.003;
-    cost_function_params.var_orientation_kernel_var_ = 0.003;
+    cost_function_params.var_position_kernel_var_ = 0.3;
+    cost_function_params.var_orientation_kernel_var_ = 0.3;
 
     cost_function_params.default_obj_probability_input_variance_for_var_ = 10;
 
+    cost_function_params.max_gpc_samples_ = 500;
     pose_opt_params.cost_function_params_ = cost_function_params;
     return pose_opt_params;
 }
 
+std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> createGpc(
+        const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>> &pose_graph,
+        const std::string &semantic_class,
+        const uint64_t &max_samples,
+        const double &radius,
+        const Eigen::Vector2d &search_point) {
+    return pose_graph->getMovableObjGpcWithinRadius(semantic_class, radius, search_point, max_samples);
+}
 
 void runOptimizationVisualization(
         const std::shared_ptr<visualization::VisualizationManager> &vis_manager,
@@ -93,10 +101,11 @@ void runOptimizationVisualization(
                 vis_manager->displayObjObservationsFromOdomTrajectory(unoptimized_trajectory,
                                                                       noisy_obj_observations, semantic_class);
                 {
-                    if (!ground_truth_trajectory.empty()) {
+//                    if (!ground_truth_trajectory.empty()) {
+
                         std::vector<pose::Pose2d> poses_global_frame;
-                        for (size_t node = 0; node < ground_truth_trajectory.size(); node++) {
-                            pose::Pose2d robot_pose = ground_truth_trajectory[node];
+                        for (size_t node = 0; node < unoptimized_trajectory.size(); node++) {
+                            pose::Pose2d robot_pose = unoptimized_trajectory[node];
                             for (const pose::Pose2d &obj_pose : noisy_obj_observations[node]) {
                                 poses_global_frame.emplace_back(pose::combinePoses(robot_pose, obj_pose));
                             }
@@ -106,14 +115,20 @@ void runOptimizationVisualization(
 //                        std::pair<Eigen::Vector2d, Eigen::Vector2d> min_max_points_to_display =
 //                                visualization::VisualizationManager::getMinMaxCornersForDistributionVisualization(
 //                                        poses_global_frame);
-//                        vis_manager->displayMaxGpRegressorOutput(pose_graph->getMovableObjGpc("car"),
+//                    std::function<std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> (const Eigen::Vector2d&)> gpc_creator =
+//                    std::bind(createGpc, pose_graph, "car", 5000, 7.5, std::placeholders::_1);
+//                        vis_manager->displayMaxGpRegressorOutput(
+////                                pose_graph->getMovableObjGpc("car", 0.5),
+//                        gpc_creator,
 ////                                                                 0.3, // TODO revert
-//                                                                 1.0,
-//                                                                 min_max_points_to_display.first.x(),
-//                                                                 min_max_points_to_display.second.x(),
-//                                                                 min_max_points_to_display.first.y(),
-//                                                                 min_max_points_to_display.second.y());
-                    }
+//                                                                 0.75,
+//                                                                -5, 30, -5, 30
+////                                                                 min_max_points_to_display.first.x(),
+////                                                                 min_max_points_to_display.second.x(),
+////                                                                 min_max_points_to_display.first.y(),
+////                                                                 min_max_points_to_display.second.y()
+//                                                                 );
+//                    }
                 }
             }
 
@@ -184,6 +199,7 @@ std::vector<pose_graph::MovableObservationFactor2d> getMovableObservationFactors
         const int &pose_sample_ratio) {
 
     std::vector<file_io::ObjectPositionByPose> raw_obj_detections;
+    LOG(INFO) << "Reading from file " << object_detections_file_name;
     file_io::readObjectPositionsByPoseFromFile(object_detections_file_name, raw_obj_detections);
 
     std::vector<pose_graph::MovableObservationFactor2d> observation_factors;
@@ -240,20 +256,19 @@ createOdomFactorsFromInitOdomEst(const std::vector<pose::Pose2d> &init_traj_est,
         odom_factor.to_node_ = i;
         odom_factor.translation_change_ = rel_pose.first;
         odom_factor.orientation_change_ = rel_pose.second;
-        LOG(INFO) << "Orientation change " << odom_factor.orientation_change_;
+//        LOG(INFO) << "Orientation change " << odom_factor.orientation_change_;
         Eigen::Matrix<double, 3, 3> odom_cov_mat = Eigen::Matrix<double, 3, 3>::Zero();
-        odom_cov_mat(0, 0) = pow(k1 * rel_pose.first.norm() + k2 * abs(rel_pose.second), 2);
-        odom_cov_mat(1, 1) = pow(k3 * rel_pose.first.norm() + k4 * abs(rel_pose.second), 2);
-        odom_cov_mat(2, 2) = pow(k5 * rel_pose.first.norm() + k6 * abs(rel_pose.second), 2);
 
-//        odom_cov_mat(0, 0) = kMinOdomVar + pow(odometry_x_std_dev * rel_pose.first.x(), 2);
-//        odom_cov_mat(1, 1) = kMinOdomVar + pow(odometry_y_std_dev * rel_pose.first.y(), 2);
-//        odom_cov_mat(2, 2) = kMinOdomVar + pow(odometry_yaw_std_dev * rel_pose.second, 2);
-        LOG(INFO) << "Odom cov " << odom_cov_mat.diagonal();
+        double norm = rel_pose.first.norm();
 
+        odom_cov_mat(0, 0) = std::max(pow(k1 * norm + k2 * abs(rel_pose.second), 2), kMinOdomVar);
+        odom_cov_mat(1, 1) = std::max(pow(k3 * norm + k4 * abs(rel_pose.second), 2), kMinOdomVar);
+        odom_cov_mat(2, 2) = std::max(pow(k5 * norm + k6 * abs(rel_pose.second), 2), kMinOdomVar);
+
+//        LOG(INFO) << "Odom cov " << odom_cov_mat.diagonal();
 
         Eigen::Matrix<double, 3, 3> odom_sqrt_information_mat = odom_cov_mat.inverse().sqrt();
-        LOG(INFO) << odom_sqrt_information_mat;
+//        LOG(INFO) << odom_sqrt_information_mat;
         odom_factor.sqrt_information_ = odom_sqrt_information_mat;
         odom_factors.emplace_back(odom_factor);
 
@@ -326,6 +341,7 @@ getTrajectoryEstimate(const std::vector<pose::Pose2d> &odom_est_trajectory,
                       gt_trajectory, odom_est_trajectory,
                       noisy_observations_by_class);
 
+    LOG(INFO) << "Running optimization";
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> optimization_results = offline_optimizer.runOfflineOptimization(
             offline_problem_data, setupPoseOptimizationParams(),
             pose_graph::utils::createFully2dPoseGraphFromParams,
@@ -370,16 +386,30 @@ int main(int argc, char **argv) {
 //    double odom_std_dev_transl_y = 1e-3;
 //    double odom_std_dev_theta = 1e-5;
 
-    double odom_k1 = 0.1;
-    double odom_k2 = 0.001;
-    double odom_k3 = 0.01;
-    double odom_k4 = 0.0001;
-    double odom_k5 = 0.001;
-    double odom_k6 = 0.01;
+//    double odom_k1 = 0.5;
+//    double odom_k2 = 0.5;
+//    double odom_k3 = 0.5;
+//    double odom_k4 = 0.5;
+//    double odom_k5 = 0.5;
+//    double odom_k6 = 0.5;
+
+    double odom_k1 = 10;
+    double odom_k2 = 10;
+    double odom_k3 = 10;
+    double odom_k4 = 10;
+    double odom_k5 = 10;
+    double odom_k6 = 10;
+//
+//    double odom_k1 = 0.1;
+//    double odom_k2 = 0.001;
+//    double odom_k3 = 0.01;
+//    double odom_k4 = 0.0001;
+//    double odom_k5 = 0.001;
+//    double odom_k6 = 0.01;
 //    double odom_std_dev_transl_x = 1;
 //    double odom_std_dev_transl_y = 1;
 //    double odom_std_dev_theta = 1;
-    int pose_sample_ratio = 20;
+    int pose_sample_ratio = 1;
 
     std::vector<std::string> past_sample_files;
     std::string odom_estimates_file_name;
@@ -409,7 +439,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
     std::shared_ptr<visualization::VisualizationManager> manager = std::make_shared<visualization::VisualizationManager>(
-            n);
+            n, param_prefix);
 
     std::vector<pose::Pose2d> gt_trajectory;
     if (n.getParam(param_prefix + kGtTrajectoryFile, gt_traj_file)) {

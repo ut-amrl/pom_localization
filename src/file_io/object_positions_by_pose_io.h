@@ -7,9 +7,11 @@
 
 #include <cstdint>
 #include <fstream>
-#include <vector>
 #include <string>
 #include <sstream>
+#include <vector>
+
+#include <file_io/file_io_utils.h>
 
 namespace file_io {
 

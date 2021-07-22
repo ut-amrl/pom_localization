@@ -54,6 +54,7 @@ namespace offline_optimization {
                                                         const VisualizationTypeEnum &)> visualization_callback) {
 
             // Create pose graph
+            LOG(INFO) << "Creating pose graph";
             std::shared_ptr<PoseGraphType> pose_graph = pose_graph_creator(problem_params.cost_function_params_);
 
             // Add data to pose graph ---------------------------------------------------------------------------------
@@ -66,6 +67,8 @@ namespace offline_optimization {
 
             // Add Gaussian factors (odometry)
             if (problem_params.cost_function_params_.odometry_enabled_) {
+
+                LOG(INFO) << "Adding odom factors";
                 for (const GaussianBinaryFactorType &odom_factor : problem_data.odometry_factors_) {
                     pose_graph->addGaussianBinaryFactor(odom_factor);
                 }
@@ -73,6 +76,7 @@ namespace offline_optimization {
 
             if (problem_params.cost_function_params_.movable_obj_observations_enabled_) {
 
+                LOG(INFO) << "Adding observation factors";
                 // Add the map observations
                 std::unordered_map<std::string, std::vector<MapObjectObservationType>> observations_by_class;
                 for (const MapObjectObservationType &map_observation : problem_data.map_object_observations_) {
@@ -87,13 +91,16 @@ namespace offline_optimization {
                     observations_for_class.emplace_back(map_observation);
                     observations_by_class[map_observation.semantic_class_] = observations_for_class;
                 }
+                LOG(INFO) << "Adding map frame observations";
                 pose_graph->addMapFrameObservations(observations_by_class);
 
                 // Add the movable object observations as seen from nodes in the trajectory that we're optimizing
+                LOG(INFO) << "Adding movable object observation factors";
                 pose_graph->addMovableObservationFactors(problem_data.movable_observation_factors_);
             }
 
             // Initial visualization -------------------------------------------------------------------------
+            LOG(INFO) << "Initial visualization";
             visualization_callback(max_node_id, pose_graph, VisualizationTypeEnum::BEFORE_ANY_OPTIMIZATION);
 
             // Run optimization, adding 1 node at a time

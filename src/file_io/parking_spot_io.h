@@ -54,7 +54,6 @@ namespace file_io {
                 first_line = false;
                 continue;
             }
-            LOG(INFO) << "Line: " << line;
 
             ParkingSpot3d parking_spot;
             readParkingSpot3dLine(line, parking_spot);
@@ -84,7 +83,6 @@ namespace file_io {
                 first_line = false;
                 continue;
             }
-            LOG(INFO) << "Line: " << line;
 
             ParkingSpot2d parking_spot;
             readParkingSpot2dLine(line, parking_spot);

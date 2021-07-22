@@ -149,7 +149,7 @@ namespace pose_optimization {
                 } else {
                     LOG(INFO) << "Refreshing GP for observation from node " << factor.second.observed_at_node_;
                     movable_object_gpc = pose_graph.getMovableObjGpcWithinRadius(
-                            factor.second.observation_.semantic_class_, search_criteria.first, search_criteria.second);
+                            factor.second.observation_.semantic_class_, search_criteria.first, search_criteria.second, cost_function_params.max_gpc_samples_);
 
                     factor_id_to_gpc_[factor.first] = movable_object_gpc;
                     factor_id_to_search_criteria_[factor.first] = search_criteria;

@@ -426,6 +426,227 @@ namespace visualization {
             }
         }
 
+        void displayMaxGpRegressorOutput(
+                std::function<std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> (const Eigen::Vector2d&)> gpc_creator,
+                const double &resolution, const double &x_min, const double &x_max, const double &y_min,
+                const double &y_max) {
+            int64_t x_min_unscaled = floor(x_min / resolution);
+            int64_t x_max_unscaled = ceil(x_max / resolution);
+            int64_t y_min_unscaled = floor(y_min / resolution);
+            int64_t y_max_unscaled = ceil(y_max / resolution);
+
+            LOG(INFO) << "Creating best occ grid";
+
+            nav_msgs::OccupancyGrid best_variance_grid;
+            best_variance_grid.header.frame_id = kVizFrame;
+            best_variance_grid.header.stamp = ros::Time::now();
+            best_variance_grid.info.resolution = resolution;
+            best_variance_grid.info.origin.position.z = -3;
+            best_variance_grid.info.origin.position.x = x_min_unscaled * resolution;
+            best_variance_grid.info.origin.position.y = y_min_unscaled * resolution;
+            best_variance_grid.info.origin.orientation.w = 1.0;
+            best_variance_grid.info.width = x_max_unscaled - x_min_unscaled + 1;
+            best_variance_grid.info.height = y_max_unscaled - y_min_unscaled + 1;
+            best_variance_grid.data.resize(best_variance_grid.info.width * best_variance_grid.info.height);
+
+            nav_msgs::OccupancyGrid best_regressor_grid;
+            best_regressor_grid.header.frame_id = kVizFrame;
+            best_regressor_grid.header.stamp = ros::Time::now();
+            best_regressor_grid.info.resolution = resolution;
+            best_regressor_grid.info.origin.position.z = -3;
+            best_regressor_grid.info.origin.position.x = x_min_unscaled * resolution;
+            best_regressor_grid.info.origin.position.y = y_min_unscaled * resolution;
+            best_regressor_grid.info.origin.orientation.w = 1.0;
+            best_regressor_grid.info.width = x_max_unscaled - x_min_unscaled + 1;
+            best_regressor_grid.info.height = y_max_unscaled - y_min_unscaled + 1;
+            best_regressor_grid.data.resize(best_regressor_grid.info.width * best_regressor_grid.info.height);
+
+            nav_msgs::OccupancyGrid best_occ_grid;
+            best_occ_grid.header.frame_id = kVizFrame;
+            best_occ_grid.header.stamp = ros::Time::now();
+            best_occ_grid.info.resolution = resolution;
+            best_occ_grid.info.origin.position.z = -3;
+            best_occ_grid.info.origin.position.x = x_min_unscaled * resolution;
+            best_occ_grid.info.origin.position.y = y_min_unscaled * resolution;
+            best_occ_grid.info.origin.orientation.w = 1.0;
+            best_occ_grid.info.width = x_max_unscaled - x_min_unscaled + 1;
+            best_occ_grid.info.height = y_max_unscaled - y_min_unscaled + 1;
+            best_occ_grid.data.resize(best_occ_grid.info.width * best_occ_grid.info.height);
+
+
+            nav_msgs::OccupancyGrid test_grid;
+            test_grid = best_occ_grid;
+
+            std::unordered_map<int, nav_msgs::OccupancyGrid> occ_grids_by_angle;
+            std::unordered_map<int, nav_msgs::OccupancyGrid> regressor_grids_by_angle;
+            std::unordered_map<int, nav_msgs::OccupancyGrid> variance_grids_by_angle;
+            LOG(INFO) << "Creating occ grids";
+
+            double min_value = std::numeric_limits<double>::infinity();
+            double max_value = -std::numeric_limits<double>::infinity();
+
+            double variance_min_value = std::numeric_limits<double>::infinity();
+            double variance_max_value = -std::numeric_limits<double>::infinity();
+            std::unordered_map<int, Eigen::Matrix<double, 1, Eigen::Dynamic>> output_mats;
+            std::unordered_map<int, Eigen::Matrix<double, 1, Eigen::Dynamic>> output_mats_regressor_val;
+            std::unordered_map<int, Eigen::Matrix<double, 1, Eigen::Dynamic>> output_mats_variance;
+
+            for (int i = -5; i <= 6; i++) {
+
+
+                nav_msgs::OccupancyGrid occ_grid_variance;
+                occ_grid_variance.header.frame_id = kVizFrame;
+                occ_grid_variance.header.stamp = ros::Time::now();
+                occ_grid_variance.info.resolution = resolution;
+                occ_grid_variance.info.origin.position.z = -10 + i;
+                occ_grid_variance.info.origin.position.x = x_min_unscaled * resolution;
+                occ_grid_variance.info.origin.position.y = y_min_unscaled * resolution;
+                occ_grid_variance.info.origin.orientation.w = 1.0;
+                occ_grid_variance.info.width = x_max_unscaled - x_min_unscaled + 1;
+                occ_grid_variance.info.height = y_max_unscaled - y_min_unscaled + 1;
+                occ_grid_variance.data.resize(occ_grid_variance.info.width * occ_grid_variance.info.height);
+                variance_grids_by_angle[i] = occ_grid_variance;
+                output_mats_variance[i] = Eigen::Matrix<double, 1, Eigen::Dynamic>(1, best_occ_grid.info.width *
+                                                                                      best_occ_grid.info.height);
+
+
+                nav_msgs::OccupancyGrid occ_grid_regressor;
+                occ_grid_regressor.header.frame_id = kVizFrame;
+                occ_grid_regressor.header.stamp = ros::Time::now();
+                occ_grid_regressor.info.resolution = resolution;
+                occ_grid_regressor.info.origin.position.z = -10 + i;
+                occ_grid_regressor.info.origin.position.x = x_min_unscaled * resolution;
+                occ_grid_regressor.info.origin.position.y = y_min_unscaled * resolution;
+                occ_grid_regressor.info.origin.orientation.w = 1.0;
+                occ_grid_regressor.info.width = x_max_unscaled - x_min_unscaled + 1;
+                occ_grid_regressor.info.height = y_max_unscaled - y_min_unscaled + 1;
+                occ_grid_regressor.data.resize(occ_grid_regressor.info.width * occ_grid_regressor.info.height);
+                regressor_grids_by_angle[i] = occ_grid_regressor;
+                output_mats_regressor_val[i] = Eigen::Matrix<double, 1, Eigen::Dynamic>(1, best_occ_grid.info.width *
+                                                                                           best_occ_grid.info.height);
+
+                nav_msgs::OccupancyGrid occ_grid;
+                occ_grid.header.frame_id = kVizFrame;
+                occ_grid.header.stamp = ros::Time::now();
+                occ_grid.info.resolution = resolution;
+                occ_grid.info.origin.position.z = -10 + i;
+                occ_grid.info.origin.position.x = x_min_unscaled * resolution;
+                occ_grid.info.origin.position.y = y_min_unscaled * resolution;
+                occ_grid.info.origin.orientation.w = 1.0;
+                occ_grid.info.width = x_max_unscaled - x_min_unscaled + 1;
+                occ_grid.info.height = y_max_unscaled - y_min_unscaled + 1;
+                occ_grid.data.resize(occ_grid.info.width * occ_grid.info.height);
+                occ_grids_by_angle[i] = occ_grid;
+                output_mats[i] = Eigen::Matrix<double, 1, Eigen::Dynamic>(1, best_occ_grid.info.width *
+                                                                             best_occ_grid.info.height);
+            }
+
+            LOG(INFO) << "Looping through vals";
+
+            int size = best_occ_grid.info.width * best_occ_grid.info.height;
+            LOG(INFO) << "Got underlying gp regessor";
+
+            for (int y_val = y_min_unscaled; y_val <= y_max_unscaled; y_val++) {
+                for (int x_val = x_min_unscaled; x_val <= x_max_unscaled; x_val++) {
+
+                    long data_index = (best_occ_grid.info.width * (y_val - y_min_unscaled)) + x_val -
+                                      x_min_unscaled; // Should I switch x and y?
+
+                    std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc = gpc_creator(Eigen::Vector2d(x_val, y_val));
+                    std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> gp_regressor = gpc->getUnderlyingGpRegressor();
+                    for (int i = -5; i <= 6; i++) {
+
+                        double yaw = i * M_PI / 6;
+
+                        Eigen::Matrix<double, 3, Eigen::Dynamic> object_pose_2d(3, 1);
+                        object_pose_2d << (x_val * resolution), (y_val * resolution), yaw;
+                        Eigen::Matrix<double, 1, Eigen::Dynamic> gpc_output = gpc->Inference(object_pose_2d);
+                        output_mats[i].col(data_index) = gpc_output;
+
+//                        LOG(INFO) << "Getting data from regressor";
+                        std::pair<Eigen::Matrix<double, 1, Eigen::Dynamic>, Eigen::Matrix<double, 1, Eigen::Dynamic>> regressor_out =
+                                gp_regressor->Inference(object_pose_2d);
+
+                        output_mats_regressor_val[i].col(data_index) = ((regressor_out.first.array() * -1).exp() +
+                                                                        1).inverse().matrix();
+                        output_mats_variance[i].col(data_index) = regressor_out.second;
+//                        LOG(INFO) << "Done getting data from regressor";
+
+                        min_value = std::min(min_value, gpc_output.minCoeff());
+                        max_value = std::max(max_value, gpc_output.maxCoeff());
+
+                        variance_min_value = std::min(variance_min_value, regressor_out.second.minCoeff());
+                        variance_max_value = std::max(variance_max_value, regressor_out.second.maxCoeff());
+                    }
+                }
+            }
+
+            LOG(INFO) << "Setting occupancy grid data";
+            for (int i = 0; i < size; i++) {
+                int8_t best_val = 0.0;
+                int8_t regressor_val_for_best_val = 0.0;
+                int8_t variance_val_for_best_val = 0.0;
+                for (int j = -5; j <= 6; j++) {
+//                    ros::Publisher pub_for_angle = classifier_for_angle_mult_[i];
+                    double inf_val = output_mats[j](0, i);
+                    double regressor_val = (int8_t) 100 * output_mats_regressor_val[j](0, i);
+                    double variance_val = (int8_t) (100) * ((output_mats_variance[j](0, i) - variance_min_value) /
+                                                            (variance_max_value - variance_min_value));
+//                    LOG(INFO) << "Variance val: " << variance_val;
+
+                    if (inf_val > 1) {
+                        LOG(INFO) << "Inf val " << inf_val;
+                    }
+//                    int8_t value = (int8_t) (100) * ((inf_val - min_value) / (max_value - min_value));
+
+                    int8_t value = (int8_t) 100 * inf_val;
+                    if (value > best_val) {
+//                        LOG(INFO) << "Variance val for best val " << variance_val;
+                        best_val = value;
+                        regressor_val_for_best_val = regressor_val;
+                        variance_val_for_best_val = variance_val;
+                    }
+
+                    nav_msgs::OccupancyGrid occ_grid_for_angle = occ_grids_by_angle[j];
+                    occ_grid_for_angle.data[i] = value;
+                    occ_grids_by_angle[j] = occ_grid_for_angle;
+
+                    nav_msgs::OccupancyGrid regressor_occ_grid_for_angle = regressor_grids_by_angle[j];
+                    regressor_occ_grid_for_angle.data[i] = regressor_val;
+                    regressor_grids_by_angle[j] = regressor_occ_grid_for_angle;
+
+                    nav_msgs::OccupancyGrid var_occ_grid_for_angle = variance_grids_by_angle[j];
+                    var_occ_grid_for_angle.data[i] = variance_val;
+                    variance_grids_by_angle[j] = var_occ_grid_for_angle;
+                }
+                best_occ_grid.data[i] = (int8_t) best_val;
+                best_variance_grid.data[i] = (int8_t) variance_val_for_best_val;
+                best_regressor_grid.data[i] = (int8_t) regressor_val_for_best_val;
+            }
+
+            LOG(INFO) << "Publishing occ grid data";
+            std::string occ_data;
+            for (size_t i = 0; i < best_occ_grid.data.size(); i++) {
+                occ_data += std::to_string(best_occ_grid.data[i]);
+                occ_data += ", ";
+            }
+            LOG(INFO) << "Occ " << occ_data;
+            classifier_max_val_for_pos_pub_.publish(best_occ_grid);
+            regressor_max_val_for_pos_pub_.publish(best_regressor_grid);
+            variance_max_val_for_pos_pub_.publish(best_variance_grid);
+
+            for (int i = -5; i <= 6; i++) {
+                ros::Publisher publisher = classifier_for_angle_mult_[i];
+                publisher.publish(occ_grids_by_angle[i]);
+
+                ros::Publisher regressor_pub = regressor_for_angle_mult_[i];
+                regressor_pub.publish(regressor_grids_by_angle[i]);
+
+                ros::Publisher variance_pub = variance_for_angle_mult_[i];
+                variance_pub.publish(variance_grids_by_angle[i]);
+            }
+        }
+
 //        void displayPoseResiduals(pose_optimization::MovableObservationCostFunctor cost_functor,
         template<typename FactorType>
         void displayPoseResiduals(FactorType cost_functor,

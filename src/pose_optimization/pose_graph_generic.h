@@ -311,7 +311,8 @@ namespace pose_graph {
 
         std::shared_ptr<GpcType> getMovableObjGpcWithinRadius(const std::string &class_label, const double &radius,
                                                               const Eigen::Matrix<double, MovObjDistributionTranslationDim, 1> &search_point,
-                                                              const double &subsampling_ratio = 1.0,
+//                                                              const double &subsampling_ratio = 1.0,
+                                                              const uint64_t max_samples_in_gpc = std::numeric_limits<uint64_t>::max(),
                                                               util_random::Random rand_gen = util_random::Random()) {
 
             if (kd_trees_by_class_.find(class_label) == kd_trees_by_class_.end()) {
@@ -328,8 +329,16 @@ namespace pose_graph {
 
             std::shared_ptr<util_kdtree::KDTree<double, MovObjDistributionTranslationDim>> kd_tree = kd_trees_by_class_[class_label];
             std::vector<util_kdtree::KDNodeValue<double, MovObjDistributionTranslationDim>> kd_neighbors;
+            LOG(INFO) << "Finding KDE points";
             kd_tree->FindNeighborPoints(search_point, radius, &kd_neighbors);
+            LOG(INFO) << "Done finding KDE points, count " << kd_neighbors.size();
+            if (kd_neighbors.empty()) {
+                LOG(INFO) << "KD tree empty at search point " << search_point;
+                exit(1);
+            }
 
+            double subsampling_ratio = std::min(1.0, ((double) max_samples_in_gpc) / kd_neighbors.size());
+            LOG(INFO) << "Subsampling ratio " << subsampling_ratio;
             std::vector<MapObjectObservationType> observations_vec;
             for (const util_kdtree::KDNodeValue<double, MovObjDistributionTranslationDim> &neighbor : kd_neighbors) {
                 if (subsampling_ratio == 1.0 || rand_gen.UniformRandom(0, 1) < subsampling_ratio) {
@@ -344,6 +353,7 @@ namespace pose_graph {
                 }
             }
 
+            LOG(INFO) << "Constructing GPC";
             return getMovableObjGpcForObs(class_label, observations_vec, subsampling_ratio);
         }
 

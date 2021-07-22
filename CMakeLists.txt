@@ -103,6 +103,12 @@ TARGET_LINK_LIBRARIES(plot_results ${libs} stdc++fs)
 ROSBUILD_ADD_EXECUTABLE(compute_kitti_results src/evaluation/compute_kitti_results.cc)
 TARGET_LINK_LIBRARIES(compute_kitti_results ${libs} stdc++fs)
 
+ROSBUILD_ADD_EXECUTABLE(find_node_ids_for_objs_with_timestamps src/evaluation/find_node_ids_for_objs_and_waypoints_with_timestamps.cc)
+TARGET_LINK_LIBRARIES(find_node_ids_for_objs_with_timestamps ${libs} stdc++fs)
+
+ROSBUILD_ADD_EXECUTABLE(create_global_obj_locations_2d_from_3d_parking_spots src/evaluation/create_global_obj_locations_from_3d_parking_spots.cc)
+TARGET_LINK_LIBRARIES(create_global_obj_locations_2d_from_3d_parking_spots ${libs} stdc++fs)
+
 #ROSBUILD_ADD_EXECUTABLE(uncertainty_aware_localization_test src/synthetic_problem/uncertainty_aware/uncertainty_aware_synthetic_problem_localization_test_main.cc)
 #TARGET_LINK_LIBRARIES(uncertainty_aware_localization_test ${libs})
 
