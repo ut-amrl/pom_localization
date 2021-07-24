@@ -552,7 +552,7 @@ namespace visualization {
                     long data_index = (best_occ_grid.info.width * (y_val - y_min_unscaled)) + x_val -
                                       x_min_unscaled; // Should I switch x and y?
 
-                    std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc = gpc_creator(Eigen::Vector2d(x_val, y_val));
+                    std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc = gpc_creator(Eigen::Vector2d(x_val * resolution, y_val * resolution));
                     std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> gp_regressor = gpc->getUnderlyingGpRegressor();
                     for (int i = -5; i <= 6; i++) {
 

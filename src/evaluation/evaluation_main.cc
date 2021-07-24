@@ -53,7 +53,8 @@ pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams() {
     cost_function_params.default_obj_probability_input_variance_for_mean_ = 10;
 
 //    cost_function_params.var_position_kernel_len_ = 1.8;
-    cost_function_params.var_position_kernel_len_ = 25;
+//    cost_function_params.var_position_kernel_len_ = 25;
+    cost_function_params.var_position_kernel_len_ = 7.5;
     cost_function_params.var_orientation_kernel_len_ = 20;
 
     cost_function_params.var_position_kernel_var_ = 0.3;
@@ -115,13 +116,18 @@ void runOptimizationVisualization(
 //                        std::pair<Eigen::Vector2d, Eigen::Vector2d> min_max_points_to_display =
 //                                visualization::VisualizationManager::getMinMaxCornersForDistributionVisualization(
 //                                        poses_global_frame);
-//                    std::function<std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> (const Eigen::Vector2d&)> gpc_creator =
-//                    std::bind(createGpc, pose_graph, "car", 5000, 7.5, std::placeholders::_1);
+//                    std::function<std::shared_ptr<gp_regression::GaussianProcessClassifierussianProcessClassifier<3, gp_kernel::Pose2dKernel>> (const Eigen::Vector2d&)> gpc_creator =
+//                    std::bind(createGpc, pose_graph, "car", 5000,
+////                              7.5,
+//                                8.5,
+//                              std::placeholders::_1);
 //                        vis_manager->displayMaxGpRegressorOutput(
 ////                                pose_graph->getMovableObjGpc("car", 0.5),
 //                        gpc_creator,
 ////                                                                 0.3, // TODO revert
-//                                                                 0.75,
+////                                                                 0.65,
+////                                                                0.5,
+//1.0,
 //                                                                -5, 30, -5, 30
 ////                                                                 min_max_points_to_display.first.x(),
 ////                                                                 min_max_points_to_display.second.x(),
