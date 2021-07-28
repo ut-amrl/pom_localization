@@ -23,7 +23,7 @@ namespace file_io {
         file_stream << waypoint_and_node_id.first << ", " << waypoint_and_node_id.second << "\n";
     }
 
-    void writeWaypointsAndTimestampsToFile(const std::string &file_name,
+    void writeWaypointsAndNodeIdsToFile(const std::string &file_name,
                                            const std::vector<std::pair<uint64_t, uint64_t>> &waypoints_with_node_ids) {
         std::ofstream csv_file(file_name, std::ios::trunc);
         writeWaypointAndNodeIdHeaderToFile(csv_file);

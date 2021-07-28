@@ -16,6 +16,8 @@
 #include <file_io/trajectory_2d_io.h>
 #include <file_io/waypoints_and_timestamp_io.h>
 
+DEFINE_string(param_prefix, "", "param_prefix");
+
 const std::string kRosbagFileNameParam = "rosbag_file_name";
 const std::string kObjectDetectionFileParam = "object_detection_file";
 const std::string kOdomOutputFileParam = "odom_out_file_name";
@@ -51,13 +53,32 @@ uint64_t timestampToMillis(const std::pair<uint32_t, uint32_t> &timestamp) {
     return timestamp.first * 1000 + (timestamp.second / 1e6);
 }
 
+bool posesSame(const pose::Pose2d &p1, const pose::Pose2d &p2) {
+    pose::Pose2d rel_pose = pose::getPoseOfObj1RelToObj2(p1, p2);
+    LOG(INFO) << p1.first.x() << ", " << p1.first.y() << ", " << p1.second;
+    LOG(INFO) << p2.first.x() << ", " << p2.first.y() << ", " << p2.second;
+    LOG(INFO) << rel_pose.first.norm();
+    LOG(INFO) << (rel_pose.first.norm() == 0);
+    LOG(INFO) << (rel_pose.second == 0);
+    return ((rel_pose.first.norm() == 0) && (rel_pose.second == 0));
+}
+
 int main(int argc, char **argv) {
+    google::ParseCommandLineFlags(&argc, &argv, false);
 
     google::InitGoogleLogging(argv[0]);
     FLAGS_logtostderr = true;
 
+    std::string param_prefix = FLAGS_param_prefix;
+    std::string node_prefix = FLAGS_param_prefix;
+    if (!param_prefix.empty()) {
+        param_prefix = "/" + param_prefix + "/";
+        node_prefix += "_";
+    }
+    LOG(INFO) << "Prefix: " << param_prefix;
+
     ros::init(argc, argv,
-              "wheel_odom_rosbag_extractor");
+              node_prefix + "wheel_odom_rosbag_extractor");
     ros::NodeHandle n;
 
     std::string rosbag_file_name;
@@ -69,25 +90,25 @@ int main(int argc, char **argv) {
     bool include_obj_times = false;
     bool include_waypoint_times = false;
 
-    if (!n.getParam(kRosbagFileNameParam, rosbag_file_name)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << kRosbagFileNameParam;
+    if (!n.getParam(param_prefix + kRosbagFileNameParam, rosbag_file_name)) {
+        LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kRosbagFileNameParam;
         exit(1);
     }
 
-    if (!n.getParam(kOdomOutputFileParam, odom_out_file_name)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << kOdomOutputFileParam;
+    if (!n.getParam(param_prefix + kOdomOutputFileParam, odom_out_file_name)) {
+        LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kOdomOutputFileParam;
         exit(1);
     }
 
-    if (!n.getParam(kNodeIdAndTimestampOutputFileParam, node_id_and_timestamp_file_name)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << kNodeIdAndTimestampOutputFileParam;
+    if (!n.getParam(param_prefix + kNodeIdAndTimestampOutputFileParam, node_id_and_timestamp_file_name)) {
+        LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kNodeIdAndTimestampOutputFileParam;
         exit(1);
     }
 
-    if (n.getParam(kObjectDetectionFileParam, obj_file_name)) {
+    if (n.getParam(param_prefix + kObjectDetectionFileParam, obj_file_name)) {
         include_obj_times = true;
     }
-    if (n.getParam(kWaypointsByTimestampsFile, waypoints_by_timestamp_file_name)) {
+    if (n.getParam(param_prefix + kWaypointsByTimestampsFile, waypoints_by_timestamp_file_name)) {
         include_waypoint_times = true;
     }
 
@@ -212,8 +233,9 @@ int main(int argc, char **argv) {
                         }
                         rel_pose_interpolated = pose::createPose2d(x, y, fraction * rel_pose.second);
                     }
+                    pose::Pose2d rel_pose_interp_global = pose::combinePoses(prev_pose, rel_pose_interpolated);
                     timestamps_to_use.emplace_back(next_obj_timestamp);
-                    poses_to_use.emplace_back(pose::combinePoses(prev_pose, rel_pose_interpolated));
+                    poses_to_use.emplace_back(rel_pose_interp_global);
                 }
                 added_pose = true;
                 index_next_obj_timestamp_to_check++;
@@ -243,17 +265,41 @@ int main(int argc, char **argv) {
         poses_rel_to_origin.emplace_back(pose::getPoseOfObj1RelToObj2(curr_pose, first_pose));
     }
 
+    std::vector<pose::Pose2d> deduped_poses_rel_to_origin;
+    std::vector<file_io::NodeIdAndTimestamp> nodes_with_timestamps;
+    file_io::NodeIdAndTimestamp first_node;
+    first_node.node_id_ = 0;
+    first_node.seconds_ = timestamps_to_use[0].first;
+    first_node.nano_seconds_ = timestamps_to_use[0].second;
+    nodes_with_timestamps.emplace_back(first_node);
+    deduped_poses_rel_to_origin.emplace_back(poses_rel_to_origin[0]);
+    for (size_t i = 1; i < poses_rel_to_origin.size(); i++) {
+        if (!posesSame(poses_rel_to_origin[i - 1], poses_rel_to_origin[i])) {
+            LOG(INFO) << "Pose i " << i << " not same as previous node";
+            deduped_poses_rel_to_origin.emplace_back(poses_rel_to_origin[i]);
+        } else {
+            LOG(INFO) << "Pose i " << i << " same as previous node";
+        }
+
+        file_io::NodeIdAndTimestamp node_with_timestamp;
+        node_with_timestamp.node_id_ = deduped_poses_rel_to_origin.size() - 1;
+        LOG(INFO) << "Node id " << node_with_timestamp.node_id_;
+        node_with_timestamp.seconds_ = timestamps_to_use[i].first;
+        node_with_timestamp.nano_seconds_ = timestamps_to_use[i].second;
+        nodes_with_timestamps.emplace_back(node_with_timestamp);
+    }
+
     bag.close();
 
     LOG(INFO) << "Trajectory nodes size " << poses_rel_to_origin.size();
     std::vector<file_io::TrajectoryNode2d> trajectory_nodes;
-    for (size_t node_num = 0; node_num < poses_rel_to_origin.size(); node_num++) {
+    for (size_t node_num = 0; node_num < deduped_poses_rel_to_origin.size(); node_num++) {
         file_io::TrajectoryNode2d trajectory_node_2d;
         trajectory_node_2d.node_id_ = node_num;
 
-        trajectory_node_2d.transl_x_ = poses_rel_to_origin[node_num].first.x();
-        trajectory_node_2d.transl_y_ = poses_rel_to_origin[node_num].first.y();
-        trajectory_node_2d.theta_ = poses_rel_to_origin[node_num].second;
+        trajectory_node_2d.transl_x_ = deduped_poses_rel_to_origin[node_num].first.x();
+        trajectory_node_2d.transl_y_ = deduped_poses_rel_to_origin[node_num].first.y();
+        trajectory_node_2d.theta_ = deduped_poses_rel_to_origin[node_num].second;
 
         trajectory_nodes.emplace_back(trajectory_node_2d);
     }
@@ -263,16 +309,6 @@ int main(int argc, char **argv) {
     file_io::writeTrajectory2dToFile(odom_out_file_name, trajectory_nodes);
 
     // Output timestamps
-    std::vector<file_io::NodeIdAndTimestamp> nodes_with_timestamps;
-    for (size_t node_num = 0; node_num < timestamps_to_use.size(); node_num++) {
-        file_io::NodeIdAndTimestamp node_id_and_timestamp;
-        node_id_and_timestamp.node_id_ = node_num;
-        node_id_and_timestamp.seconds_ = timestamps_to_use[node_num].first;
-        node_id_and_timestamp.nano_seconds_ = timestamps_to_use[node_num].second;
-
-        nodes_with_timestamps.emplace_back(node_id_and_timestamp);
-    }
-
     file_io::writeNodeIdsAndTimestampsToFile(node_id_and_timestamp_file_name, nodes_with_timestamps);
 
     if (nodes_with_timestamps.size() != poses_rel_to_origin.size()) {

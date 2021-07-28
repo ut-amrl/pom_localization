@@ -13,6 +13,8 @@
 #include <file_io/waypoints_and_timestamp_io.h>
 #include <file_io/waypoints_and_node_id.h>
 
+DEFINE_string(param_prefix, "", "param_prefix");
+
 const std::string kObjectDetectionsByTimestampFileParam = "object_detections_by_timestamp_file";
 const std::string kObjectDetectionsByNodeFileParam = "object_detections_by_node_file";
 const std::string kNodeIdAndTimestampOutputFileParam = "node_id_and_timestamp_file";
@@ -30,12 +32,22 @@ struct pair_hash {
 };
 
 int main(int argc, char **argv) {
+    google::ParseCommandLineFlags(&argc, &argv, false);
 
     google::InitGoogleLogging(argv[0]);
     FLAGS_logtostderr = true;
 
+
+    std::string param_prefix = FLAGS_param_prefix;
+    std::string node_prefix = FLAGS_param_prefix;
+    if (!param_prefix.empty()) {
+        param_prefix = "/" + param_prefix + "/";
+        node_prefix += "_";
+    }
+    LOG(INFO) << "Prefix: " << param_prefix;
+
     ros::init(argc, argv,
-              "find_node_ids_for_objs_with_timestamps");
+              node_prefix + "find_node_ids_for_objs_with_timestamps");
     ros::NodeHandle n;
 
     std::string objs_by_timestamp_file_name;
@@ -44,28 +56,28 @@ int main(int argc, char **argv) {
     std::string waypoints_by_timestamp_file_name;
     std::string waypoints_by_node_id_file_name;
 
-    if (!n.getParam(kObjectDetectionsByNodeFileParam, objs_by_node_id_file_name)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << kObjectDetectionsByNodeFileParam;
+    if (!n.getParam(param_prefix + kObjectDetectionsByNodeFileParam, objs_by_node_id_file_name)) {
+        LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kObjectDetectionsByNodeFileParam;
         exit(1);
     }
 
-    if (!n.getParam(kObjectDetectionsByTimestampFileParam, objs_by_timestamp_file_name)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << kObjectDetectionsByTimestampFileParam;
+    if (!n.getParam(param_prefix + kObjectDetectionsByTimestampFileParam, objs_by_timestamp_file_name)) {
+        LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kObjectDetectionsByTimestampFileParam;
         exit(1);
     }
 
-    if (!n.getParam(kNodeIdAndTimestampOutputFileParam, node_id_and_timestamp_file_name)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << kNodeIdAndTimestampOutputFileParam;
+    if (!n.getParam(param_prefix + kNodeIdAndTimestampOutputFileParam, node_id_and_timestamp_file_name)) {
+        LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kNodeIdAndTimestampOutputFileParam;
         exit(1);
     }
 
-    if (!n.getParam(kWaypointsByTimestampsFile, waypoints_by_timestamp_file_name)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << kWaypointsByTimestampsFile;
+    if (!n.getParam(param_prefix + kWaypointsByTimestampsFile, waypoints_by_timestamp_file_name)) {
+        LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kWaypointsByTimestampsFile;
         exit(1);
     }
 
-    if (!n.getParam(kWaypointsByNodeFileParam, waypoints_by_node_id_file_name)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << kWaypointsByNodeFileParam;
+    if (!n.getParam(param_prefix + kWaypointsByNodeFileParam, waypoints_by_node_id_file_name)) {
+        LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kWaypointsByNodeFileParam;
         exit(1);
     }
 
@@ -120,7 +132,7 @@ int main(int argc, char **argv) {
         waypoints_by_node.push_back(waypoint_by_node);
     }
 
-    file_io::readWaypointsAndNodeIdsFromFile(waypoints_by_node_id_file_name, waypoints_by_node);
+    file_io::writeWaypointsAndNodeIdsToFile(waypoints_by_node_id_file_name, waypoints_by_node);
 
     return 0;
 }
