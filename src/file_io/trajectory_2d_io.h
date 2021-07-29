@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <fstream>
 #include <vector>
+#include <base_lib/pose_reps.h>
 
 namespace file_io {
     struct TrajectoryNode2d {
@@ -72,6 +73,19 @@ namespace file_io {
             trajectory2d.emplace_back(trajectory_node);
         }
     }
+
+    std::vector<pose::Pose2d> readTrajFromFile(const std::string &file_name) {
+        std::vector<file_io::TrajectoryNode2d> trajectory_nodes;
+        file_io::readRawTrajectory2dFromFile(file_name, trajectory_nodes);
+
+        // Assuming trajectory nodes are in order
+        std::vector<pose::Pose2d> init_traj_poses;
+        for (const file_io::TrajectoryNode2d traj_node : trajectory_nodes) {
+            init_traj_poses.emplace_back(pose::createPose2d(traj_node.transl_x_, traj_node.transl_y_, traj_node.theta_));
+        }
+        return init_traj_poses;
+    }
+
 }
 
 #endif //AUTODIFF_GP_TRAJECTORY_2D_IO_H

@@ -44,18 +44,6 @@ double computeATE(const std::vector<pose::Pose2d> &ground_truth_trajectory,
     return squared_error_sum / ground_truth_trajectory.size();
 }
 
-std::vector<pose::Pose2d> readTrajFromFile(const std::string &file_name) {
-    std::vector<file_io::TrajectoryNode2d> trajectory_nodes;
-    file_io::readRawTrajectory2dFromFile(file_name, trajectory_nodes);
-
-    // Assuming trajectory nodes are in order
-    std::vector<pose::Pose2d> init_traj_poses;
-    for (const file_io::TrajectoryNode2d traj_node : trajectory_nodes) {
-        init_traj_poses.emplace_back(pose::createPose2d(traj_node.transl_x_, traj_node.transl_y_, traj_node.theta_));
-    }
-    return init_traj_poses;
-}
-
 int main(int argc, char **argv) {
 
     google::ParseCommandLineFlags(&argc, &argv, false);
@@ -107,10 +95,10 @@ int main(int argc, char **argv) {
     }
 
     // Read odometry, ground truth, and estimated trajectories
-    std::vector<pose::Pose2d> odom_trajectory = readTrajFromFile(odom_estimates_file_name);
-    std::vector<pose::Pose2d> aligned_estimated_trajectory = readTrajFromFile(aligned_estimated_trajectory_file);
-    std::vector<pose::Pose2d> misaligned_estimated_trajectory = readTrajFromFile(misaligned_estimated_trajectory_file);
-    std::vector<pose::Pose2d> gt_trajectory = readTrajFromFile(gt_traj_file);
+    std::vector<pose::Pose2d> odom_trajectory = file_io::readTrajFromFile(odom_estimates_file_name);
+    std::vector<pose::Pose2d> aligned_estimated_trajectory = file_io::readTrajFromFile(aligned_estimated_trajectory_file);
+    std::vector<pose::Pose2d> misaligned_estimated_trajectory = file_io::readTrajFromFile(misaligned_estimated_trajectory_file);
+    std::vector<pose::Pose2d> gt_trajectory = file_io::readTrajFromFile(gt_traj_file);
 
     double odom_ate = computeATE(gt_trajectory, odom_trajectory);
     double aligned_est_ate = computeATE(gt_trajectory, aligned_estimated_trajectory);
