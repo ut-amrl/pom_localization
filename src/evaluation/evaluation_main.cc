@@ -20,6 +20,8 @@
 using namespace pose;
 
 DEFINE_string(param_prefix, "", "param_prefix");
+DEFINE_bool(run_gpc_viz, false, "Run GPC viz");
+DEFINE_bool(skip_optimization, false, "Skip optimization");
 
 const std::string kPastSamplesFilesParamName = "past_samples_files";
 
@@ -31,6 +33,7 @@ const std::string kTrajectoryOutputFileName = "traj_est_output_file";
 
 const std::string kGtTrajectoryFile = "gt_trajectory_file";
 
+//const double kMinOdomVar = pow(std::numeric_limits<double>::min(), 0.0003);
 const double kMinOdomVar = pow(std::numeric_limits<double>::min(), 0.3);
 
 pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams() {
@@ -38,8 +41,9 @@ pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams() {
     pose_optimization::CostFunctionParameters cost_function_params;
     // TODO configure
 
-    cost_function_params.mean_position_kernel_len_ = 1;
-    cost_function_params.mean_orientation_kernel_len_ = 0.5; // TODO fix
+//    cost_function_params.mean_position_kernel_len_ = 0.8;
+    cost_function_params.mean_orientation_kernel_len_ = 0.3;
+    cost_function_params.mean_orientation_kernel_len_ = 0.1; // TODO fix
 //    cost_function_params.mean_orientation_kernel_len_ = 10000;
 //    cost_function_params.mean_position_kernel_var_ = 30;
 //    cost_function_params.mean_orientation_kernel_var_ = 30;
@@ -47,7 +51,8 @@ pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams() {
 //    cost_function_params.mean_position_kernel_var_ = 9;
 
     cost_function_params.mean_position_kernel_var_ = 0.045;
-    cost_function_params.mean_orientation_kernel_var_ = 1;
+//    cost_function_params.mean_orientation_kernel_var_ = 1;
+    cost_function_params.mean_orientation_kernel_var_ = 1000;
 
 
     cost_function_params.default_obj_probability_input_variance_for_mean_ = 10;
@@ -57,14 +62,19 @@ pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams() {
     cost_function_params.var_position_kernel_len_ = 7.5;
     cost_function_params.var_orientation_kernel_len_ = 20;
 
-    cost_function_params.var_position_kernel_var_ = 0.3;
+    cost_function_params.var_position_kernel_var_ = 30;
     cost_function_params.var_orientation_kernel_var_ = 0.3;
 
     cost_function_params.default_obj_probability_input_variance_for_var_ = 10;
 
     cost_function_params.max_gpc_samples_ = 500;
+
+//    cost_function_params.num_nodes_in_optimization_window_ = 20;
+    cost_function_params.num_nodes_in_optimization_window_ = 30;
+    cost_function_params.full_optimization_interval_ = 80;
     pose_opt_params.cost_function_params_ = cost_function_params;
     return pose_opt_params;
+
 }
 
 std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> createGpc(
@@ -112,29 +122,39 @@ void runOptimizationVisualization(
                             }
                         }
 
+                        if (FLAGS_run_gpc_viz) {
 
 //                        std::pair<Eigen::Vector2d, Eigen::Vector2d> min_max_points_to_display =
 //                                visualization::VisualizationManager::getMinMaxCornersForDistributionVisualization(
 //                                        poses_global_frame);
-//                    std::function<std::shared_ptr<gp_regression::GaussianProcessClassifierussianProcessClassifier<3, gp_kernel::Pose2dKernel>> (const Eigen::Vector2d&)> gpc_creator =
-//                    std::bind(createGpc, pose_graph, "car", 5000,
-////                              7.5,
-//                                8.5,
-//                              std::placeholders::_1);
-//                        vis_manager->displayMaxGpRegressorOutput(
-////                                pose_graph->getMovableObjGpc("car", 0.5),
-//                        gpc_creator,
-////                                                                 0.3, // TODO revert
-////                                                                 0.65,
-////                                                                0.5,
-//1.0,
-//                                                                -5, 30, -5, 30
-////                                                                 min_max_points_to_display.first.x(),
-////                                                                 min_max_points_to_display.second.x(),
-////                                                                 min_max_points_to_display.first.y(),
-////                                                                 min_max_points_to_display.second.y()
-//                                                                 );
+                            std::function<std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
+                                    const Eigen::Vector2d &)> gpc_creator =
+                                    std::bind(createGpc, pose_graph, "car",
+//                                              5000,
+                                            500,
+//                              7.5,
+                                              8.5,
+                                              std::placeholders::_1);
+                            vis_manager->displayMaxGpRegressorOutput(
+//                                pose_graph->getMovableObjGpc("car", 0.5),
+                                    gpc_creator,
+//                                                                 0.3, // TODO revert
+//                                                                 0.65,
+//                                                                0.5,
+                                    .5,
+                                    -55, 30, -5, 30
+//                                                                 min_max_points_to_display.first.x(),
+//                                                                 min_max_points_to_display.second.x(),
+//                                                                 min_max_points_to_display.first.y(),
+//                                                                 min_max_points_to_display.second.y()
+                            );
 //                    }
+                        }
+                }
+
+
+                if (FLAGS_skip_optimization) {
+                    exit(0);
                 }
             }
 
@@ -271,9 +291,14 @@ createOdomFactorsFromInitOdomEst(const std::vector<pose::Pose2d> &init_traj_est,
         odom_cov_mat(1, 1) = std::max(pow(k3 * norm + k4 * abs(rel_pose.second), 2), kMinOdomVar);
         odom_cov_mat(2, 2) = std::max(pow(k5 * norm + k6 * abs(rel_pose.second), 2), kMinOdomVar);
 
-//        LOG(INFO) << "Odom cov " << odom_cov_mat.diagonal();
 
         Eigen::Matrix<double, 3, 3> odom_sqrt_information_mat = odom_cov_mat.inverse().sqrt();
+        if ((i == 124) || (i == 125)) {
+            LOG(INFO) << "i " << i;
+            LOG(INFO) << "Norm " << norm << ", angle diff " << rel_pose.second;
+            LOG(INFO) << "Odom cov " << odom_cov_mat.diagonal();
+            LOG(INFO) << "Sqrt information " << odom_sqrt_information_mat;
+        }
 //        LOG(INFO) << odom_sqrt_information_mat;
         odom_factor.sqrt_information_ = odom_sqrt_information_mat;
         odom_factors.emplace_back(odom_factor);
@@ -392,19 +417,26 @@ int main(int argc, char **argv) {
 //    double odom_std_dev_transl_y = 1e-3;
 //    double odom_std_dev_theta = 1e-5;
 
-//    double odom_k1 = 0.5;
-//    double odom_k2 = 0.5;
-//    double odom_k3 = 0.5;
-//    double odom_k4 = 0.5;
-//    double odom_k5 = 0.5;
-//    double odom_k6 = 0.5;
+//    double odom_k1 = 0.75;
+//    double odom_k2 = 1;
+//    double odom_k3 = 0.75;
+//    double odom_k4 = 1;
+//    double odom_k5 = 1;
+//    double odom_k6 = 1;
 
-    double odom_k1 = 10;
+    double odom_k1 = 0.75;
     double odom_k2 = 10;
-    double odom_k3 = 10;
+    double odom_k3 = 0.75;
     double odom_k4 = 10;
     double odom_k5 = 10;
     double odom_k6 = 10;
+
+//    double odom_k1 = 100;
+//    double odom_k2 = 100;
+//    double odom_k3 = 100;
+//    double odom_k4 = 100;
+//    double odom_k5 = 100;
+//    double odom_k6 = 100;
 //
 //    double odom_k1 = 0.1;
 //    double odom_k2 = 0.001;
