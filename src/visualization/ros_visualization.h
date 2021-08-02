@@ -38,6 +38,8 @@ namespace visualization {
                     prefix + "classifier_max_val_for_pos", 2);
             robot_pose_max_val_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>(prefix +"robot_pose_max_val", 2);
 
+            waypoint_pub_ = node_handle_.advertise<visualization_msgs::Marker>(prefix + "waypoints", 500);
+
             parking_spot_3d_pub_ = node_handle_.advertise<visualization_msgs::Marker>(prefix + "parking_spots_3d", 10000);
             LOG(INFO) << "Vis manager 1";
             ros::Duration(2).sleep();
@@ -490,6 +492,144 @@ namespace visualization {
             std::unordered_map<int, Eigen::Matrix<double, 1, Eigen::Dynamic>> output_mats;
             std::unordered_map<int, Eigen::Matrix<double, 1, Eigen::Dynamic>> output_mats_regressor_val;
             std::unordered_map<int, Eigen::Matrix<double, 1, Eigen::Dynamic>> output_mats_variance;
+            Eigen::Matrix<double, 1, Eigen::Dynamic> close_to_parking_spots_mat = Eigen::Matrix<double, 1, Eigen::Dynamic>(1, best_occ_grid.info.width *
+                                                                                                                         best_occ_grid.info.height);
+
+            std::vector<Eigen::Vector2d> parking_spots;
+            parking_spots.emplace_back(Eigen::Vector2d(5.430979, -4.871888));
+            parking_spots.emplace_back(Eigen::Vector2d(8.630979, -4.871888));
+            parking_spots.emplace_back(Eigen::Vector2d(11.830979, -4.871888));
+            parking_spots.emplace_back(Eigen::Vector2d(15.030979, -4.871888));
+            parking_spots.emplace_back(Eigen::Vector2d(1.160000, 10.500000));
+            parking_spots.emplace_back(Eigen::Vector2d(3.894000, 10.500000));
+            parking_spots.emplace_back(Eigen::Vector2d(6.628000, 10.500000));
+            parking_spots.emplace_back(Eigen::Vector2d(9.362000, 10.500000));
+            parking_spots.emplace_back(Eigen::Vector2d(12.096000, 10.500000));
+            parking_spots.emplace_back(Eigen::Vector2d(14.830000, 10.500000));
+            parking_spots.emplace_back(Eigen::Vector2d(17.564000, 10.500000));
+            parking_spots.emplace_back(Eigen::Vector2d(20.298000, 10.500000));
+            parking_spots.emplace_back(Eigen::Vector2d(23.032000, 10.500000));
+            parking_spots.emplace_back(Eigen::Vector2d(25.766000, 10.500000));
+            parking_spots.emplace_back(Eigen::Vector2d(28.400000, 10.500000));
+            parking_spots.emplace_back(Eigen::Vector2d(18.230979, -4.871888));
+            parking_spots.emplace_back(Eigen::Vector2d(21.430979, -4.871888));
+            parking_spots.emplace_back(Eigen::Vector2d(2.900000, 4.870000));
+            parking_spots.emplace_back(Eigen::Vector2d(5.987500, 4.870000));
+            parking_spots.emplace_back(Eigen::Vector2d(9.075000, 4.870000));
+            parking_spots.emplace_back(Eigen::Vector2d(12.162500, 4.870000));
+            parking_spots.emplace_back(Eigen::Vector2d(15.250000, 4.870000));
+            parking_spots.emplace_back(Eigen::Vector2d(18.337500, 4.870000));
+            parking_spots.emplace_back(Eigen::Vector2d(21.425000, 4.870000));
+            parking_spots.emplace_back(Eigen::Vector2d(24.512500, 4.870000));
+            parking_spots.emplace_back(Eigen::Vector2d(27.600000, 4.870000));
+            parking_spots.emplace_back(Eigen::Vector2d(-1.610000, 25.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(1.129000, 25.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(3.868000, 25.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(6.607000, 25.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(9.346000, 25.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(12.085000, 25.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(14.825000, 25.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(17.564000, 25.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(20.303000, 25.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(23.042000, 25.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(25.781000, 25.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(28.520000, 25.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(-15.160000, 20.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(-18.240000, 20.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(-21.320000, 20.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(-24.400000, 20.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(-27.480000, 20.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(-30.560000, 20.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(-33.640000, 20.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(-27.220000, 8.240000));
+            parking_spots.emplace_back(Eigen::Vector2d(-30.270000, 8.240000));
+            parking_spots.emplace_back(Eigen::Vector2d(-33.320000, 8.240000));
+            parking_spots.emplace_back(Eigen::Vector2d(-36.370000, 8.240000));
+            parking_spots.emplace_back(Eigen::Vector2d(-39.420000, 8.240000));
+            parking_spots.emplace_back(Eigen::Vector2d(-42.470000, 8.240000));
+            parking_spots.emplace_back(Eigen::Vector2d(-45.520000, 8.240000));
+            parking_spots.emplace_back(Eigen::Vector2d(-48.570000, 8.240000));
+            parking_spots.emplace_back(Eigen::Vector2d(-15.510000, 25.230000));
+            parking_spots.emplace_back(Eigen::Vector2d(-18.500000, 25.230000));
+            parking_spots.emplace_back(Eigen::Vector2d(-21.500000, 25.230000));
+            parking_spots.emplace_back(Eigen::Vector2d(-24.490000, 25.230000));
+            parking_spots.emplace_back(Eigen::Vector2d(-27.480000, 25.230000));
+            parking_spots.emplace_back(Eigen::Vector2d(-30.470000, 25.230000));
+            parking_spots.emplace_back(Eigen::Vector2d(-33.470000, 25.230000));
+            parking_spots.emplace_back(Eigen::Vector2d(-36.460000, 25.230000));
+            parking_spots.emplace_back(Eigen::Vector2d(-39.770000, 34.940000));
+            parking_spots.emplace_back(Eigen::Vector2d(-36.680000, 34.940000));
+            parking_spots.emplace_back(Eigen::Vector2d(-33.590000, 34.940000));
+            parking_spots.emplace_back(Eigen::Vector2d(-30.500000, 34.940000));
+            parking_spots.emplace_back(Eigen::Vector2d(-27.410000, 34.940000));
+            parking_spots.emplace_back(Eigen::Vector2d(-24.320000, 34.940000));
+            parking_spots.emplace_back(Eigen::Vector2d(-21.230000, 34.940000));
+            parking_spots.emplace_back(Eigen::Vector2d(-18.140000, 34.940000));
+            parking_spots.emplace_back(Eigen::Vector2d(-1.717181, 32.870000));
+            parking_spots.emplace_back(Eigen::Vector2d(-1.717181, 35.730000));
+            parking_spots.emplace_back(Eigen::Vector2d(-1.717181, 38.590000));
+            parking_spots.emplace_back(Eigen::Vector2d(-1.717181, 41.450000));
+            parking_spots.emplace_back(Eigen::Vector2d(-1.717181, 44.308414));
+            parking_spots.emplace_back(Eigen::Vector2d(-1.717181, 47.170000));
+            parking_spots.emplace_back(Eigen::Vector2d(-1.717181, 50.030000));
+            parking_spots.emplace_back(Eigen::Vector2d(-1.717181, 52.893948));
+            parking_spots.emplace_back(Eigen::Vector2d(-1.717181, 55.750000));
+            parking_spots.emplace_back(Eigen::Vector2d(-14.703172, 50.821438));
+            parking_spots.emplace_back(Eigen::Vector2d(-17.846000, 50.821438));
+            parking_spots.emplace_back(Eigen::Vector2d(-20.992000, 50.821438));
+            parking_spots.emplace_back(Eigen::Vector2d(-24.138000, 50.821438));
+            parking_spots.emplace_back(Eigen::Vector2d(-27.284000, 50.821438));
+            parking_spots.emplace_back(Eigen::Vector2d(-30.431709, 50.821438));
+            parking_spots.emplace_back(Eigen::Vector2d(-33.576000, 50.821438));
+            parking_spots.emplace_back(Eigen::Vector2d(-36.722000, 50.821438));
+            parking_spots.emplace_back(Eigen::Vector2d(-39.868000, 50.821438));
+            parking_spots.emplace_back(Eigen::Vector2d(-43.014000, 50.821438));
+            parking_spots.emplace_back(Eigen::Vector2d(-46.160000, 50.821438));
+            parking_spots.emplace_back(Eigen::Vector2d(-15.380000, 39.666271));
+            parking_spots.emplace_back(Eigen::Vector2d(-18.438442, 39.666271));
+            parking_spots.emplace_back(Eigen::Vector2d(-21.480000, 39.666271));
+            parking_spots.emplace_back(Eigen::Vector2d(-24.530000, 39.666271));
+            parking_spots.emplace_back(Eigen::Vector2d(-27.580000, 39.666271));
+            parking_spots.emplace_back(Eigen::Vector2d(-30.640000, 39.666271));
+            parking_spots.emplace_back(Eigen::Vector2d(-33.690000, 39.666271));
+            parking_spots.emplace_back(Eigen::Vector2d(-36.740000, 39.666271));
+            parking_spots.emplace_back(Eigen::Vector2d(-39.803191, 39.666271));
+            parking_spots.emplace_back(Eigen::Vector2d(-42.812000, 55.475323));
+            parking_spots.emplace_back(Eigen::Vector2d(-39.660316, 55.475323));
+            parking_spots.emplace_back(Eigen::Vector2d(-36.508000, 55.475323));
+            parking_spots.emplace_back(Eigen::Vector2d(-33.356000, 55.475323));
+            parking_spots.emplace_back(Eigen::Vector2d(-30.204000, 55.475323));
+            parking_spots.emplace_back(Eigen::Vector2d(-27.052000, 55.475323));
+            parking_spots.emplace_back(Eigen::Vector2d(-23.900000, 55.475323));
+            parking_spots.emplace_back(Eigen::Vector2d(-34.020012, 65.287094));
+            parking_spots.emplace_back(Eigen::Vector2d(-30.948000, 65.287094));
+            parking_spots.emplace_back(Eigen::Vector2d(-27.876000, 65.287094));
+            parking_spots.emplace_back(Eigen::Vector2d(-24.804000, 65.287094));
+            parking_spots.emplace_back(Eigen::Vector2d(-21.732000, 65.287094));
+            parking_spots.emplace_back(Eigen::Vector2d(-18.665812, 65.287094));
+            parking_spots.emplace_back(Eigen::Vector2d(-56.997650, 55.184795));
+            parking_spots.emplace_back(Eigen::Vector2d(-55.450000, 56.956000));
+            parking_spots.emplace_back(Eigen::Vector2d(-53.904000, 58.728000));
+            parking_spots.emplace_back(Eigen::Vector2d(-52.357000, 60.499000));
+            parking_spots.emplace_back(Eigen::Vector2d(-50.810000, 62.270000));
+            parking_spots.emplace_back(Eigen::Vector2d(-49.263000, 64.040000));
+            parking_spots.emplace_back(Eigen::Vector2d(-47.716000, 65.814000));
+            parking_spots.emplace_back(Eigen::Vector2d(-46.169000, 67.585000));
+            parking_spots.emplace_back(Eigen::Vector2d(-44.622000, 69.357000));
+            parking_spots.emplace_back(Eigen::Vector2d(-43.076000, 71.130000));
+            parking_spots.emplace_back(Eigen::Vector2d(-41.529000, 72.899800));
+            parking_spots.emplace_back(Eigen::Vector2d(-39.982000, 74.671000));
+            parking_spots.emplace_back(Eigen::Vector2d(-38.435000, 76.443000));
+            parking_spots.emplace_back(Eigen::Vector2d(-36.888000, 78.214000));
+            parking_spots.emplace_back(Eigen::Vector2d(-35.341000, 79.986000));
+            parking_spots.emplace_back(Eigen::Vector2d(-33.794000, 81.757000));
+            parking_spots.emplace_back(Eigen::Vector2d(-1.717181, 66.510000));
+            parking_spots.emplace_back(Eigen::Vector2d(-1.717181, 69.410000));
+            parking_spots.emplace_back(Eigen::Vector2d(-1.717181, 72.310000));
+            parking_spots.emplace_back(Eigen::Vector2d(-1.717181, 75.210000));
+            parking_spots.emplace_back(Eigen::Vector2d(-1.717181, 78.110000));
+            parking_spots.emplace_back(Eigen::Vector2d(-1.717181, 81.010000));
+            parking_spots.emplace_back(Eigen::Vector2d(-1.717181, 83.910000));
 
             for (int i = -5; i <= 6; i++) {
 
@@ -539,6 +679,10 @@ namespace visualization {
                 occ_grids_by_angle[i] = occ_grid;
                 output_mats[i] = Eigen::Matrix<double, 1, Eigen::Dynamic>(1, best_occ_grid.info.width *
                                                                              best_occ_grid.info.height);
+
+
+                output_mats[i] = Eigen::Matrix<double, 1, Eigen::Dynamic>(1, best_occ_grid.info.width *
+                                                                             best_occ_grid.info.height);
             }
 
             LOG(INFO) << "Looping through vals";
@@ -551,6 +695,15 @@ namespace visualization {
 
                     long data_index = (best_occ_grid.info.width * (y_val - y_min_unscaled)) + x_val -
                                       x_min_unscaled; // Should I switch x and y?
+
+                    bool close_to_parking_spot = false;
+                    for (const Eigen::Vector2d &parking_spot : parking_spots) {
+                        if ((parking_spot - Eigen::Vector2d((x_val * resolution), (y_val * resolution))).norm() < 0.25) {
+                            close_to_parking_spot = true;
+                            continue;
+                        }
+                    }
+                    close_to_parking_spots_mat(0, data_index) = close_to_parking_spot ? 1 : 0;
 
                     std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc = gpc_creator(Eigen::Vector2d(x_val * resolution, y_val * resolution));
                     std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> gp_regressor = gpc->getUnderlyingGpRegressor();
@@ -570,6 +723,9 @@ namespace visualization {
                         output_mats_regressor_val[i].col(data_index) = ((regressor_out.first.array() * -1).exp() +
                                                                         1).inverse().matrix();
                         output_mats_variance[i].col(data_index) = regressor_out.second;
+                        if (close_to_parking_spot) {
+                            LOG(INFO) << "Class, reg, var : " << gpc_output << ", " << output_mats_regressor_val[i].col(data_index) << ", " << output_mats_variance[i].col(data_index);
+                        }
 //                        LOG(INFO) << "Done getting data from regressor";
 
                         min_value = std::min(min_value, gpc_output.minCoeff());
@@ -592,6 +748,8 @@ namespace visualization {
                     double regressor_val = (int8_t) 100 * output_mats_regressor_val[j](0, i);
                     double variance_val = (int8_t) (100) * ((output_mats_variance[j](0, i) - variance_min_value) /
                                                             (variance_max_value - variance_min_value));
+
+
 //                    LOG(INFO) << "Variance val: " << variance_val;
 
                     if (inf_val > 1) {
@@ -1026,6 +1184,44 @@ namespace visualization {
                                   Eigen::Vector2d(max_x + kExtraMarginDistribution, max_y + kExtraMarginDistribution));
         }
 
+        void plotWaypoints(const std::vector<std::vector<pose::Pose2d>> &waypoints) {
+            std_msgs::ColorRGBA base_color;
+            base_color.a = 1.0;
+            base_color.g = 1.0;
+
+            int32_t next_robot_pose_id = kWaypointsPosesMin;
+
+            std::vector<std_msgs::ColorRGBA> colors;
+            for (size_t i = 0; i < waypoints.size(); i++) {
+                std_msgs::ColorRGBA color = base_color;
+                color.b = ((double) i)/(waypoints.size() - 1);
+                colors.emplace_back(color);
+
+                // Also publish box for each pose in the trajectory
+                publishRobotPoses(waypoint_pub_, convert2DPosesTo3D(waypoints[i]), color, next_robot_pose_id, kWaypointsPosesMax);
+                next_robot_pose_id += waypoints[i].size();
+            }
+        }
+
+        void publishEstimatedTrajectories(const std::vector<std::vector<pose::Pose2d>> &trajectory_poses) {
+            std_msgs::ColorRGBA base_color;
+            base_color.a = 1.0;
+            base_color.r = 1.0;
+
+            std::vector<std::vector<pose::Pose3d>> trajectory_poses_3d;
+
+            std::vector<std_msgs::ColorRGBA> colors;
+            for (size_t i = 0; i < trajectory_poses.size(); i++) {
+                std_msgs::ColorRGBA color = base_color;
+                color.b = ((double) i)/(trajectory_poses.size() - 1);
+                colors.emplace_back(color);
+
+                trajectory_poses_3d.emplace_back(convert2DPosesTo3D(trajectory_poses[i]));
+            }
+
+            publishTrajectories(est_marker_pub_, colors, trajectory_poses_3d, kEstTrajectoryId, kRobotEstPosesMin, kRobotEstPosesMax);
+        }
+
     private:
 
         const std::string kVizFrame = "map";
@@ -1056,6 +1252,7 @@ namespace visualization {
         const int32_t kRobotGtPosesMin = kCarGtPosesMin + kMaxObservationsToDisplay;
         const int32_t kRobotOdomPosesMin = kRobotGtPosesMin + kMaxTrajectoryLen;
         const int32_t kRobotEstPosesMin = kRobotOdomPosesMin + kMaxTrajectoryLen;
+        const int32_t kWaypointsPosesMin = kRobotEstPosesMin + kMaxTrajectoryLen;
 
         const int32_t kObservedFromGtCarDetectionsMax = kObservedFromOdomCarDetectionsMin - 1;
         const int32_t kObservedFromOdomCarDetectionsMax = kObservedFromEstCarDetectionsMin - 1;
@@ -1063,7 +1260,8 @@ namespace visualization {
         const int32_t kCarGtPosesMax = kRobotGtPosesMin - 1;
         const int32_t kRobotGtPosesMax = kRobotOdomPosesMin - 1;
         const int32_t kRobotOdomPosesMax = kRobotEstPosesMin - 1;
-        const int32_t kRobotEstPosesMax = kRobotEstPosesMin + kMaxTrajectoryLen - 1;
+        const int32_t kRobotEstPosesMax = kWaypointsPosesMin - 1;
+        const int32_t kWaypointsPosesMax = kWaypointsPosesMin + kMaxTrajectoryLen - 1;
 
 
         /**
@@ -1087,6 +1285,7 @@ namespace visualization {
         std::unordered_map<int32_t, ros::Publisher> robot_pose_pub_for_angle_mult_;
 
         ros::Publisher robot_pose_max_val_pub_;
+        ros::Publisher waypoint_pub_;
 
         ros::Publisher parking_spot_3d_pub_;
 
@@ -1209,6 +1408,38 @@ namespace visualization {
 
             // Also publish box for each pose in the trajectory
             publishRobotPoses(marker_pub, trajectory_poses, color, min_pose_id, max_pose_id);
+        }
+
+        void publishTrajectories(ros::Publisher &marker_pub, const std::vector<std_msgs::ColorRGBA> &colors,
+                               const std::vector<std::vector<pose::Pose3d>> &trajectory_poses,
+                               const int32_t &first_trajectory_id, const int32_t &min_pose_id, const int32_t &max_pose_id) {
+
+            int32_t next_robot_pose_id = min_pose_id;
+            for (size_t i = 0; i < trajectory_poses.size(); i++) {
+
+                visualization_msgs::Marker marker_msg;
+                marker_msg.id = first_trajectory_id + i;
+                marker_msg.color = colors[i];
+
+                marker_msg.type = visualization_msgs::Marker::LINE_STRIP;
+                marker_msg.scale.x = kTrajectoryScaleX;
+                for (const pose::Pose3d &traj_pose : trajectory_poses[i]) {
+                    geometry_msgs::Point point;
+                    point.x = traj_pose.first.x();
+                    point.y = traj_pose.first.y();
+                    point.z = traj_pose.first.z();
+                    marker_msg.points.emplace_back(point);
+                }
+//            LOG(INFO) << "Trajectory len " << marker_msg.points.size();
+
+                marker_msg.pose.orientation.w = 1.0;
+
+                publishMarker(marker_msg, marker_pub);
+
+                // Also publish box for each pose in the trajectory
+                publishRobotPoses(marker_pub, trajectory_poses[i], colors[i], next_robot_pose_id, max_pose_id);
+                next_robot_pose_id += trajectory_poses[i].size();
+            }
         }
 
         void publishRobotPoses(ros::Publisher &marker_pub, const std::vector<pose::Pose3d> &robot_poses,

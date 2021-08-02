@@ -25,6 +25,15 @@ std::string constructParamName(const std::string &param_prefix, const int &traje
     return param_prefix + kTrajectorySpecificPrefix + std::to_string(trajectory_num) + "/" + param_suffix;
 }
 
+double findMeanRotation(const std::vector<pose::Pose2d> &waypoint_poses) {
+    Eigen::Vector2d mean_unit_vector(0, 0);
+    for (const pose::Pose2d &pose : waypoint_poses) {
+        mean_unit_vector += Eigen::Vector2d(cos(pose.second), sin(pose.second));
+    }
+    mean_unit_vector = mean_unit_vector / (waypoint_poses.size());
+    return atan2(mean_unit_vector.y(), mean_unit_vector.x());
+}
+
 int main(int argc, char **argv) {
 
     google::ParseCommandLineFlags(&argc, &argv, false);
@@ -66,6 +75,11 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
+    std::shared_ptr<visualization::VisualizationManager> manager = std::make_shared<visualization::VisualizationManager>(
+            n, param_prefix);
+
+    std::vector<std::vector<pose::Pose2d>> waypoints_list;
+    std::vector<std::vector<pose::Pose2d>> trajectories_list;
     for (int i = 0; i < num_trajectories; i++) {
         std::string trajectory_file_name;
         std::string waypoints_to_nodes_file_name;
@@ -84,11 +98,13 @@ int main(int argc, char **argv) {
 
         std::vector<pose::Pose2d> trajectory_estimate = file_io::readTrajFromFile(trajectory_file_name);
         trajectory_outputs_by_trajectory_num[i] = trajectory_estimate;
+        trajectories_list.emplace_back(trajectory_estimate);
 
         std::vector<std::pair<uint64_t, uint64_t>> waypoints_and_node_ids_raw;
         file_io::readWaypointsAndNodeIdsFromFile(waypoints_to_nodes_file_name, waypoints_and_node_ids_raw);
 
         std::unordered_map<uint64_t, std::unordered_set<uint64_t>> waypoints_and_node_ids_for_traj;
+        std::vector<pose::Pose2d> waypoint_poses_for_traj;
         for (const std::pair<uint64_t, uint64_t> &waypoint_and_node_id : waypoints_and_node_ids_raw) {
             uint64_t waypoint = waypoint_and_node_id.first;
             uint64_t node_id = waypoint_and_node_id.second;
@@ -106,9 +122,12 @@ int main(int argc, char **argv) {
             if (waypoint > max_waypoint_id) {
                 max_waypoint_id = waypoint;
             }
+
+            waypoint_poses_for_traj.emplace_back(trajectory_estimate[node_id]);
         }
 
         waypoints_to_node_id_by_trajectory_num[i] = waypoints_and_node_ids_for_traj;
+        waypoints_list.emplace_back(waypoint_poses_for_traj);
     }
 
     std::unordered_map<uint64_t, std::vector<pose::Pose2d>> poses_for_waypoints;
@@ -130,6 +149,7 @@ int main(int argc, char **argv) {
     }
 
     std::unordered_map<uint64_t, double> transl_deviation;
+    std::unordered_map<uint64_t, double> mean_rotation_deviations;
     for (const auto &waypoint_and_poses : poses_for_waypoints) {
         std::vector<pose::Pose2d> poses_for_waypoint = waypoint_and_poses.second;
         if (poses_for_waypoint.size() <= 1) {
@@ -141,20 +161,34 @@ int main(int argc, char **argv) {
             transl_centroid += pose_for_waypoint.first;
         }
         transl_centroid = transl_centroid / poses_for_waypoint.size();
+        double mean_rotation = findMeanRotation(poses_for_waypoint);
 
         double average_deviation_from_centroid = 0;
+        std::vector<double> deviations_from_mean_rotation;
+        double mean_rotation_deviation = 0;
         for (const pose::Pose2d &pose_for_waypoint : poses_for_waypoint) {
             average_deviation_from_centroid += (pose_for_waypoint.first - transl_centroid).norm();
+            deviations_from_mean_rotation.emplace_back(math_util::AngleDiff(pose_for_waypoint.second, mean_rotation));
+            mean_rotation_deviation += math_util::AngleDist(pose_for_waypoint.second, mean_rotation);
         }
         average_deviation_from_centroid = average_deviation_from_centroid / (poses_for_waypoint.size() - 1);
-        if (poses_for_waypoint.size() <= 1) {
-            transl_deviation[waypoint_and_poses.first] = average_deviation_from_centroid;
+        transl_deviation[waypoint_and_poses.first] = average_deviation_from_centroid;
+        mean_rotation_deviation = mean_rotation_deviation / (poses_for_waypoint.size() - 1);
+
+        std::string rotation_string;
+        for (const double &rotation : deviations_from_mean_rotation) {
+            rotation_string += std::to_string(rotation);
+            rotation_string += ", ";
         }
+        mean_rotation_deviations[waypoint_and_poses.first] = mean_rotation_deviation;
     }
 
+    for (uint64_t i = min_waypoint_id; i <= max_waypoint_id; i++) {
+        LOG(INFO) << "Waypoint: " << i << ", Transl Deviation: " << transl_deviation[i] << ", angle deviation " << mean_rotation_deviations[i];
+    }
 
-
-// TODO should we visualize?
+    manager->publishEstimatedTrajectories(trajectories_list);
+    manager->plotWaypoints(waypoints_list);
 
     return 0;
 }

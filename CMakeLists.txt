@@ -51,9 +51,9 @@ ADD_SUBDIRECTORY(src/shared)
 INCLUDE_DIRECTORIES(src)
 
 
-ROSBUILD_ADD_EXECUTABLE(autodiff_gp
-                        src/autodiff_gp_main.cc)
-TARGET_LINK_LIBRARIES(autodiff_gp ${libs})
+#ROSBUILD_ADD_EXECUTABLE(autodiff_gp
+#                        src/autodiff_gp_main.cc)
+#TARGET_LINK_LIBRARIES(autodiff_gp ${libs})
 #
 #ROSBUILD_ADD_EXECUTABLE(momo_pose_optimization src/pose_optimization/pose_optimization_main.cc)
 #TARGET_LINK_LIBRARIES(momo_pose_optimization ${libs})
@@ -79,11 +79,11 @@ TARGET_LINK_LIBRARIES(parking_spot_plotter ${libs} stdc++fs)
 ROSBUILD_ADD_EXECUTABLE(wheel_odom_extractor src/evaluation/wheel_odom_rosbag_extraction.cc)
 TARGET_LINK_LIBRARIES(wheel_odom_extractor ${libs} stdc++fs)
 
-ROSBUILD_ADD_EXECUTABLE(kitti_to_trajectory_2d src/evaluation/kitti_to_trajectory_2d.cc)
-TARGET_LINK_LIBRARIES(kitti_to_trajectory_2d ${libs} stdc++fs)
+#ROSBUILD_ADD_EXECUTABLE(kitti_to_trajectory_2d src/evaluation/kitti_to_trajectory_2d.cc)
+#TARGET_LINK_LIBRARIES(kitti_to_trajectory_2d ${libs} stdc++fs)
 
-ROSBUILD_ADD_EXECUTABLE(lidarodom_to_trajectory_2d src/evaluation/lidar_odom_to_trajectory_2d.cc)
-TARGET_LINK_LIBRARIES(lidarodom_to_trajectory_2d ${libs} stdc++fs)
+#ROSBUILD_ADD_EXECUTABLE(lidarodom_to_trajectory_2d src/evaluation/lidar_odom_to_trajectory_2d.cc)
+#TARGET_LINK_LIBRARIES(lidarodom_to_trajectory_2d ${libs} stdc++fs)
 
 ROSBUILD_ADD_EXECUTABLE(create_distribution_from_global_obj_poses src/evaluation/create_distribution_from_global_obj_poses.cc)
 TARGET_LINK_LIBRARIES(create_distribution_from_global_obj_poses ${libs} stdc++fs)
@@ -91,26 +91,29 @@ TARGET_LINK_LIBRARIES(create_distribution_from_global_obj_poses ${libs} stdc++fs
 ROSBUILD_ADD_EXECUTABLE(distribution_gen_config_writer src/evaluation/distribution_generation_config_writer.cc)
 TARGET_LINK_LIBRARIES(distribution_gen_config_writer ${libs} stdc++fs)
 
-ROSBUILD_ADD_EXECUTABLE(local_detections_creator src/evaluation/create_local_detections_from_global_detections.cc)
-TARGET_LINK_LIBRARIES(local_detections_creator ${libs} stdc++fs)
+#ROSBUILD_ADD_EXECUTABLE(local_detections_creator src/evaluation/create_local_detections_from_global_detections.cc)
+#TARGET_LINK_LIBRARIES(local_detections_creator ${libs} stdc++fs)
 
 ROSBUILD_ADD_EXECUTABLE(convert_object_detections_from_yaml src/evaluation/convert_object_detections_from_yaml.cc)
 TARGET_LINK_LIBRARIES(convert_object_detections_from_yaml ${libs} stdc++fs yaml-cpp)
 
-ROSBUILD_ADD_EXECUTABLE(plot_results src/evaluation/plot_results.cc)
-TARGET_LINK_LIBRARIES(plot_results ${libs} stdc++fs)
+#ROSBUILD_ADD_EXECUTABLE(plot_results src/evaluation/plot_results.cc)
+#TARGET_LINK_LIBRARIES(plot_results ${libs} stdc++fs)
 
-ROSBUILD_ADD_EXECUTABLE(compute_kitti_results src/evaluation/compute_kitti_results.cc)
-TARGET_LINK_LIBRARIES(compute_kitti_results ${libs} stdc++fs)
+#ROSBUILD_ADD_EXECUTABLE(compute_kitti_results src/evaluation/compute_kitti_results.cc)
+#TARGET_LINK_LIBRARIES(compute_kitti_results ${libs} stdc++fs)
+
+ROSBUILD_ADD_EXECUTABLE(compute_waypoint_consistency_results src/evaluation/compute_waypoint_consistency_results.cc)
+TARGET_LINK_LIBRARIES(compute_waypoint_consistency_results ${libs} stdc++fs)
 
 ROSBUILD_ADD_EXECUTABLE(find_node_ids_for_objs_with_timestamps src/evaluation/find_node_ids_for_objs_and_waypoints_with_timestamps.cc)
 TARGET_LINK_LIBRARIES(find_node_ids_for_objs_with_timestamps ${libs} stdc++fs)
 
-ROSBUILD_ADD_EXECUTABLE(create_global_obj_locations_2d_from_3d_parking_spots src/evaluation/create_global_obj_locations_from_3d_parking_spots.cc)
-TARGET_LINK_LIBRARIES(create_global_obj_locations_2d_from_3d_parking_spots ${libs} stdc++fs)
+ROSBUILD_ADD_EXECUTABLE(runtime_params_config_writer src/evaluation/runtime_params_config_writer.cc)
+TARGET_LINK_LIBRARIES(runtime_params_config_writer ${libs} stdc++fs)
 
-#ROSBUILD_ADD_EXECUTABLE(uncertainty_aware_localization_test src/synthetic_problem/uncertainty_aware/uncertainty_aware_synthetic_problem_localization_test_main.cc)
-#TARGET_LINK_LIBRARIES(uncertainty_aware_localization_test ${libs})
+#ROSBUILD_ADD_EXECUTABLE(create_global_obj_locations_2d_from_3d_parking_spots src/evaluation/create_global_obj_locations_from_3d_parking_spots.cc)
+#TARGET_LINK_LIBRARIES(create_global_obj_locations_2d_from_3d_parking_spots ${libs} stdc++fs)
 
 
 #IF(TESTING)

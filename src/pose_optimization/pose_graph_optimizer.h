@@ -156,9 +156,15 @@ namespace pose_optimization {
                 }
                 if (movable_object_gpc) {
 
+                    bool logging = false;
+                    std::string logging_prefix = "";
+//                    if (factor.second.observed_at_node_ == 125) {
+//                        logging = true;
+//                        logging_prefix = std::to_string(factor.second.observed_at_node_) + " ";
+//                    }
                     ceres::CostFunction *cost_function =
                             pose_graph.createMovableObjectCostFunctor(movable_object_gpc, factor.second,
-                                                                      cost_function_params);
+                                                                      cost_function_params, logging, logging_prefix);
 
                     std::pair<double *, double *> raw_pointers_for_node_data = pose_graph.getPointersToUnderlyingData(
                             pose_vars_);
@@ -242,7 +248,14 @@ namespace pose_optimization {
                     continue;
                 }
 
-                ceres::CostFunction *cost_function = pose_graph.createGaussianBinaryCostFunctor(factor.second);
+                bool logging = false;
+                std::string logging_prefix = "";
+//                if ((factor.second.from_node_ == 50) || (factor.second.to_node_ == 50) || (factor.second.from_node_ == 51) || (factor.second.to_node_ == 51)) {
+//                    logging = true;
+//                    logging_prefix = std::to_string(factor.second.from_node_) + " " + std::to_string(factor.second.to_node_) + " ";
+//                    continue;
+//                }
+                ceres::CostFunction *cost_function = pose_graph.createGaussianBinaryCostFunctor(factor.second, logging, logging_prefix);
 
                 std::pair<double *, double *> raw_pointers_for_from_node_data = pose_graph.getPointersToUnderlyingData(
                         from_pose_vars_);
@@ -300,6 +313,7 @@ namespace pose_optimization {
 
 //            if (min_node_id == 0) {
 //            if (nodes_with_obs_.find(min_node_id) != nodes_with_obs_.end()) {
+                LOG(INFO) << "Setting parameter block " << min_node_id << " constant";
                 problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.first);
                 problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.second);
 //            }
@@ -314,7 +328,8 @@ namespace pose_optimization {
             ceres::Solver::Options options;
 //            options.max_num_iterations = 100000;
 
-            options.max_num_iterations = 1000;
+//            options.max_num_iterations = 1000;
+            options.max_num_iterations = 150;
             options.minimizer_progress_to_stdout = true;
 //            options.function_tolerance = 1e-10;
 //            options.function_tolerance = 1e-20;

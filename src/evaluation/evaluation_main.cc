@@ -13,6 +13,7 @@
 #include <pose_optimization/offline/ceres_visualization_callback_2d.h>
 
 #include <file_io/trajectory_2d_io.h>
+#include <file_io/runtime_params_config_io.h>
 
 #include <unordered_map>
 #include <file_io/object_positions_by_pose_io.h>
@@ -29,49 +30,76 @@ const std::string kOdomTrajectoryEstimatesFileParamName = "odom_traj_est_file";
 
 const std::string kObjDetectionsCurrTrajectoryFileParamName = "obj_det_curr_traj_file";
 
-const std::string kTrajectoryOutputFileName = "traj_est_output_file";
+const std::string kTrajectoryOutputFilePrefixParamName = "traj_est_output_file_prefix";
 
 const std::string kGtTrajectoryFile = "gt_trajectory_file";
+
+const std::string kRuntimeParamsConfigParamName = "runtime_params_config_file";
 
 //const double kMinOdomVar = pow(std::numeric_limits<double>::min(), 0.0003);
 const double kMinOdomVar = pow(std::numeric_limits<double>::min(), 0.3);
 
-pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams() {
+pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams(const file_io::RuntimeParamsConfig &config) {
     pose_optimization::PoseOptimizationParameters pose_opt_params;
     pose_optimization::CostFunctionParameters cost_function_params;
+
+    cost_function_params.full_optimization_interval_ = config.full_optimization_interval_;
+    cost_function_params.num_nodes_in_optimization_window_ = config.num_nodes_in_optimization_window_;
+    cost_function_params.max_gpc_samples_ = config.max_gpc_samples_;
+
+
+    cost_function_params.mean_position_kernel_len_ = config.mean_position_kernel_len_;
+    cost_function_params.mean_orientation_kernel_len_ = config.mean_orientation_kernel_len_;
+
+    cost_function_params.mean_position_kernel_var_ = config.mean_position_kernel_var_;
+    cost_function_params.mean_orientation_kernel_var_ = config.mean_orientation_kernel_var_;
+
+    cost_function_params.default_obj_probability_input_variance_for_mean_ = config.default_obj_probability_input_variance_for_mean_;
+
+    cost_function_params.var_position_kernel_len_ = config.var_position_kernel_len_;
+    cost_function_params.var_orientation_kernel_len_ = config.var_orientation_kernel_len_;
+
+    cost_function_params.var_position_kernel_var_ = config.var_position_kernel_var_;
+    cost_function_params.var_orientation_kernel_var_ = config.var_orientation_kernel_var_;
+
+    cost_function_params.default_obj_probability_input_variance_for_var_ = config.default_obj_probability_input_variance_for_var_;
+
     // TODO configure
 
-//    cost_function_params.mean_position_kernel_len_ = 0.8;
-    cost_function_params.mean_orientation_kernel_len_ = 0.3;
-    cost_function_params.mean_orientation_kernel_len_ = 0.1; // TODO fix
-//    cost_function_params.mean_orientation_kernel_len_ = 10000;
-//    cost_function_params.mean_position_kernel_var_ = 30;
-//    cost_function_params.mean_orientation_kernel_var_ = 30;
+////    cost_function_params.mean_position_kernel_len_ = 0.8;
+//    cost_function_params.mean_position_kernel_len_ = 0.3;
+//    cost_function_params.mean_orientation_kernel_len_ = 0.1; // TODO fix
+////    cost_function_params.mean_orientation_kernel_len_ = 10000;
+////    cost_function_params.mean_position_kernel_var_ = 30;
+////    cost_function_params.mean_orientation_kernel_var_ = 30;
+//
+////    cost_function_params.mean_position_kernel_var_ = 9;
+//
+//    cost_function_params.mean_position_kernel_var_ = 0.045;
+////    cost_function_params.mean_orientation_kernel_var_ = 1;
+//    cost_function_params.mean_orientation_kernel_var_ = 1000;
+//
+//
+//    cost_function_params.default_obj_probability_input_variance_for_mean_ = 10;
+//
+////    cost_function_params.var_position_kernel_len_ = 1.8;
+////    cost_function_params.var_position_kernel_len_ = 25;
+//    cost_function_params.var_position_kernel_len_ = 7.5;
+//    cost_function_params.var_orientation_kernel_len_ = 20;
+//
+//    cost_function_params.var_position_kernel_var_ = 30;
+//    cost_function_params.var_orientation_kernel_var_ = 0.3;
+//
+//    cost_function_params.default_obj_probability_input_variance_for_var_ = 10;
+//
+//    cost_function_params.max_gpc_samples_ = 500;
+//
+////    cost_function_params.num_nodes_in_optimization_window_ = 20;
+//    cost_function_params.num_nodes_in_optimization_window_ = 30;
+//    cost_function_params.full_optimization_interval_ = 80;
 
-//    cost_function_params.mean_position_kernel_var_ = 9;
-
-    cost_function_params.mean_position_kernel_var_ = 0.045;
-//    cost_function_params.mean_orientation_kernel_var_ = 1;
-    cost_function_params.mean_orientation_kernel_var_ = 1000;
 
 
-    cost_function_params.default_obj_probability_input_variance_for_mean_ = 10;
-
-//    cost_function_params.var_position_kernel_len_ = 1.8;
-//    cost_function_params.var_position_kernel_len_ = 25;
-    cost_function_params.var_position_kernel_len_ = 7.5;
-    cost_function_params.var_orientation_kernel_len_ = 20;
-
-    cost_function_params.var_position_kernel_var_ = 30;
-    cost_function_params.var_orientation_kernel_var_ = 0.3;
-
-    cost_function_params.default_obj_probability_input_variance_for_var_ = 10;
-
-    cost_function_params.max_gpc_samples_ = 500;
-
-//    cost_function_params.num_nodes_in_optimization_window_ = 20;
-    cost_function_params.num_nodes_in_optimization_window_ = 30;
-    cost_function_params.full_optimization_interval_ = 80;
     pose_opt_params.cost_function_params_ = cost_function_params;
     return pose_opt_params;
 
@@ -114,42 +142,42 @@ void runOptimizationVisualization(
                 {
 //                    if (!ground_truth_trajectory.empty()) {
 
-                        std::vector<pose::Pose2d> poses_global_frame;
-                        for (size_t node = 0; node < unoptimized_trajectory.size(); node++) {
-                            pose::Pose2d robot_pose = unoptimized_trajectory[node];
-                            for (const pose::Pose2d &obj_pose : noisy_obj_observations[node]) {
-                                poses_global_frame.emplace_back(pose::combinePoses(robot_pose, obj_pose));
-                            }
+                    std::vector<pose::Pose2d> poses_global_frame;
+                    for (size_t node = 0; node < unoptimized_trajectory.size(); node++) {
+                        pose::Pose2d robot_pose = unoptimized_trajectory[node];
+                        for (const pose::Pose2d &obj_pose : noisy_obj_observations[node]) {
+                            poses_global_frame.emplace_back(pose::combinePoses(robot_pose, obj_pose));
                         }
+                    }
 
-                        if (FLAGS_run_gpc_viz) {
+                    if (FLAGS_run_gpc_viz) {
 
 //                        std::pair<Eigen::Vector2d, Eigen::Vector2d> min_max_points_to_display =
 //                                visualization::VisualizationManager::getMinMaxCornersForDistributionVisualization(
 //                                        poses_global_frame);
-                            std::function<std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
-                                    const Eigen::Vector2d &)> gpc_creator =
-                                    std::bind(createGpc, pose_graph, "car",
+                        std::function<std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
+                                const Eigen::Vector2d &)> gpc_creator =
+                                std::bind(createGpc, pose_graph, "car",
 //                                              5000,
-                                            500,
+                                          500,
 //                              7.5,
-                                              8.5,
-                                              std::placeholders::_1);
-                            vis_manager->displayMaxGpRegressorOutput(
+                                          8.5,
+                                          std::placeholders::_1);
+                        vis_manager->displayMaxGpRegressorOutput(
 //                                pose_graph->getMovableObjGpc("car", 0.5),
-                                    gpc_creator,
+                                gpc_creator,
 //                                                                 0.3, // TODO revert
 //                                                                 0.65,
 //                                                                0.5,
-                                    .5,
-                                    -55, 30, -5, 30
+                                .5,
+                                -55, 30, -5, 30
 //                                                                 min_max_points_to_display.first.x(),
 //                                                                 min_max_points_to_display.second.x(),
 //                                                                 min_max_points_to_display.first.y(),
 //                                                                 min_max_points_to_display.second.y()
-                            );
+                        );
 //                    }
-                        }
+                    }
                 }
 
 
@@ -314,7 +342,8 @@ getTrajectoryEstimate(const std::vector<pose::Pose2d> &odom_est_trajectory,
                       const std::shared_ptr<visualization::VisualizationManager> &manager,
                       const std::vector<pose_graph::GaussianBinaryFactor2d> &odom_factors,
                       const std::vector<pose_graph::MapObjectObservation2d> &samples,
-                      const std::vector<pose_graph::MovableObservationFactor2d> &movable_object_observations) {
+                      const std::vector<pose_graph::MovableObservationFactor2d> &movable_object_observations,
+                      const file_io::RuntimeParamsConfig &runtime_params_config) {
 
     offline_optimization::OfflinePoseOptimizer<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3> offline_optimizer;
 
@@ -374,7 +403,7 @@ getTrajectoryEstimate(const std::vector<pose::Pose2d> &odom_est_trajectory,
 
     LOG(INFO) << "Running optimization";
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> optimization_results = offline_optimizer.runOfflineOptimization(
-            offline_problem_data, setupPoseOptimizationParams(),
+            offline_problem_data, setupPoseOptimizationParams(runtime_params_config),
             pose_graph::utils::createFully2dPoseGraphFromParams,
             callback_creator,
             visualization_callback);
@@ -405,54 +434,76 @@ int main(int argc, char **argv) {
     // Known config params
     std::string car_semantic_class = "car";
 
+    std::string runtime_params_config_file_name;
+
+    if (!n.getParam(param_prefix + kRuntimeParamsConfigParamName, runtime_params_config_file_name)) {
+        LOG(INFO) << "No parameter value set for parameter with name "
+                  << param_prefix + kRuntimeParamsConfigParamName;
+        exit(1);
+    }
+
+    file_io::RuntimeParamsConfig runtime_params_config;
+    file_io::readRuntimeParamsConfigFromFile(runtime_params_config_file_name, runtime_params_config);
 
     // Configuration params -- need to play around with these
-    double detection_variance_transl_x = 0.01;
-    double detection_variance_transl_y = 0.01;
-    double detection_variance_theta = 0.02;
-//    double odom_std_dev_transl_x = 0.1;
-//    double odom_std_dev_transl_y = 0.1;
-//    double odom_std_dev_theta = 0.15;
-//        double odom_std_dev_transl_x = 1e-3;
-//    double odom_std_dev_transl_y = 1e-3;
-//    double odom_std_dev_theta = 1e-5;
 
-//    double odom_k1 = 0.75;
-//    double odom_k2 = 1;
-//    double odom_k3 = 0.75;
-//    double odom_k4 = 1;
-//    double odom_k5 = 1;
-//    double odom_k6 = 1;
+    double detection_variance_transl_x = runtime_params_config.detection_variance_transl_x_;
+    double detection_variance_transl_y = runtime_params_config.detection_variance_transl_y_;
+    double detection_variance_theta = runtime_params_config.detection_variance_theta_;
 
-    double odom_k1 = 0.75;
-    double odom_k2 = 10;
-    double odom_k3 = 0.75;
-    double odom_k4 = 10;
-    double odom_k5 = 10;
-    double odom_k6 = 10;
+    double odom_k1 = runtime_params_config.odom_k1_;
+    double odom_k2 = runtime_params_config.odom_k2_;
+    double odom_k3 = runtime_params_config.odom_k3_;
+    double odom_k4 = runtime_params_config.odom_k4_;
+    double odom_k5 = runtime_params_config.odom_k5_;
+    double odom_k6 = runtime_params_config.odom_k6_;
 
-//    double odom_k1 = 100;
-//    double odom_k2 = 100;
-//    double odom_k3 = 100;
-//    double odom_k4 = 100;
-//    double odom_k5 = 100;
-//    double odom_k6 = 100;
+//    double detection_variance_transl_x = 0.01;
+//    double detection_variance_transl_y = 0.01;
+//    double detection_variance_theta = 0.02;
+////    double odom_std_dev_transl_x = 0.1;
+////    double odom_std_dev_transl_y = 0.1;
+////    double odom_std_dev_theta = 0.15;
+////        double odom_std_dev_transl_x = 1e-3;
+////    double odom_std_dev_transl_y = 1e-3;
+////    double odom_std_dev_theta = 1e-5;
 //
-//    double odom_k1 = 0.1;
-//    double odom_k2 = 0.001;
-//    double odom_k3 = 0.01;
-//    double odom_k4 = 0.0001;
-//    double odom_k5 = 0.001;
-//    double odom_k6 = 0.01;
-//    double odom_std_dev_transl_x = 1;
-//    double odom_std_dev_transl_y = 1;
-//    double odom_std_dev_theta = 1;
+////    double odom_k1 = 0.75;
+////    double odom_k2 = 1;
+////    double odom_k3 = 0.75;
+////    double odom_k4 = 1;
+////    double odom_k5 = 1;
+////    double odom_k6 = 1;
+//
+//    double odom_k1 = 0.75;
+//    double odom_k2 = 2;
+//    double odom_k3 = 0.75;
+//    double odom_k4 = 2;
+//    double odom_k5 = 1;
+//    double odom_k6 = 2;
+//
+////    double odom_k1 = 100;
+////    double odom_k2 = 100;
+////    double odom_k3 = 100;
+////    double odom_k4 = 100;
+////    double odom_k5 = 100;
+////    double odom_k6 = 100;
+////
+////    double odom_k1 = 0.1;
+////    double odom_k2 = 0.001;
+////    double odom_k3 = 0.01;
+////    double odom_k4 = 0.0001;
+////    double odom_k5 = 0.001;
+////    double odom_k6 = 0.01;
+////    double odom_std_dev_transl_x = 1;
+////    double odom_std_dev_transl_y = 1;
+////    double odom_std_dev_theta = 1;
     int pose_sample_ratio = 1;
 
     std::vector<std::string> past_sample_files;
     std::string odom_estimates_file_name;
     std::string object_detections_file_name;
-    std::string traj_est_output_file;
+    std::string traj_est_output_file_prefix;
     std::string gt_traj_file;
 
     if (!n.getParam(param_prefix + kPastSamplesFilesParamName, past_sample_files)) {
@@ -472,10 +523,17 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    if (!n.getParam(param_prefix + kTrajectoryOutputFileName, traj_est_output_file)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kTrajectoryOutputFileName;
+    if (!n.getParam(param_prefix + kTrajectoryOutputFilePrefixParamName, traj_est_output_file_prefix)) {
+        LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kTrajectoryOutputFilePrefixParamName;
         exit(1);
     }
+
+    std::string config_file_base_name = runtime_params_config_file_name.substr(
+            runtime_params_config_file_name.find_last_of("/\\") + 1);
+    size_t lastindex = config_file_base_name.find_last_of(".");
+    config_file_base_name = config_file_base_name.substr(0, lastindex);
+    std::string traj_est_output_file = traj_est_output_file_prefix + config_file_base_name + ".csv";
+
     std::shared_ptr<visualization::VisualizationManager> manager = std::make_shared<visualization::VisualizationManager>(
             n, param_prefix);
 
@@ -523,7 +581,7 @@ int main(int argc, char **argv) {
 
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> optimization_results = getTrajectoryEstimate(
             initial_trajectory_estimates, gt_trajectory, manager, odom_factors, samples,
-            movable_observation_factors);
+            movable_observation_factors, runtime_params_config);
 
     std::vector<file_io::TrajectoryNode2d> trajectory_nodes;
     for (pose_graph::NodeId node_id = 0; node_id < optimization_results.size(); node_id++) {
