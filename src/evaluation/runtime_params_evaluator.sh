@@ -1,6 +1,6 @@
 #!/bin/bash
 
-base_dir=/home/aaadkins/rosbags/momo_eval/lot53_bags/
+base_dir=$HOME/rosbags/momo_eval/lot53_bags/
 output_dir=${base_dir}output/
 runtime_cfgs_dir=${base_dir}runtime_configs/
 
