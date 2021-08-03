@@ -5,6 +5,7 @@
 #include <ros/ros.h>
 
 #include <file_io/trajectory_2d_io.h>
+#include <file_io/waypoint_consistency_results_io.h>
 #include <file_io/waypoints_and_node_id.h>
 #include <visualization/ros_visualization.h>
 
@@ -19,6 +20,8 @@ const std::string kTrajectorySpecificPrefix = "trajectory_";
 const std::string kWaypointToNodeIdParamNameSuffix = "waypoint_to_node_id_file";
 
 const std::string kTrajectoryOutputSuffix = "trajectory_output_file";
+
+const std::string kResultsFileParamName = "results_file";
 
 std::string constructParamName(const std::string &param_prefix, const int &trajectory_num,
                                const std::string &param_suffix) {
@@ -62,11 +65,18 @@ int main(int argc, char **argv) {
     std::unordered_map<int, std::unordered_map<uint64_t, std::unordered_set<uint64_t>>> waypoints_to_node_id_by_trajectory_num;
     int num_trajectories;
 
+    std::string results_file_name;
+
     uint64_t min_waypoint_id = std::numeric_limits<uint64_t>::max();
     uint64_t max_waypoint_id = 1;
 
     if (!n.getParam(param_prefix + kNumTrajectoriesParamName, num_trajectories)) {
         LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kNumTrajectoriesParamName;
+        exit(1);
+    }
+
+    if (!n.getParam(param_prefix + kResultsFileParamName, results_file_name)) {
+        LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kResultsFileParamName;
         exit(1);
     }
 
@@ -183,9 +193,17 @@ int main(int argc, char **argv) {
         mean_rotation_deviations[waypoint_and_poses.first] = mean_rotation_deviation;
     }
 
+    std::vector<file_io::WaypointConsistencyResult> consistency_results;
     for (uint64_t i = min_waypoint_id; i <= max_waypoint_id; i++) {
         LOG(INFO) << "Waypoint: " << i << ", Transl Deviation: " << transl_deviation[i] << ", angle deviation " << mean_rotation_deviations[i];
+        file_io::WaypointConsistencyResult consistency_result;
+        consistency_result.waypoint = i;
+        consistency_result.transl_deviation_ = transl_deviation[i];
+        consistency_result.rot_deviation_ = mean_rotation_deviations[i];
+        consistency_results.push_back(consistency_result);
     }
+
+    file_io::writeWaypointConsistencyResultsToFile(results_file_name, consistency_results);
 
     manager->publishEstimatedTrajectories(trajectories_list);
     manager->plotWaypoints(waypoints_list);
