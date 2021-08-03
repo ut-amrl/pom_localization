@@ -5,6 +5,7 @@ import csv
 import sys
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 kNumTrajectoriesParamName = "waypoint_consistency_num_trajectories"
 kTrajectorySpecificPrefix = "trajectory_"
@@ -144,9 +145,72 @@ def plotAngleOffsetForWaypoint(waypoint, angleOffsets):
     plt.title("Waypoint " + str(waypoint))
     plt.show()
 
+def plotCDF(dataset, title, bins=40):
+    # getting data of the histogram
+    count, bins_count = np.histogram(dataset, bins=bins)
+
+    # finding the PDF of the histogram using count values
+
+    pdf = count / sum(count)
+
+
+    # using numpy np.cumsum to calculate the CDF
+    # We can also find using the PDF values by looping and adding
+    cdf = np.cumsum(pdf)
+    pdf = np.insert(pdf, 0, 0)
+    cdf = np.insert(cdf, 0, 0)
+
+    # plotting PDF and CDF
+    # plt.plot(bins_count, pdf, color="red", label="PDF")
+    plt.plot(bins_count, cdf, label="CDF")
+    # plt.legend()
+    plt.title(title)
+
+    plt.show()
+
+def plotWaypointDistanceConsistencyCDF(poses_by_waypoint):
+    # For each waypoint, get centroid and find distance of each pose for the waypoint from the centroid
+    deviations_from_centroid = []
+    for waypoint, poses_for_curr_waypoint in poses_by_waypoint.items():
+        if (len(poses_for_curr_waypoint) <= 1):
+            continue
+
+        transl_centroid = [0, 0]
+        for pose_for_waypoint in poses_for_curr_waypoint:
+            transl_centroid[0] = transl_centroid[0] + pose_for_waypoint[0][0]
+            transl_centroid[1] = transl_centroid[1] + pose_for_waypoint[0][1]
+
+        transl_centroid[0] = transl_centroid[0] / len(poses_for_curr_waypoint)
+        transl_centroid[1] = transl_centroid[1] / len(poses_for_curr_waypoint)
+
+        for pose_for_waypoint in poses_for_curr_waypoint:
+            deviations_from_centroid.append(computeNorm(pose_for_waypoint[0], transl_centroid))
+
+    # Create CDF for centroid distance series
+    plotCDF(deviations_from_centroid, "CDF of Position Deviation from Waypoint Estimate Centroid")
+
+
+def plotWaypointOrientationConsistencyCDF(poses_by_waypoint):
+    angleDeviations = []
+
+    # For each waypoint, get mean orientation and deviation from mean orientation for each assocciated pose
+    for waypoint, poses_for_curr_waypoint in poses_by_waypoint.items():
+        if (len(poses_for_curr_waypoint) <= 1):
+            continue
+
+        mean_rotation = findMeanRotation(poses_for_curr_waypoint)
+
+        for pose_for_waypoint in poses_for_curr_waypoint:
+            print(pose_for_waypoint)
+            angleDeviation = angleDist(pose_for_waypoint[1], mean_rotation)
+            angleDeviations.append(angleDeviation)
+    plotCDF(angleDeviations, "CDF of Orientation Estimate Deviation from Mean Waypoint Orientation")
+
+
 if __name__ == "__main__":
 
-    param_prefix = parseArgs().param_prefix
+    cmdLineArgs = parseArgs()
+    param_prefix = cmdLineArgs.param_prefix
     # param_prefix = ""
     node_prefix = param_prefix
     if (len(param_prefix) != 0):
@@ -277,8 +341,11 @@ if __name__ == "__main__":
         angle_offsets_for_waypoints[waypoint] = angle_offsets_for_waypoint
         position_offsets_for_waypoints[waypoint] = position_offsets_for_waypoint
 
-    plotPosOffsetsForWaypoints(range(min_waypoint_id, max_waypoint_id + 1), position_offsets_for_waypoints, max_deviation)
-    plotAngleOffsetsForWaypoints(range(min_waypoint_id, max_waypoint_id + 1), angle_offsets_for_waypoints)
+    # plotPosOffsetsForWaypoints(range(min_waypoint_id, max_waypoint_id + 1), position_offsets_for_waypoints, max_deviation)
+    # plotAngleOffsetsForWaypoints(range(min_waypoint_id, max_waypoint_id + 1), angle_offsets_for_waypoints)
+
+    plotWaypointDistanceConsistencyCDF(poses_for_waypoints)
+    plotWaypointOrientationConsistencyCDF(poses_for_waypoints)
 
     for i in range(min_waypoint_id, max_waypoint_id +1):
         print("Waypoint: " + str(i) + ", Transl Deviation: " + str(transl_deviation[i]) + ", angle deviation " + str(mean_rotation_deviations[i]))
