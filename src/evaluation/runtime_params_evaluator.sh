@@ -17,19 +17,19 @@ third_traj_eval_namespace=evaluation_third_traj_${runtime_cfg_base_name}
 consistency_evaluator_namespace=consistency_${runtime_cfg_base_name}
 
 # Set ROS params
-rosparam set /${first_traj_eval_namespace}/obj_det_curr_traj_file "${base_dir}object_detections_by_node_${first_traj_date}.csv"
+rosparam set /${first_traj_eval_namespace}/obj_det_curr_traj_file "${base_dir}obj_detections_by_node_${first_traj_date}.csv"
 rosparam set /${first_traj_eval_namespace}/odom_traj_est_file "${base_dir}odom_est_${first_traj_date}.csv"
 rosparam set /${first_traj_eval_namespace}/past_samples_files "['${base_dir}samples_distribution_config_narrower_yet_5_traj.txt']"
 rosparam set /${first_traj_eval_namespace}/runtime_params_config_file "${runtime_cfgs_dir}${runtime_cfg_base_name}.csv"
 rosparam set /${first_traj_eval_namespace}/traj_est_output_file_prefix "${output_dir}momo_first_traj_est_"
 
-rosparam set /${second_traj_eval_namespace}/obj_det_curr_traj_file "${base_dir}object_detections_by_node_${second_traj_date}.csv"
+rosparam set /${second_traj_eval_namespace}/obj_det_curr_traj_file "${base_dir}obj_detections_by_node_${second_traj_date}.csv"
 rosparam set /${second_traj_eval_namespace}/odom_traj_est_file "${base_dir}odom_est_${second_traj_date}.csv"
 rosparam set /${second_traj_eval_namespace}/past_samples_files "['${base_dir}samples_distribution_config_narrower_yet_5_traj.txt']"
 rosparam set /${second_traj_eval_namespace}/runtime_params_config_file "${runtime_cfgs_dir}${runtime_cfg_base_name}.csv"
 rosparam set /${second_traj_eval_namespace}/traj_est_output_file_prefix "${output_dir}momo_second_traj_est_"
 
-rosparam set /${third_traj_eval_namespace}/obj_det_curr_traj_file "${base_dir}object_detections_by_node_${third_traj_date}.csv"
+rosparam set /${third_traj_eval_namespace}/obj_det_curr_traj_file "${base_dir}obj_detections_by_node_${third_traj_date}.csv"
 rosparam set /${third_traj_eval_namespace}/odom_traj_est_file "${base_dir}odom_est_${third_traj_date}.csv"
 rosparam set /${third_traj_eval_namespace}/past_samples_files "['${base_dir}samples_distribution_config_narrower_yet_5_traj.txt']"
 rosparam set /${third_traj_eval_namespace}/runtime_params_config_file "${runtime_cfgs_dir}${runtime_cfg_base_name}.csv"
