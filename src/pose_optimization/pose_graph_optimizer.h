@@ -156,15 +156,9 @@ namespace pose_optimization {
                 }
                 if (movable_object_gpc) {
 
-                    bool logging = false;
-                    std::string logging_prefix = "";
-//                    if (factor.second.observed_at_node_ == 125) {
-//                        logging = true;
-//                        logging_prefix = std::to_string(factor.second.observed_at_node_) + " ";
-//                    }
                     ceres::CostFunction *cost_function =
                             pose_graph.createMovableObjectCostFunctor(movable_object_gpc, factor.second,
-                                                                      cost_function_params, logging, logging_prefix);
+                                                                      cost_function_params);
 
                     std::pair<double *, double *> raw_pointers_for_node_data = pose_graph.getPointersToUnderlyingData(
                             pose_vars_);
@@ -248,14 +242,7 @@ namespace pose_optimization {
                     continue;
                 }
 
-                bool logging = false;
-                std::string logging_prefix = "";
-//                if ((factor.second.from_node_ == 50) || (factor.second.to_node_ == 50) || (factor.second.from_node_ == 51) || (factor.second.to_node_ == 51)) {
-//                    logging = true;
-//                    logging_prefix = std::to_string(factor.second.from_node_) + " " + std::to_string(factor.second.to_node_) + " ";
-//                    continue;
-//                }
-                ceres::CostFunction *cost_function = pose_graph.createGaussianBinaryCostFunctor(factor.second, logging, logging_prefix);
+                ceres::CostFunction *cost_function = pose_graph.createGaussianBinaryCostFunctor(factor.second);
 
                 std::pair<double *, double *> raw_pointers_for_from_node_data = pose_graph.getPointersToUnderlyingData(
                         from_pose_vars_);
