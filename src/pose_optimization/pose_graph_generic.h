@@ -329,16 +329,16 @@ namespace pose_graph {
 
             std::shared_ptr<util_kdtree::KDTree<double, MovObjDistributionTranslationDim>> kd_tree = kd_trees_by_class_[class_label];
             std::vector<util_kdtree::KDNodeValue<double, MovObjDistributionTranslationDim>> kd_neighbors;
-            LOG(INFO) << "Finding KDE points";
+//            LOG(INFO) << "Finding KDE points";
             kd_tree->FindNeighborPoints(search_point, radius, &kd_neighbors);
-            LOG(INFO) << "Done finding KDE points, count " << kd_neighbors.size();
+//            LOG(INFO) << "Done finding KDE points, count " << kd_neighbors.size();
             if (kd_neighbors.empty()) {
                 LOG(INFO) << "KD tree empty at search point " << search_point;
                 exit(1);
             }
 
             double subsampling_ratio = std::min(1.0, ((double) max_samples_in_gpc) / kd_neighbors.size());
-            LOG(INFO) << "Subsampling ratio " << subsampling_ratio;
+//            LOG(INFO) << "Subsampling ratio " << subsampling_ratio;
             std::vector<MapObjectObservationType> observations_vec;
             for (const util_kdtree::KDNodeValue<double, MovObjDistributionTranslationDim> &neighbor : kd_neighbors) {
                 if (subsampling_ratio == 1.0 || rand_gen.UniformRandom(0, 1) < subsampling_ratio) {
@@ -353,7 +353,7 @@ namespace pose_graph {
                 }
             }
 
-            LOG(INFO) << "Constructing GPC";
+//            LOG(INFO) << "Constructing GPC";
             return getMovableObjGpcForObs(class_label, observations_vec, subsampling_ratio);
         }
 
@@ -413,10 +413,12 @@ namespace pose_graph {
         virtual ceres::CostFunction *createMovableObjectCostFunctor(
                 const std::shared_ptr<GpcType> &movable_object_gpc,
                 const MovableObservationFactorType &factor,
-                const pose_optimization::CostFunctionParameters &cost_function_params) const = 0;
+                const pose_optimization::CostFunctionParameters &cost_function_params, const bool &logging,
+                const std::string &logging_prefix) const = 0;
 
         virtual ceres::CostFunction *createGaussianBinaryCostFunctor(
-                const GaussianBinaryFactorType &factor) const = 0;
+                const GaussianBinaryFactorType &factor, const bool &logging = false,
+                const std::string &logging_prefix = "") const = 0;
 
         virtual std::pair<double*, double*> getPointersToUnderlyingData(
                 const std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,

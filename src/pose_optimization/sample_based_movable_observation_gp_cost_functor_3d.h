@@ -31,7 +31,9 @@ namespace pose_optimization {
 
         SampleBasedMovableObservationCostFunctor3D(
                 const std::shared_ptr<ProbabilityEvaluator> probability_evaluator,
-                const std::vector<std::pair<Eigen::Vector3d, Eigen::Quaterniond>> &observation_samples) :probability_evaluator_(probability_evaluator) {
+                const std::vector<std::pair<Eigen::Vector3d, Eigen::Quaterniond>> &observation_samples,
+                const bool &logging = false,
+                const std::string &logging_prefix = "") :probability_evaluator_(probability_evaluator), logging_(logging) {
             num_samples_ = observation_samples.size();
             CHECK_GT(num_samples_, 0);
             for (const std::pair<Eigen::Vector3d, Eigen::Quaterniond> &observation_sample : observation_samples) {
@@ -164,6 +166,8 @@ namespace pose_optimization {
         std::vector<Eigen::Affine3f> observation_transforms_;
 
         int num_samples_;
+
+        bool logging_;
     };
 } // end pose_optimization
 

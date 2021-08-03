@@ -118,7 +118,9 @@ namespace pose_graph {
         ceres::CostFunction *createMovableObjectCostFunctor(
                 const std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> &movable_object_gpc,
                 const MovableObservationFactor<3, Eigen::Quaterniond, 6> &factor,
-                const pose_optimization::CostFunctionParameters &cost_function_params) const override {
+                const pose_optimization::CostFunctionParameters &cost_function_params,
+                const bool &logging = false,
+                const std::string &logging_prefix = "") const override {
             std::vector<std::pair<Eigen::Vector3d, Eigen::Quaterniond>> observation_samples;
 //            util_random::Random random_generator;
 //            Eigen::Matrix<double, 6, 6> obs_cov = factor.observation_.observation_covariance_;
@@ -135,11 +137,15 @@ namespace pose_graph {
             return new ceres::AutoDiffCostFunction<pose_optimization::SampleBasedMovableObservationCostFunctor3D<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>, 1, 3, 4>(
                     new pose_optimization::SampleBasedMovableObservationCostFunctor3D<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
                             movable_object_gpc,
-                            observation_samples));
+                            observation_samples,
+                            logging,
+                            logging_prefix));
         }
 
         ceres::CostFunction *createGaussianBinaryCostFunctor(
-                const GaussianBinaryFactor<3, Eigen::Quaterniond, 6> &factor) const override {
+                const GaussianBinaryFactor<3, Eigen::Quaterniond, 6> &factor,
+                const bool &logging = false,
+                const std::string &logging_prefix = "") const override {
             return new ceres::AutoDiffCostFunction<pose_optimization::Odometry3dCostFunctor, 6, 3, 4, 3, 4>(
                     new pose_optimization::Odometry3dCostFunctor(
                             factor.translation_change_, factor.orientation_change_, factor.sqrt_information_));
@@ -194,7 +200,9 @@ namespace pose_graph {
         ceres::CostFunction *createMovableObjectCostFunctor(
                 const std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> &movable_object_gpc,
                 const MovableObservationFactor<2, double, 3> &factor,
-                const pose_optimization::CostFunctionParameters &cost_function_params) const override {
+                const pose_optimization::CostFunctionParameters &cost_function_params,
+                const bool &logging = false,
+                const std::string &logging_prefix = "") const override {
             std::vector<std::pair<Eigen::Vector2d, double>> observation_samples;
             util_random::Random rand_gen(std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now().time_since_epoch()).count());
@@ -216,14 +224,16 @@ namespace pose_graph {
                             movable_object_gpc,
                             observation_samples,
                             jet_cost_functor_timer_,
-                            double_cost_functor_timer_));
+                            double_cost_functor_timer_, logging, logging_prefix));
         }
 
         ceres::CostFunction *createGaussianBinaryCostFunctor(
-                const GaussianBinaryFactorType &factor) const override {
+                const GaussianBinaryFactorType &factor, const bool &logging = false,
+                const std::string &logging_prefix = "") const override {
             return new ceres::AutoDiffCostFunction<pose_optimization::Odometry2dCostFunctor, 3, 2, 1, 2, 1>(
                     new pose_optimization::Odometry2dCostFunctor(
-                            factor.translation_change_, factor.orientation_change_, factor.sqrt_information_));
+                            factor.translation_change_, factor.orientation_change_, factor.sqrt_information_, logging,
+                            logging_prefix));
         };
 
         std::pair<double *, double *> getPointersToUnderlyingData(

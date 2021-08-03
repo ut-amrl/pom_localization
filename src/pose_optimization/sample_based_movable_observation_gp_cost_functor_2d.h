@@ -48,8 +48,11 @@ namespace pose_optimization {
                 const std::shared_ptr<ProbabilityEvaluator> probability_evaluator,
                 const std::vector<std::pair<Eigen::Vector2d, double>> &observation_samples,
                 std::shared_ptr<CumulativeFunctionTimer> jet_cost_functor_timer,
-                std::shared_ptr<CumulativeFunctionTimer> double_cost_functor_timer) : probability_evaluator_(probability_evaluator),
-                jet_cost_functor_timer_(jet_cost_functor_timer), double_cost_functor_timer_(double_cost_functor_timer) {
+                std::shared_ptr<CumulativeFunctionTimer> double_cost_functor_timer, const bool &logging = false,
+                const std::string &logging_prefix = "") : probability_evaluator_(probability_evaluator),
+                jet_cost_functor_timer_(jet_cost_functor_timer), double_cost_functor_timer_(double_cost_functor_timer),
+                logging_(logging),
+                logging_prefix_(logging_prefix) {
             num_samples_ = observation_samples.size();
             CHECK_GT(num_samples_, 0);
             for (const std::pair<Eigen::Vector2d, double> &observation_sample : observation_samples) {
@@ -193,6 +196,10 @@ namespace pose_optimization {
             residuals[0] = sqrt(ceres::Jet<double, JetDim>(-2.0) * log(cumulative_probability));
 //            LOG(INFO) << "residual " << residuals[0];
 
+            if (logging_) {
+                LOG(INFO) << logging_prefix_ << "Sample based cost functor " << residuals[0];
+            }
+
             return true;
         }
 //
@@ -220,6 +227,9 @@ namespace pose_optimization {
 
         int num_samples_;
 
+        bool logging_;
+
+        std::string logging_prefix_;
 
 //        Eigen::Matrix<double, 3, Eigen::Dynamic> obj_pose_vectors_;
     };
