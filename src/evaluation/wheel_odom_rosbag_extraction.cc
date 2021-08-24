@@ -55,11 +55,6 @@ uint64_t timestampToMillis(const std::pair<uint32_t, uint32_t> &timestamp) {
 
 bool posesSame(const pose::Pose2d &p1, const pose::Pose2d &p2) {
     pose::Pose2d rel_pose = pose::getPoseOfObj1RelToObj2(p1, p2);
-    LOG(INFO) << p1.first.x() << ", " << p1.first.y() << ", " << p1.second;
-    LOG(INFO) << p2.first.x() << ", " << p2.first.y() << ", " << p2.second;
-    LOG(INFO) << rel_pose.first.norm();
-    LOG(INFO) << (rel_pose.first.norm() == 0);
-    LOG(INFO) << (rel_pose.second == 0);
     return ((rel_pose.first.norm() == 0) && (rel_pose.second == 0));
 }
 
@@ -275,15 +270,11 @@ int main(int argc, char **argv) {
     deduped_poses_rel_to_origin.emplace_back(poses_rel_to_origin[0]);
     for (size_t i = 1; i < poses_rel_to_origin.size(); i++) {
         if (!posesSame(poses_rel_to_origin[i - 1], poses_rel_to_origin[i])) {
-            LOG(INFO) << "Pose i " << i << " not same as previous node";
             deduped_poses_rel_to_origin.emplace_back(poses_rel_to_origin[i]);
-        } else {
-            LOG(INFO) << "Pose i " << i << " same as previous node";
         }
 
         file_io::NodeIdAndTimestamp node_with_timestamp;
         node_with_timestamp.node_id_ = deduped_poses_rel_to_origin.size() - 1;
-        LOG(INFO) << "Node id " << node_with_timestamp.node_id_;
         node_with_timestamp.seconds_ = timestamps_to_use[i].first;
         node_with_timestamp.nano_seconds_ = timestamps_to_use[i].second;
         nodes_with_timestamps.emplace_back(node_with_timestamp);
