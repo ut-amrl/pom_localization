@@ -10,8 +10,9 @@ second_traj_date=2021-06-01-14-59-33
 third_traj_date=2021-06-01-17-31-45
 fourth_traj_date=2021-08-03-16-44-20
 fifth_traj_date=2021-08-04-08-11-08
-sixth_traj_date=2021-08-04-11-27-59
+sixth_traj_date=2021-08-04-16-08-36
 seventh_traj_date=2021-08-04-15-44-03
+eighth_traj_date=2021-08-04-11-27-59
 
 runtime_cfg_base_name=$1
 
@@ -22,6 +23,7 @@ fourth_traj_eval_namespace=evaluation_fourth_traj_${runtime_cfg_base_name}
 fifth_traj_eval_namespace=evaluation_fifth_traj_${runtime_cfg_base_name}
 sixth_traj_eval_namespace=evaluation_sixth_traj_${runtime_cfg_base_name}
 seventh_traj_eval_namespace=evaluation_seventh_traj_${runtime_cfg_base_name}
+eighth_traj_eval_namespace=evaluation_eighth_traj_${runtime_cfg_base_name}
 
 consistency_evaluator_namespace=consistency_${runtime_cfg_base_name}
 
@@ -68,7 +70,15 @@ rosparam set /${seventh_traj_eval_namespace}/past_samples_files "['${base_dir}sa
 rosparam set /${seventh_traj_eval_namespace}/runtime_params_config_file "${runtime_cfgs_dir}${runtime_cfg_base_name}.csv"
 rosparam set /${seventh_traj_eval_namespace}/traj_est_output_file_prefix "${output_dir}momo_seventh_traj_est_"
 
-rosparam set /${consistency_evaluator_namespace}/waypoint_consistency_num_trajectories 3
+rosparam set /${eighth_traj_eval_namespace}/obj_det_curr_traj_file "${generated_dir}obj_detections_by_node_${eighth_traj_date}.csv"
+rosparam set /${eighth_traj_eval_namespace}/odom_traj_est_file "${generated_dir}odom_est_${eighth_traj_date}.csv"
+rosparam set /${eighth_traj_eval_namespace}/past_samples_files "['${base_dir}samples_distribution_config_narrower_yet_5_traj.txt']"
+rosparam set /${eighth_traj_eval_namespace}/runtime_params_config_file "${runtime_cfgs_dir}${runtime_cfg_base_name}.csv"
+rosparam set /${eighth_traj_eval_namespace}/traj_est_output_file_prefix "${output_dir}momo_eighth_traj_est_"
+
+# Switching to 7 because 8th traj was giving problems
+#rosparam set /${consistency_evaluator_namespace}/waypoint_consistency_num_trajectories 7
+rosparam set /${consistency_evaluator_namespace}/waypoint_consistency_num_trajectories 7
 rosparam set /${consistency_evaluator_namespace}/trajectory_0/trajectory_output_file "${output_dir}momo_first_traj_est_${runtime_cfg_base_name}.csv"
 rosparam set /${consistency_evaluator_namespace}/trajectory_0/waypoint_to_node_id_file "${generated_dir}}waypoints_by_node_${first_traj_date}.csv"
 rosparam set /${consistency_evaluator_namespace}/trajectory_1/trajectory_output_file "${output_dir}momo_second_traj_est_${runtime_cfg_base_name}.csv"
@@ -83,6 +93,8 @@ rosparam set /${consistency_evaluator_namespace}/trajectory_5/trajectory_output_
 rosparam set /${consistency_evaluator_namespace}/trajectory_5/waypoint_to_node_id_file "${generated_dir}}waypoints_by_node_${sixth_traj_date}.csv"
 rosparam set /${consistency_evaluator_namespace}/trajectory_6/trajectory_output_file "${output_dir}momo_seventh_traj_est_${runtime_cfg_base_name}.csv"
 rosparam set /${consistency_evaluator_namespace}/trajectory_6/waypoint_to_node_id_file "${generated_dir}}waypoints_by_node_${seventh_traj_date}.csv"
+rosparam set /${consistency_evaluator_namespace}/trajectory_7/trajectory_output_file "${output_dir}momo_eighth_traj_est_${runtime_cfg_base_name}.csv"
+rosparam set /${consistency_evaluator_namespace}/trajectory_7/waypoint_to_node_id_file "${generated_dir}}waypoints_by_node_${eighth_traj_date}.csv"
 
 rosparam set /${consistency_evaluator_namespace}/results_file "${output_dir}/consistency_results_${runtime_cfg_base_name}.csv"
 
@@ -95,6 +107,8 @@ echo Estimating trajectories
 ./bin/evaluation_main --param_prefix ${fifth_traj_eval_namespace} &
 ./bin/evaluation_main --param_prefix ${sixth_traj_eval_namespace} &
 ./bin/evaluation_main --param_prefix ${seventh_traj_eval_namespace} &
+# Commenting this out because it was giving problems
+#./bin/evaluation_main --param_prefix ${eighth_traj_eval_namespace} &
 wait
 
 echo Running consistency evaluator
