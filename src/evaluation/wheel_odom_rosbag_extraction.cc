@@ -21,7 +21,7 @@ DEFINE_string(param_prefix, "", "param_prefix");
 const std::string kRosbagFileNameParam = "rosbag_file_name";
 const std::string kObjectDetectionFileParam = "object_detection_file";
 const std::string kOdomOutputFileParam = "odom_out_file_name";
-const std::string kNodeIdAndTimestampOutputFileParam = "node_id_and_timestamp_out_file";
+const std::string kNodeIdAndTimestampOutputFileParam = "node_id_and_timestamp_file";
 const std::string kWaypointsByTimestampsFile = "waypoints_by_timestamps_file";
 
 const double kMaxPoseIncThresholdTransl = 1.0;

@@ -205,8 +205,8 @@ int main(int argc, char **argv) {
 
     file_io::writeWaypointConsistencyResultsToFile(results_file_name, consistency_results);
 
-    manager->publishEstimatedTrajectories(trajectories_list);
     manager->plotWaypoints(waypoints_list);
+    manager->publishEstimatedTrajectories(trajectories_list);
 
     return 0;
 }

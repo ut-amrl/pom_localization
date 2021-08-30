@@ -80,25 +80,25 @@ rosparam set /${eighth_traj_eval_namespace}/traj_est_output_file_prefix "${outpu
 #rosparam set /${consistency_evaluator_namespace}/waypoint_consistency_num_trajectories 7
 rosparam set /${consistency_evaluator_namespace}/waypoint_consistency_num_trajectories 7
 rosparam set /${consistency_evaluator_namespace}/trajectory_0/trajectory_output_file "${output_dir}momo_first_traj_est_${runtime_cfg_base_name}.csv"
-rosparam set /${consistency_evaluator_namespace}/trajectory_0/waypoint_to_node_id_file "${generated_dir}}waypoints_by_node_${first_traj_date}.csv"
+rosparam set /${consistency_evaluator_namespace}/trajectory_0/waypoint_to_node_id_file "${generated_dir}waypoints_by_node_${first_traj_date}.csv"
 rosparam set /${consistency_evaluator_namespace}/trajectory_1/trajectory_output_file "${output_dir}momo_second_traj_est_${runtime_cfg_base_name}.csv"
-rosparam set /${consistency_evaluator_namespace}/trajectory_1/waypoint_to_node_id_file "${generated_dir}}waypoints_by_node_${second_traj_date}.csv"
+rosparam set /${consistency_evaluator_namespace}/trajectory_1/waypoint_to_node_id_file "${generated_dir}waypoints_by_node_${second_traj_date}.csv"
 rosparam set /${consistency_evaluator_namespace}/trajectory_2/trajectory_output_file "${output_dir}momo_third_traj_est_${runtime_cfg_base_name}.csv"
-rosparam set /${consistency_evaluator_namespace}/trajectory_2/waypoint_to_node_id_file "${generated_dir}}waypoints_by_node_${third_traj_date}.csv"
+rosparam set /${consistency_evaluator_namespace}/trajectory_2/waypoint_to_node_id_file "${generated_dir}waypoints_by_node_${third_traj_date}.csv"
 rosparam set /${consistency_evaluator_namespace}/trajectory_3/trajectory_output_file "${output_dir}momo_fourth_traj_est_${runtime_cfg_base_name}.csv"
-rosparam set /${consistency_evaluator_namespace}/trajectory_3/waypoint_to_node_id_file "${generated_dir}}waypoints_by_node_${fourth_traj_date}.csv"
+rosparam set /${consistency_evaluator_namespace}/trajectory_3/waypoint_to_node_id_file "${generated_dir}waypoints_by_node_${fourth_traj_date}.csv"
 rosparam set /${consistency_evaluator_namespace}/trajectory_4/trajectory_output_file "${output_dir}momo_fifth_traj_est_${runtime_cfg_base_name}.csv"
-rosparam set /${consistency_evaluator_namespace}/trajectory_4/waypoint_to_node_id_file "${generated_dir}}waypoints_by_node_${fifth_traj_date}.csv"
+rosparam set /${consistency_evaluator_namespace}/trajectory_4/waypoint_to_node_id_file "${generated_dir}waypoints_by_node_${fifth_traj_date}.csv"
 rosparam set /${consistency_evaluator_namespace}/trajectory_5/trajectory_output_file "${output_dir}momo_sixth_traj_est_${runtime_cfg_base_name}.csv"
-rosparam set /${consistency_evaluator_namespace}/trajectory_5/waypoint_to_node_id_file "${generated_dir}}waypoints_by_node_${sixth_traj_date}.csv"
+rosparam set /${consistency_evaluator_namespace}/trajectory_5/waypoint_to_node_id_file "${generated_dir}waypoints_by_node_${sixth_traj_date}.csv"
 rosparam set /${consistency_evaluator_namespace}/trajectory_6/trajectory_output_file "${output_dir}momo_seventh_traj_est_${runtime_cfg_base_name}.csv"
-rosparam set /${consistency_evaluator_namespace}/trajectory_6/waypoint_to_node_id_file "${generated_dir}}waypoints_by_node_${seventh_traj_date}.csv"
+rosparam set /${consistency_evaluator_namespace}/trajectory_6/waypoint_to_node_id_file "${generated_dir}waypoints_by_node_${seventh_traj_date}.csv"
 rosparam set /${consistency_evaluator_namespace}/trajectory_7/trajectory_output_file "${output_dir}momo_eighth_traj_est_${runtime_cfg_base_name}.csv"
-rosparam set /${consistency_evaluator_namespace}/trajectory_7/waypoint_to_node_id_file "${generated_dir}}waypoints_by_node_${eighth_traj_date}.csv"
+rosparam set /${consistency_evaluator_namespace}/trajectory_7/waypoint_to_node_id_file "${generated_dir}waypoints_by_node_${eighth_traj_date}.csv"
 
 rosparam set /${consistency_evaluator_namespace}/results_file "${output_dir}/consistency_results_${runtime_cfg_base_name}.csv"
 
-make 
+make
 echo Estimating trajectories
 ./bin/evaluation_main --param_prefix ${first_traj_eval_namespace} &
 ./bin/evaluation_main --param_prefix ${second_traj_eval_namespace} &

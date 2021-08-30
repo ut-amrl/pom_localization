@@ -1185,27 +1185,37 @@ namespace visualization {
         }
 
         void plotWaypoints(const std::vector<std::vector<pose::Pose2d>> &waypoints) {
-            std_msgs::ColorRGBA base_color;
-            base_color.a = 1.0;
-            base_color.g = 1.0;
+
 
             int32_t next_robot_pose_id = kWaypointsPosesMin;
 
             std::vector<std_msgs::ColorRGBA> colors;
             for (size_t i = 0; i < waypoints.size(); i++) {
-                std_msgs::ColorRGBA color = base_color;
-                color.b = ((double) i)/(waypoints.size() - 1);
-                colors.emplace_back(color);
+                std_msgs::ColorRGBA color;
+                color.a = 1.0;
+                color.g = 1.0;
+                std::vector<pose::Pose3d> poses_3d = convert2DPosesTo3D(waypoints[i]);
+                size_t half_poses = poses_3d.size() / 2;
+                for (size_t j=0; j < poses_3d.size(); j++) {
+                    if (j % 2 ) {
+                        color.b = ((double) (j/2)) / half_poses;
+                        color.g = 1.0;
+                    } else {
+                        color.b = 1.0;
+                        color.g = ((double) ((poses_3d.size() - j)/2)) / half_poses;
+                    }
+                    LOG(INFO) << "j: " << j << ", color: " << color;
+                    pose::Pose3d pose_3d = poses_3d[j];
+                    pose_3d = std::make_pair(Eigen::Vector3d(pose_3d.first.x(), pose_3d.first.y(), 0.2), pose_3d.second);
+                    publishRobotPose(waypoint_pub_, pose_3d, color, next_robot_pose_id++);
 
-                // Also publish box for each pose in the trajectory
-                publishRobotPoses(waypoint_pub_, convert2DPosesTo3D(waypoints[i]), color, next_robot_pose_id, kWaypointsPosesMax);
-                next_robot_pose_id += waypoints[i].size();
+                }
             }
         }
 
         void publishEstimatedTrajectories(const std::vector<std::vector<pose::Pose2d>> &trajectory_poses) {
             std_msgs::ColorRGBA base_color;
-            base_color.a = 1.0;
+            base_color.a = 0.3;
             base_color.r = 1.0;
 
             std::vector<std::vector<pose::Pose3d>> trajectory_poses_3d;

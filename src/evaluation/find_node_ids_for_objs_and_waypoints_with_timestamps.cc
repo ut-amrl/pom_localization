@@ -56,14 +56,17 @@ int main(int argc, char **argv) {
     std::string waypoints_by_timestamp_file_name;
     std::string waypoints_by_node_id_file_name;
 
-    if (!n.getParam(param_prefix + kObjectDetectionsByNodeFileParam, objs_by_node_id_file_name)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kObjectDetectionsByNodeFileParam;
-        exit(1);
+    bool include_obj_times = false;
+    if (n.getParam(param_prefix + kObjectDetectionsByTimestampFileParam, objs_by_timestamp_file_name)) {
+        include_obj_times = true;
     }
 
-    if (!n.getParam(param_prefix + kObjectDetectionsByTimestampFileParam, objs_by_timestamp_file_name)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kObjectDetectionsByTimestampFileParam;
-        exit(1);
+    if (include_obj_times) {
+        if (!n.getParam(param_prefix + kObjectDetectionsByNodeFileParam, objs_by_node_id_file_name)) {
+            LOG(INFO) << "No parameter value set for parameter with name "
+                      << param_prefix + kObjectDetectionsByNodeFileParam;
+            exit(1);
+        }
     }
 
     if (!n.getParam(param_prefix + kNodeIdAndTimestampOutputFileParam, node_id_and_timestamp_file_name)) {
@@ -82,7 +85,9 @@ int main(int argc, char **argv) {
     }
 
     std::vector<file_io::ObjectPositionByTimestamp> objs_by_timestamp;
-    file_io::readObjectPositionsByTimestampFromFile(objs_by_timestamp_file_name, objs_by_timestamp);
+    if (include_obj_times) {
+        file_io::readObjectPositionsByTimestampFromFile(objs_by_timestamp_file_name, objs_by_timestamp);
+    }
 
     std::vector<file_io::WaypointAndTimestamp> waypoints_by_timestamp;
     file_io::readWaypointsAndTimestampsFromFile(waypoints_by_timestamp_file_name, waypoints_by_timestamp);

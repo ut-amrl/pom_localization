@@ -85,11 +85,18 @@ TARGET_LINK_LIBRARIES(wheel_odom_extractor ${libs} stdc++fs)
 #ROSBUILD_ADD_EXECUTABLE(lidarodom_to_trajectory_2d src/evaluation/lidar_odom_to_trajectory_2d.cc)
 #TARGET_LINK_LIBRARIES(lidarodom_to_trajectory_2d ${libs} stdc++fs)
 
+ROSBUILD_ADD_EXECUTABLE(lidarodom_to_trajectory_2d_with_timestamps src/evaluation/lidar_odom_to_trajectory_2d_with_timestamps.cc)
+TARGET_LINK_LIBRARIES(lidarodom_to_trajectory_2d_with_timestamps ${libs} stdc++fs)
+
 ROSBUILD_ADD_EXECUTABLE(create_distribution_from_global_obj_poses src/evaluation/create_distribution_from_global_obj_poses.cc)
 TARGET_LINK_LIBRARIES(create_distribution_from_global_obj_poses ${libs} stdc++fs)
 
 ROSBUILD_ADD_EXECUTABLE(distribution_gen_config_writer src/evaluation/distribution_generation_config_writer.cc)
 TARGET_LINK_LIBRARIES(distribution_gen_config_writer ${libs} stdc++fs)
+
+ROSBUILD_ADD_EXECUTABLE(interpolate_waypoints src/evaluation/interpolate_waypoint_nodes_in_existing_traj.cc)
+TARGET_LINK_LIBRARIES(interpolate_waypoints ${libs} stdc++fs)
+
 
 #ROSBUILD_ADD_EXECUTABLE(local_detections_creator src/evaluation/create_local_detections_from_global_detections.cc)
 #TARGET_LINK_LIBRARIES(local_detections_creator ${libs} stdc++fs)
