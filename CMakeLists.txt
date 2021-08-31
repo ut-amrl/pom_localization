@@ -94,6 +94,12 @@ TARGET_LINK_LIBRARIES(create_distribution_from_global_obj_poses ${libs} stdc++fs
 ROSBUILD_ADD_EXECUTABLE(distribution_gen_config_writer src/evaluation/distribution_generation_config_writer.cc)
 TARGET_LINK_LIBRARIES(distribution_gen_config_writer ${libs} stdc++fs)
 
+ROSBUILD_ADD_EXECUTABLE(create_distribution_from_global_obj_poses_multiple_config src/evaluation/create_distribution_from_global_obj_poses_multiple_car_selection_profiles.cc)
+TARGET_LINK_LIBRARIES(create_distribution_from_global_obj_poses_multiple_config ${libs} stdc++fs)
+
+ROSBUILD_ADD_EXECUTABLE(distribution_gen_config_writer_multiple_config src/evaluation/distribution_generation_config_writer_multiple_placement_profile.cc)
+TARGET_LINK_LIBRARIES(distribution_gen_config_writer_multiple_config ${libs} stdc++fs)
+
 ROSBUILD_ADD_EXECUTABLE(interpolate_waypoints src/evaluation/interpolate_waypoint_nodes_in_existing_traj.cc)
 TARGET_LINK_LIBRARIES(interpolate_waypoints ${libs} stdc++fs)
 
