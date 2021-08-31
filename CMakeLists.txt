@@ -104,11 +104,11 @@ TARGET_LINK_LIBRARIES(interpolate_waypoints ${libs} stdc++fs)
 ROSBUILD_ADD_EXECUTABLE(convert_object_detections_from_yaml src/evaluation/convert_object_detections_from_yaml.cc)
 TARGET_LINK_LIBRARIES(convert_object_detections_from_yaml ${libs} stdc++fs yaml-cpp)
 
-#ROSBUILD_ADD_EXECUTABLE(plot_results src/evaluation/plot_results.cc)
-#TARGET_LINK_LIBRARIES(plot_results ${libs} stdc++fs)
+ROSBUILD_ADD_EXECUTABLE(plot_results src/evaluation/plot_results.cc)
+TARGET_LINK_LIBRARIES(plot_results ${libs} stdc++fs)
 
-#ROSBUILD_ADD_EXECUTABLE(compute_kitti_results src/evaluation/compute_kitti_results.cc)
-#TARGET_LINK_LIBRARIES(compute_kitti_results ${libs} stdc++fs)
+ROSBUILD_ADD_EXECUTABLE(compute_kitti_results src/evaluation/compute_kitti_results.cc)
+TARGET_LINK_LIBRARIES(compute_kitti_results ${libs} stdc++fs)
 
 ROSBUILD_ADD_EXECUTABLE(compute_waypoint_consistency_results src/evaluation/compute_waypoint_consistency_results.cc)
 TARGET_LINK_LIBRARIES(compute_waypoint_consistency_results ${libs} stdc++fs)

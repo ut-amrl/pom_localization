@@ -104,6 +104,13 @@ int main(int argc, char **argv) {
     double aligned_est_ate = computeATE(gt_trajectory, aligned_estimated_trajectory);
     double misaligned_est_ate = computeATE(gt_trajectory, misaligned_estimated_trajectory);
 
+
+    std::shared_ptr<visualization::VisualizationManager> manager = std::make_shared<visualization::VisualizationManager>(
+            n, param_prefix);
+
+    manager->publishEstimatedTrajectories({odom_trajectory, aligned_estimated_trajectory,
+                                           misaligned_estimated_trajectory, gt_trajectory});
+
     LOG(INFO) << "Odom ate " << odom_ate;
     LOG(INFO) << "Aligned est ate " << aligned_est_ate;
     LOG(INFO) << "Misaligned est ate " << misaligned_est_ate;
