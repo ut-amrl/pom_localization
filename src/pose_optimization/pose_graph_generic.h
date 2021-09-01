@@ -334,7 +334,8 @@ namespace pose_graph {
             LOG(INFO) << "Done finding KDE points, count " << kd_neighbors.size();
             if (kd_neighbors.empty()) {
                 LOG(INFO) << "KD tree empty at search point " << search_point;
-                exit(1);
+//                exit(1);
+                return nullptr;
             }
 
             double subsampling_ratio = std::min(1.0, ((double) max_samples_in_gpc) / kd_neighbors.size());

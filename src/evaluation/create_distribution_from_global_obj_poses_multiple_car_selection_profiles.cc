@@ -13,6 +13,8 @@
 #include <file_io/object_positions_by_pose_io.h>
 #include <visualization/ros_visualization.h>
 
+#include <chrono>
+
 using namespace pose;
 
 const std::string kDistributionGenConfigFileParamName = "distribution_gen_config_file";
@@ -86,7 +88,10 @@ int main(int argc, char **argv) {
         base_trajectory.emplace_back(pose::createPose2d(trajectory_entry.transl_x_, trajectory_entry.transl_y_, trajectory_entry.theta_));
     }
 
-    util_random::Random random_generator;
+//    util_random::Random random_generator;
+
+    util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count());
 
     // Create past trajectories and spots  ---------------------------------------------------------------------------
     synthetic_problem::ObjectPlacementConfiguration<pose::Pose2d, 3> car_placement_config;

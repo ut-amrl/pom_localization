@@ -28,6 +28,8 @@ const std::string kAlignedEstTrajFileParamName = "aligned_est_traj_file";
 
 const std::string kMisalignedEstTrajFileParamName = "misaligned_est_traj_file";
 
+const std::string kSomewhatAlignedEstTrajParamName = "somewhat_aligned_est_traj_file";
+
 const std::string kGtTrajectoryFile = "gt_trajectory_file";
 
 double computeATE(const std::vector<pose::Pose2d> &ground_truth_trajectory,
@@ -69,6 +71,8 @@ int main(int argc, char **argv) {
     std::string aligned_estimated_trajectory_file;
     std::string misaligned_estimated_trajectory_file;
     std::string gt_traj_file;
+    std::string somewhat_algined_traj_file;
+    bool include_somewhat_aligned = false;
 
     if (!n.getParam(param_prefix + kOdomTrajectoryEstimatesFileParamName, odom_estimates_file_name)) {
         LOG(INFO) << "No parameter value set for parameter with name "
@@ -94,26 +98,45 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
+    if (n.getParam(param_prefix + kSomewhatAlignedEstTrajParamName, somewhat_algined_traj_file)) {
+        include_somewhat_aligned = true;
+    }
+
     // Read odometry, ground truth, and estimated trajectories
     std::vector<pose::Pose2d> odom_trajectory = file_io::readTrajFromFile(odom_estimates_file_name);
     std::vector<pose::Pose2d> aligned_estimated_trajectory = file_io::readTrajFromFile(aligned_estimated_trajectory_file);
     std::vector<pose::Pose2d> misaligned_estimated_trajectory = file_io::readTrajFromFile(misaligned_estimated_trajectory_file);
     std::vector<pose::Pose2d> gt_trajectory = file_io::readTrajFromFile(gt_traj_file);
+    std::vector<pose::Pose2d> somewhat_misaligned_trajectory;
+    if (include_somewhat_aligned) {
+        somewhat_misaligned_trajectory = file_io::readTrajFromFile(somewhat_algined_traj_file);
+    }
 
     double odom_ate = computeATE(gt_trajectory, odom_trajectory);
     double aligned_est_ate = computeATE(gt_trajectory, aligned_estimated_trajectory);
     double misaligned_est_ate = computeATE(gt_trajectory, misaligned_estimated_trajectory);
-
+    double somewhat_misaligned_ate;
+    if (include_somewhat_aligned) {
+        somewhat_misaligned_ate = computeATE(gt_trajectory, somewhat_misaligned_trajectory);
+    }
 
     std::shared_ptr<visualization::VisualizationManager> manager = std::make_shared<visualization::VisualizationManager>(
             n, param_prefix);
 
-    manager->publishEstimatedTrajectories({odom_trajectory, aligned_estimated_trajectory,
-                                           misaligned_estimated_trajectory, gt_trajectory});
+    if (include_somewhat_aligned) {
+        manager->publishEstimatedTrajectories({odom_trajectory, aligned_estimated_trajectory,
+                                               misaligned_estimated_trajectory, gt_trajectory, somewhat_misaligned_trajectory});
+    } else {
+        manager->publishEstimatedTrajectories({odom_trajectory, aligned_estimated_trajectory,
+                                               misaligned_estimated_trajectory, gt_trajectory});
+    }
 
     LOG(INFO) << "Odom ate " << odom_ate;
     LOG(INFO) << "Aligned est ate " << aligned_est_ate;
     LOG(INFO) << "Misaligned est ate " << misaligned_est_ate;
+    if (include_somewhat_aligned) {
+        LOG(INFO) << "Somewhat misaligned est ate " << somewhat_misaligned_ate;
+    }
 
     return 0;
 }
