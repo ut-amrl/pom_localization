@@ -58,13 +58,19 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
+    LOG(INFO) << "Cfg file " << distribution_gen_config_file;
+    LOG(INFO) << "Trajectory 2d " << trajectory_file;
+    LOG(INFO) << "Parking spots " << global_spots_file;
+
     std::string distribution_config_file_base_name = distribution_gen_config_file.substr(
             distribution_gen_config_file.find_last_of("/\\") + 1);
     size_t lastindex = distribution_config_file_base_name.find_last_of(".");
     distribution_config_file_base_name = distribution_config_file_base_name.substr(0, lastindex);
     sample_output_file = sample_output_file_prefix + distribution_config_file_base_name + ".txt";
 
-    // Read data from files  -----------------------------------------------------------------------------------------
+    LOG(INFO) << "Output file " << sample_output_file;
+
+              // Read data from files  -----------------------------------------------------------------------------------------
     file_io::SyntheticDistributionGenerationConfigMultipleSelectionNoiseProfiles distribution_config;
     file_io::readSyntheticDistributionConfigFromFile(distribution_gen_config_file, distribution_config);
 
