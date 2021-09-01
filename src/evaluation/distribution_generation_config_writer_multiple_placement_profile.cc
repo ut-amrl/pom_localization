@@ -50,14 +50,14 @@ int main(int argc, char **argv) {
     noise_profile_1.parking_spot_generation_std_dev_y_ = 0.4;
     noise_profile_1.parking_spot_generation_std_dev_theta_ = 0.2;
 
-    distribution_config.car_placement_profile.emplace_back(std::make_pair(0.8, noise_profile_1));
+    distribution_config.car_placement_profile.emplace_back(std::make_pair(0.5, noise_profile_1));
 
     file_io::CarPlacementNoiseProfile noise_profile_2;
     noise_profile_2.parking_spot_generation_std_dev_x_ = 20;
     noise_profile_2.parking_spot_generation_std_dev_y_ = 20;
     noise_profile_2.parking_spot_generation_std_dev_theta_ = 20;
 
-    distribution_config.car_placement_profile.emplace_back(std::make_pair(0.2, noise_profile_2));
+    distribution_config.car_placement_profile.emplace_back(std::make_pair(0.5, noise_profile_2));
 
     file_io::writeSyntheticDistributionConfigToFile(distribution_gen_config_file, distribution_config);
 
