@@ -498,7 +498,7 @@ int main(int argc, char **argv) {
 ////    double odom_std_dev_transl_x = 1;
 ////    double odom_std_dev_transl_y = 1;
 ////    double odom_std_dev_theta = 1;
-    int pose_sample_ratio = 20;
+    int pose_sample_ratio = 1;
 
     std::vector<std::string> past_sample_files;
     std::string odom_estimates_file_name;
