@@ -595,7 +595,9 @@ int main(int argc, char **argv) {
         }
     }
 
-    manager->displayPastSampleValues(car_semantic_class, samples_for_prev_trajectories[car_semantic_class]);
+    for (const auto &samples_for_prev_trajectories_with_class : samples_for_prev_trajectories) {
+        manager->displayPastSampleValues(samples_for_prev_trajectories_with_class.first, samples_for_prev_trajectories_with_class.second);
+    }
 
     // Read detections
     std::vector<pose_graph::MovableObservationFactor2d> movable_observation_factors = getMovableObservationFactorsFromDetectionsFile(
