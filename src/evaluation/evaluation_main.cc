@@ -136,9 +136,9 @@ void runOptimizationVisualization(
                     vis_manager->displayObjObservationsFromGtTrajectory(ground_truth_trajectory, noisy_obj_observations,
                                                                         semantic_class);
                 }
-                vis_manager->displayOdomTrajectory(unoptimized_trajectory);
-                vis_manager->displayObjObservationsFromOdomTrajectory(unoptimized_trajectory,
-                                                                      noisy_obj_observations, semantic_class);
+//                vis_manager->displayOdomTrajectory(unoptimized_trajectory);
+//                vis_manager->displayObjObservationsFromOdomTrajectory(unoptimized_trajectory,
+//                                                                      noisy_obj_observations, semantic_class);
                 {
 //                    if (!ground_truth_trajectory.empty()) {
 
@@ -170,12 +170,14 @@ void runOptimizationVisualization(
 //                                                                 0.65,
 //                                                                0.5,
                                 .5,
-                                -55, 30, -5, 30
+//                                -55, 30, -5, 30
+                                -65, 40, -10, 95
 //                                                                 min_max_points_to_display.first.x(),
 //                                                                 min_max_points_to_display.second.x(),
 //                                                                 min_max_points_to_display.first.y(),
 //                                                                 min_max_points_to_display.second.y()
                         );
+
 //                    }
                     }
                 }
@@ -192,29 +194,53 @@ void runOptimizationVisualization(
             // Display initial trajectory
             // Display initial car poses from initial trajectory
             break;
-        case offline_optimization::VisualizationTypeEnum::BEFORE_EACH_OPTIMIZATION:
+        case offline_optimization::VisualizationTypeEnum::BEFORE_EACH_OPTIMIZATION: {
+            std::vector<pose::Pose2d> limited_odom_poses_list_extended;
+            for (pose_graph::NodeId node_id = 0; node_id <= max_node_id; node_id++) {
+                limited_odom_poses_list_extended.emplace_back(unoptimized_trajectory[node_id]);
+            }
+
+            vis_manager->displayOdomTrajectory(limited_odom_poses_list_extended);
+            for (const auto &obs_with_class : noisy_obj_observations_by_class) {
+                std::string semantic_class = obs_with_class.first;
+                std::vector<std::vector<pose::Pose2d>> noisy_obj_observations = obs_with_class.second;
+
+                vis_manager->displayObjObservationsFromOdomTrajectory(limited_odom_poses_list_extended,
+                                                                      noisy_obj_observations, semantic_class);
+            }
+//                vis_manager->displayOdomTrajectory(unoptimized_trajectory);
+//                vis_manager->displayObjObservationsFromOdomTrajectory(unoptimized_trajectory,
+//                                                                      noisy_obj_observations, semantic_class);
+        }
             break;
         case offline_optimization::VisualizationTypeEnum::AFTER_EACH_OPTIMIZATION: {
             std::vector<pose::Pose2d> node_poses_list;
             std::unordered_map<pose_graph::NodeId, pose::Pose2d> node_poses;
             pose_graph->getNodePoses(node_poses);
+            std::vector<pose::Pose2d> limited_odom_poses_list;
             for (pose_graph::NodeId node_id = 0; node_id <= max_node_id; node_id++) {
                 node_poses_list.emplace_back(node_poses[node_id]);
+                limited_odom_poses_list.emplace_back(unoptimized_trajectory[node_id]);
             }
+            vis_manager->displayOdomTrajectory(limited_odom_poses_list);
+            vis_manager->displayEstTrajectory(node_poses_list);
+            vis_manager->displayTrueTrajectory(ground_truth_trajectory);
+
             for (const auto &obs_with_class : noisy_obj_observations_by_class) {
                 std::string semantic_class = obs_with_class.first;
                 std::vector<std::vector<pose::Pose2d>> noisy_obj_observations = obs_with_class.second;
-                vis_manager->displayEstTrajectory(node_poses_list);
                 vis_manager->displayObjObservationsFromEstTrajectory(node_poses_list, noisy_obj_observations,
                                                                      semantic_class);
                 if (!ground_truth_trajectory.empty()) {
-                    vis_manager->displayTrueTrajectory(ground_truth_trajectory);
                     vis_manager->displayObjObservationsFromGtTrajectory(ground_truth_trajectory, noisy_obj_observations,
                                                                         semantic_class);
                 }
-                vis_manager->displayOdomTrajectory(unoptimized_trajectory);
-                vis_manager->displayObjObservationsFromOdomTrajectory(unoptimized_trajectory,
+
+                vis_manager->displayObjObservationsFromOdomTrajectory(limited_odom_poses_list,
                                                                       noisy_obj_observations, semantic_class);
+//                vis_manager->displayOdomTrajectory(unoptimized_trajectory);
+//                vis_manager->displayObjObservationsFromOdomTrajectory(unoptimized_trajectory,
+//                                                                      noisy_obj_observations, semantic_class);
             }
 //                        ros::Duration(2).sleep();
         }
@@ -498,7 +524,8 @@ int main(int argc, char **argv) {
 ////    double odom_std_dev_transl_x = 1;
 ////    double odom_std_dev_transl_y = 1;
 ////    double odom_std_dev_theta = 1;
-    int pose_sample_ratio = 20;
+//    int pose_sample_ratio = 20;
+    uint64_t pose_sample_ratio = runtime_params_config.pose_sample_ratio_;
 
     std::vector<std::string> past_sample_files;
     std::string odom_estimates_file_name;

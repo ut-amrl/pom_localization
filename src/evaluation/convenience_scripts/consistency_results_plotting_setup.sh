@@ -22,8 +22,8 @@ runtime_cfg_base_name=$1
 consistency_evaluator_namespace=consistency_${runtime_cfg_base_name}
 
 # Switching to 7 because 8th traj was giving problems
+rosparam set /${consistency_evaluator_namespace}/waypoint_consistency_num_trajectories 8
 #rosparam set /${consistency_evaluator_namespace}/waypoint_consistency_num_trajectories 7
-rosparam set /${consistency_evaluator_namespace}/waypoint_consistency_num_trajectories 7
 rosparam set /${consistency_evaluator_namespace}/trajectory_0/trajectory_output_file "${output_dir}momo_first_traj_est_${runtime_cfg_base_name}.csv"
 rosparam set /${consistency_evaluator_namespace}/trajectory_0/waypoint_to_node_id_file "${generated_dir}waypoints_by_node_${first_traj_date}.csv"
 rosparam set /${consistency_evaluator_namespace}/trajectory_1/trajectory_output_file "${output_dir}momo_second_traj_est_${runtime_cfg_base_name}.csv"
@@ -98,4 +98,15 @@ rosparam set /${consistency_evaluator_namespace}/comparison_approach_2/trajector
 
 echo Running consistency evaluator
 python src/evaluation/plot_waypoint_consistency_results.py --param_prefix ${consistency_evaluator_namespace}
+
+rosparam set /${consistency_evaluator_namespace}/results_file "${output_dir}consistency_${runtime_cfg_base_name}_8.csv"
+make && ./bin/compute_waypoint_consistency_results --param_prefix ${consistency_evaluator_namespace}
+
+rosparam set /${consistency_evaluator_namespace}/comparison_approach_0/waypoint_consistency_num_trajectories 8
+rosparam set /${consistency_evaluator_namespace}/comparison_approach_0/results_file "${lego_loam_no_imu_out_dir}consistency_${runtime_cfg_base_name}_8.csv"
+make && ./bin/compute_waypoint_consistency_results --param_prefix ${consistency_evaluator_namespace}/comparison_approach_0
+
+rosparam set /${consistency_evaluator_namespace}/comparison_approach_2/waypoint_consistency_num_trajectories 8
+rosparam set /${consistency_evaluator_namespace}/comparison_approach_2/results_file "${enml_out_dir}consistency_${runtime_cfg_base_name}_8.csv"
+make && ./bin/compute_waypoint_consistency_results --param_prefix ${consistency_evaluator_namespace}/comparison_approach_2
 

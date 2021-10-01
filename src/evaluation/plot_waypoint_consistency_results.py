@@ -165,18 +165,22 @@ def getCDFData(dataset, num_bins):
 
     return (cdf, bins_count, max_val)
 
-def plotCDF(dataset_primary_approach, dataset_comparison_approaches, title, bins=40):
-
+def plotCDF(dataset_primary_approach, dataset_comparison_approaches, title, x_label, fig_num, bins=40):
+    plt.figure(fig_num)
     comparison_approach_summary_max = 0
 
+    alternate_line_styles=['dotted', 'dashdot', 'dashed']
+    alternate_line_style_index = 0
     # getting data of the histogram
     for comparison_label, comparison_dataset in dataset_comparison_approaches.items():
         approach_cdf, bins_count, comparison_approach_max = getCDFData(comparison_dataset, bins)
         comparison_approach_summary_max = max(comparison_approach_max, comparison_approach_summary_max)
-        plt.plot(bins_count, approach_cdf, label=comparison_label)
+        plt.plot(bins_count, approach_cdf, linestyle=alternate_line_styles[alternate_line_style_index], label=comparison_label)
+        alternate_line_style_index += 1
 
     primary_approach_cdf, bins_count, primary_approach_max = getCDFData(dataset_primary_approach, bins)
-    plt.plot(bins_count, primary_approach_cdf, label="movable object localization")
+    # linestyle or ls 	[‘solid’ | ‘dashed’, ‘dashdot’, ‘dotted’ | (offset, on-off-dash-seq) | '-' | '--' | '-.' | ':' | 'None' | ' ' | '']
+    plt.plot(bins_count, primary_approach_cdf, linestyle='solid', label="POM-Localization")
 
     if (len(dataset_comparison_approaches) != 0):
         # if (primary_approach_max > comparison_approach_summary_max):
@@ -187,8 +191,10 @@ def plotCDF(dataset_primary_approach, dataset_comparison_approaches, title, bins
         plt.legend()
     plt.ylim(0, 1)
     plt.title(title)
+    plt.xlabel(x_label)
+    plt.ylabel("Proportion of data")
 
-    plt.show()
+    # plt.show()
 
 def getDeviationsFromCentroid(poses_by_waypoint):
     # For each waypoint, get centroid and find distance of each pose for the waypoint from the centroid
@@ -217,7 +223,7 @@ def plotWaypointDistanceConsistencyCDF(poses_by_waypoint_primary_approach, poses
         deviations_from_centroid_comparison_approaches[comparison_approach_label] = getDeviationsFromCentroid(poses_by_waypoint)
 
     # Create CDF for centroid distance series
-    plotCDF(deviations_from_centroid_primary_approach, deviations_from_centroid_comparison_approaches, "CDF of Position Deviation from Waypoint Estimate Centroid")
+    plotCDF(deviations_from_centroid_primary_approach, deviations_from_centroid_comparison_approaches, "CDF of Position Deviation from Waypoint Estimate Centroid", "Meters from Respective Centroid", 1)
 
 def getAngleDeviations(poses_by_waypoint):
     angleDeviations = []
@@ -230,17 +236,18 @@ def getAngleDeviations(poses_by_waypoint):
         mean_rotation = findMeanRotation(poses_for_curr_waypoint)
 
         for pose_for_waypoint in poses_for_curr_waypoint:
-            print(pose_for_waypoint)
+            # print(pose_for_waypoint)
             angleDeviation = angleDist(pose_for_waypoint[1], mean_rotation)
             angleDeviations.append(angleDeviation)
     return angleDeviations
 
+
 def plotWaypointOrientationConsistencyCDF(poses_by_waypoint_primary_approach, poses_by_waypoint_comparison_approaches):
-    angle_deviations_primary_approach = getAngleDeviations(poses_by_waypoint_primary_approach)
+    angle_deviations_primary_approach = np.degrees(getAngleDeviations(poses_by_waypoint_primary_approach))
     angle_deviations_comparison_approaches = {}
     for comparison_approach_label, poses_by_waypoint in poses_by_waypoint_comparison_approaches.items():
-        angle_deviations_comparison_approaches[comparison_approach_label] = getAngleDeviations(poses_by_waypoint)
-    plotCDF(angle_deviations_primary_approach, angle_deviations_comparison_approaches, "CDF of Orientation Estimate Deviation from Mean Waypoint Orientation")
+        angle_deviations_comparison_approaches[comparison_approach_label] = np.degrees(getAngleDeviations(poses_by_waypoint))
+    plotCDF(angle_deviations_primary_approach, angle_deviations_comparison_approaches, "CDF of Orientation Estimate Deviation from Mean Waypoint Orientation", "Degrees from Mean Waypoint Orientation", 2)
 
 def getPosesForWaypoints(approach_namespace, num_traj):
     min_waypoint_id = sys.maxsize
@@ -287,10 +294,15 @@ def getPosesForWaypoints(approach_namespace, num_traj):
 
             trajectory = primary_approach_trajectory_outputs_by_trajectory_num[i]
             for node_id_for_waypoint in nodes_for_waypoint_for_traj:
+                # print("Node id: " + str(node_id_for_waypoint))
+                # print("Trajectory node ")
+                # print(trajectory[node_id_for_waypoint])
                 poses_for_waypoint.append(trajectory[node_id_for_waypoint])
 
         if (len(poses_for_waypoint) != 0):
             poses_for_waypoints[waypoint_id] = poses_for_waypoint
+    print("Min waypoint " + str(min_waypoint_id))
+    print("Max waypoint " + str(max_waypoint_id))
 
     return poses_for_waypoints
 
@@ -327,6 +339,7 @@ if __name__ == "__main__":
     print("Num trajectories " + str(num_trajectories))
 
     poses_for_waypoints_by_comparison_approach = {}
+    print("Getting POM-Localization poses")
     poses_for_main_approach = getPosesForWaypoints(param_prefix, num_trajectories)
 
     num_comparison_approaches = rospy.get_param(param_prefix + kNumComparisonApproachesParamName)
@@ -334,11 +347,13 @@ if __name__ == "__main__":
     for i in range(num_comparison_approaches):
         approach_specific_namespace = param_prefix + kComparisonApproachSpecificPrefix + str(i) + "/"
         approach_label = rospy.get_param(approach_specific_namespace + kComparisonApproachLabelSuffix)
+        print("Getting " + approach_label + " poses")
         print("Getting poses for waypoints for label " + approach_label)
         poses_for_waypoints_by_comparison_approach[approach_label] = getPosesForWaypoints(approach_specific_namespace, num_trajectories)
 
     plotWaypointDistanceConsistencyCDF(poses_for_main_approach, poses_for_waypoints_by_comparison_approach)
     plotWaypointOrientationConsistencyCDF(poses_for_main_approach, poses_for_waypoints_by_comparison_approach)
+    plt.show()
 
     #
     # for i in range(min_waypoint_id, max_waypoint_id +1):

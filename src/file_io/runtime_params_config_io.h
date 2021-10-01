@@ -21,6 +21,8 @@ namespace file_io {
         uint64_t num_nodes_in_optimization_window_;
         uint64_t full_optimization_interval_;
 
+        uint64_t pose_sample_ratio_;
+
         double mean_position_kernel_len_;
         double mean_orientation_kernel_len_;
 
@@ -67,6 +69,9 @@ namespace file_io {
             } else if (loop_count == 2) {
                 std::istringstream stream(substr);
                 stream >> config.full_optimization_interval_;
+            } else if (loop_count == 3) {
+                std::istringstream stream(substr);
+                stream >> config.pose_sample_ratio_;
             } else {
                 data.push_back(std::stod(substr));
             }
@@ -124,6 +129,7 @@ namespace file_io {
                 {
 
                         "max_gpc_samples", "num_nodes_in_optimization_window", "full_optimization_interval",
+                        "pose_sample_ratio",
                         "mean_position_kernel_len", "mean_orientation_kernel_len", "mean_position_kernel_var",
                         "mean_orientation_kernel_var", "default_obj_probability_input_variance_for_mean",
                         "var_position_kernel_len", "var_orientation_kernel_len", "var_position_kernel_var",
@@ -135,6 +141,7 @@ namespace file_io {
                         std::to_string(config.max_gpc_samples_),
                         std::to_string(config.num_nodes_in_optimization_window_),
                         std::to_string(config.full_optimization_interval_),
+                        std::to_string(config.pose_sample_ratio_),
                         std::to_string(config.mean_position_kernel_len_),
                         std::to_string(config.mean_orientation_kernel_len_),
                         std::to_string(config.mean_position_kernel_var_),

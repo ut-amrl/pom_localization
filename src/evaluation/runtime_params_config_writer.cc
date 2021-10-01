@@ -24,6 +24,8 @@ int main(int argc, char **argv) {
     runtime_params_config.num_nodes_in_optimization_window_ = 60; // TODO set this
     runtime_params_config.full_optimization_interval_ = 60; // TODO set this
 
+    runtime_params_config.pose_sample_ratio_ = 20;
+
     runtime_params_config.mean_position_kernel_len_ = 1;
     runtime_params_config.mean_orientation_kernel_len_ = 0.5;
 

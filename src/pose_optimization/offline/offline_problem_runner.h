@@ -170,9 +170,6 @@ namespace offline_optimization {
 
                 nodes_to_optimize.insert(next_pose_to_optimize);
 
-                // Run any per-pose pre-solving visualization
-                visualization_callback(next_pose_to_optimize, pose_graph,
-                                       VisualizationTypeEnum::BEFORE_EACH_OPTIMIZATION);
 
                 // TODO Modify the pose graph optimizer to incrementally add data instead of needing to rebuild
                 //  the ceres problem every time
@@ -183,6 +180,10 @@ namespace offline_optimization {
 //                }
                 optimizer.buildPoseGraphOptimizationProblem(*(pose_graph.get()), start_node_to_optimize, nodes_to_optimize,
                                                             problem_params.cost_function_params_, &problem);
+
+                // Run any per-pose pre-solving visualization
+                visualization_callback(next_pose_to_optimize, pose_graph,
+                                       VisualizationTypeEnum::BEFORE_EACH_OPTIMIZATION);
 
                 std::vector<ceres::IterationCallback *> ceres_callbacks;
                 std::shared_ptr<ceres::IterationCallback> callback = callback_creator(next_pose_to_optimize,

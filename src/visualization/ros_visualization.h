@@ -370,6 +370,9 @@ namespace visualization {
                 for (int j = -5; j <= 6; j++) {
 //                    ros::Publisher pub_for_angle = classifier_for_angle_mult_[i];
                     double inf_val = output_mats[j](0, i);
+                    if (inf_val < min_value) {
+                        inf_val = min_value;
+                    }
                     double regressor_val = (int8_t) 100 * output_mats_regressor_val[j](0, i);
                     double variance_val = (int8_t) (100) * ((output_mats_variance[j](0, i) - variance_min_value) /
                                                             (variance_max_value - variance_min_value));
@@ -706,19 +709,35 @@ namespace visualization {
                     close_to_parking_spots_mat(0, data_index) = close_to_parking_spot ? 1 : 0;
 
                     std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc = gpc_creator(Eigen::Vector2d(x_val * resolution, y_val * resolution));
-                    std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> gp_regressor = gpc->getUnderlyingGpRegressor();
+                    std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> gp_regressor;
+                    if (gpc) {
+                        gp_regressor = gpc->getUnderlyingGpRegressor();
+                    }
                     for (int i = -5; i <= 6; i++) {
 
                         double yaw = i * M_PI / 6;
 
                         Eigen::Matrix<double, 3, Eigen::Dynamic> object_pose_2d(3, 1);
                         object_pose_2d << (x_val * resolution), (y_val * resolution), yaw;
-                        Eigen::Matrix<double, 1, Eigen::Dynamic> gpc_output = gpc->Inference(object_pose_2d);
+                        Eigen::Matrix<double, 1, Eigen::Dynamic> gpc_output;
+                        if (gpc) {
+                            gpc_output = gpc->Inference(object_pose_2d);
+                        } else {
+                            gpc_output = Eigen::Matrix<double, 1, Eigen::Dynamic>(1, 1);
+                            gpc_output << 0.0;
+                        }
                         output_mats[i].col(data_index) = gpc_output;
 
-//                        LOG(INFO) << "Getting data from regressor";
-                        std::pair<Eigen::Matrix<double, 1, Eigen::Dynamic>, Eigen::Matrix<double, 1, Eigen::Dynamic>> regressor_out =
-                                gp_regressor->Inference(object_pose_2d);
+                        std::pair<Eigen::Matrix<double, 1, Eigen::Dynamic>, Eigen::Matrix<double, 1, Eigen::Dynamic>> regressor_out;
+                        if (gpc) {
+                            regressor_out = gp_regressor->Inference(object_pose_2d);
+                        } else {
+                            Eigen::Matrix<double, 1, Eigen::Dynamic> regressor_val(1, 1);
+                            regressor_val << 0.0;
+                            Eigen::Matrix<double, 1, Eigen::Dynamic> variance_val(1, 1);
+                            variance_val << 0.0;
+                            regressor_out = std::make_pair(regressor_val, variance_val);
+                        }
 
                         output_mats_regressor_val[i].col(data_index) = ((regressor_out.first.array() * -1).exp() +
                                                                         1).inverse().matrix();
@@ -726,13 +745,14 @@ namespace visualization {
                         if (close_to_parking_spot) {
                             LOG(INFO) << "Class, reg, var : " << gpc_output << ", " << output_mats_regressor_val[i].col(data_index) << ", " << output_mats_variance[i].col(data_index);
                         }
-//                        LOG(INFO) << "Done getting data from regressor";
 
-                        min_value = std::min(min_value, gpc_output.minCoeff());
-                        max_value = std::max(max_value, gpc_output.maxCoeff());
+                        if (gpc) {
+                            min_value = std::min(min_value, gpc_output.minCoeff());
+                            max_value = std::max(max_value, gpc_output.maxCoeff());
 
-                        variance_min_value = std::min(variance_min_value, regressor_out.second.minCoeff());
-                        variance_max_value = std::max(variance_max_value, regressor_out.second.maxCoeff());
+                            variance_min_value = std::min(variance_min_value, regressor_out.second.minCoeff());
+                            variance_max_value = std::max(variance_max_value, regressor_out.second.maxCoeff());
+                        }
                     }
                 }
             }
@@ -746,8 +766,8 @@ namespace visualization {
 //                    ros::Publisher pub_for_angle = classifier_for_angle_mult_[i];
                     double inf_val = output_mats[j](0, i);
                     double regressor_val = (int8_t) 100 * output_mats_regressor_val[j](0, i);
-                    double variance_val = (int8_t) (100) * ((output_mats_variance[j](0, i) - variance_min_value) /
-                                                            (variance_max_value - variance_min_value));
+                    double variance_val = (int8_t) (100) * std::max(0.0, ((output_mats_variance[j](0, i) - variance_min_value) /
+                                                            (variance_max_value - variance_min_value)));
 
 
 //                    LOG(INFO) << "Variance val: " << variance_val;
@@ -1184,38 +1204,43 @@ namespace visualization {
                                   Eigen::Vector2d(max_x + kExtraMarginDistribution, max_y + kExtraMarginDistribution));
         }
 
-        void plotWaypoints(const std::vector<std::vector<pose::Pose2d>> &waypoints) {
-
+        void plotWaypoints(const std::vector<std::vector<std::vector<pose::Pose2d>>> &waypoints) {
 
             int32_t next_robot_pose_id = kWaypointsPosesMin;
 
             std::vector<std_msgs::ColorRGBA> colors;
             for (size_t i = 0; i < waypoints.size(); i++) {
+
                 std_msgs::ColorRGBA color;
                 color.a = 1.0;
                 color.g = 1.0;
-                std::vector<pose::Pose3d> poses_3d = convert2DPosesTo3D(waypoints[i]);
-                size_t half_poses = poses_3d.size() / 2;
-                for (size_t j=0; j < poses_3d.size(); j++) {
+                std::vector<std::vector<pose::Pose2d>> poses_for_traj = waypoints[i];
+
+                size_t half_poses = poses_for_traj.size() / 2;
+                for (size_t j=0; j < poses_for_traj.size(); j++) {
                     if (j % 2 ) {
                         color.b = ((double) (j/2)) / half_poses;
                         color.g = 1.0;
                     } else {
                         color.b = 1.0;
-                        color.g = ((double) ((poses_3d.size() - j)/2)) / half_poses;
+                        color.g = ((double) ((poses_for_traj.size() - j)/2)) / half_poses;
                     }
                     LOG(INFO) << "j: " << j << ", color: " << color;
-                    pose::Pose3d pose_3d = poses_3d[j];
-                    pose_3d = std::make_pair(Eigen::Vector3d(pose_3d.first.x(), pose_3d.first.y(), 0.2), pose_3d.second);
-                    publishRobotPose(waypoint_pub_, pose_3d, color, next_robot_pose_id++);
-
+                    std::vector<pose::Pose3d> poses_3d = convert2DPosesTo3D(poses_for_traj[j]);
+                    for (pose::Pose3d &pose_3d : poses_3d) {
+                        pose_3d = std::make_pair(
+                                Eigen::Vector3d(pose_3d.first.x(), pose_3d.first.y(), kWaypoint2DHeight),
+                                pose_3d.second);
+                        publishRobotPose(waypoint_pub_, pose_3d, color, next_robot_pose_id++, true);
+                    }
                 }
             }
         }
 
         void publishEstimatedTrajectories(const std::vector<std::vector<pose::Pose2d>> &trajectory_poses) {
             std_msgs::ColorRGBA base_color;
-            base_color.a = 0.3;
+//            base_color.a = 0.3;
+            base_color.a = 1.0;
             base_color.r = 1.0;
 
             std::vector<std::vector<pose::Pose3d>> trajectory_poses_3d;
@@ -1272,6 +1297,8 @@ namespace visualization {
         const int32_t kRobotOdomPosesMax = kRobotEstPosesMin - 1;
         const int32_t kRobotEstPosesMax = kWaypointsPosesMin - 1;
         const int32_t kWaypointsPosesMax = kWaypointsPosesMin + kMaxTrajectoryLen - 1;
+
+        const double kWaypoint2DHeight = 0.2;
 
 
         /**
@@ -1467,13 +1494,19 @@ namespace visualization {
         }
 
         void publishRobotPose(ros::Publisher &marker_pub, pose::Pose3d &robot_pose, const std_msgs::ColorRGBA &color,
-                              const int32_t id) {
+                              const int32_t id, bool bigger=false) {
 
             visualization_msgs::Marker marker_msg;
 
             marker_msg.scale.x = 0.6;
             marker_msg.scale.y = 0.4;
             marker_msg.scale.z = 0.15;
+
+            if (bigger) {
+                marker_msg.scale.x = 0.8;
+                marker_msg.scale.y = 0.6;
+                marker_msg.scale.z = 0.3;
+            }
 
             marker_msg.pose.position.x = robot_pose.first.x();
             marker_msg.pose.position.y = robot_pose.first.y();

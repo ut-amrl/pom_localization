@@ -8,6 +8,7 @@
 #include <file_io/waypoint_consistency_results_io.h>
 #include <file_io/waypoints_and_node_id.h>
 #include <visualization/ros_visualization.h>
+#include <algorithm>
 
 using namespace pose;
 
@@ -46,6 +47,7 @@ int main(int argc, char **argv) {
 
     std::string param_prefix = FLAGS_param_prefix;
     std::string node_prefix = FLAGS_param_prefix;
+    node_prefix.erase(std::remove(node_prefix.begin(), node_prefix.end(), '/'), node_prefix.end());
     if (!param_prefix.empty()) {
         param_prefix = "/" + param_prefix + "/";
         node_prefix += "_";
@@ -88,7 +90,7 @@ int main(int argc, char **argv) {
     std::shared_ptr<visualization::VisualizationManager> manager = std::make_shared<visualization::VisualizationManager>(
             n, param_prefix);
 
-    std::vector<std::vector<pose::Pose2d>> waypoints_list;
+    std::vector<std::vector<std::vector<pose::Pose2d>>> waypoints_list;
     std::vector<std::vector<pose::Pose2d>> trajectories_list;
     for (int i = 0; i < num_trajectories; i++) {
         std::string trajectory_file_name;
@@ -114,7 +116,7 @@ int main(int argc, char **argv) {
         file_io::readWaypointsAndNodeIdsFromFile(waypoints_to_nodes_file_name, waypoints_and_node_ids_raw);
 
         std::unordered_map<uint64_t, std::unordered_set<uint64_t>> waypoints_and_node_ids_for_traj;
-        std::vector<pose::Pose2d> waypoint_poses_for_traj;
+        std::vector<std::vector<pose::Pose2d>> waypoint_poses_for_traj;
         for (const std::pair<uint64_t, uint64_t> &waypoint_and_node_id : waypoints_and_node_ids_raw) {
             uint64_t waypoint = waypoint_and_node_id.first;
             uint64_t node_id = waypoint_and_node_id.second;
@@ -133,7 +135,13 @@ int main(int argc, char **argv) {
                 max_waypoint_id = waypoint;
             }
 
-            waypoint_poses_for_traj.emplace_back(trajectory_estimate[node_id]);
+            while (waypoint_poses_for_traj.size() <= max_waypoint_id) {
+                waypoint_poses_for_traj.emplace_back((std::vector<pose::Pose2d>){});
+            }
+
+            std::vector<pose::Pose2d> poses_for_waypoint = waypoint_poses_for_traj[waypoint];
+            poses_for_waypoint.emplace_back(trajectory_estimate[node_id]);
+            waypoint_poses_for_traj[waypoint] = poses_for_waypoint;
         }
 
         waypoints_to_node_id_by_trajectory_num[i] = waypoints_and_node_ids_for_traj;
@@ -157,6 +165,9 @@ int main(int argc, char **argv) {
             poses_for_waypoints[waypoint_id] = poses_for_waypoint;
         }
     }
+
+    LOG(INFO) << "Min waypoint id " << min_waypoint_id;
+    LOG(INFO) << "Max waypoint id " << max_waypoint_id;
 
     std::unordered_map<uint64_t, double> transl_deviation;
     std::unordered_map<uint64_t, double> mean_rotation_deviations;

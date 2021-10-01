@@ -125,6 +125,10 @@ TARGET_LINK_LIBRARIES(find_node_ids_for_objs_with_timestamps ${libs} stdc++fs)
 ROSBUILD_ADD_EXECUTABLE(runtime_params_config_writer src/evaluation/runtime_params_config_writer.cc)
 TARGET_LINK_LIBRARIES(runtime_params_config_writer ${libs} stdc++fs)
 
+
+ROSBUILD_ADD_EXECUTABLE(fake_pom_plotter src/evaluation/fake_pom_plotter.cc)
+TARGET_LINK_LIBRARIES(fake_pom_plotter ${libs} stdc++fs)
+
 #ROSBUILD_ADD_EXECUTABLE(create_global_obj_locations_2d_from_3d_parking_spots src/evaluation/create_global_obj_locations_from_3d_parking_spots.cc)
 #TARGET_LINK_LIBRARIES(create_global_obj_locations_2d_from_3d_parking_spots ${libs} stdc++fs)
 
