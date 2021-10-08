@@ -1,5 +1,21 @@
-This readme is a work in progress!
+This readme is a work in progress! Please make an issue if you have questions
 
+## Paper
+The paper accompanying this work can be found here: https://arxiv.org/abs/2110.00128 
+
+If you use our work, please cite our paper
+
+Bibtex:
+```
+@unpublished{adkins2021probabilistic,
+      title={Probabilistic Object Maps for Long-Term Robot Localization}, 
+      author={Amanda Adkins and Joydeep Biswas},
+      year={2021},
+      eprint={2110.00128},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO}
+}
+```
 
 ## Offline Evaluation
 
