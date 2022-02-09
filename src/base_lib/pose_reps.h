@@ -16,27 +16,40 @@ namespace pose {
         return std::make_pair(Eigen::Vector2d(x, y), theta);
     }
 
-    Eigen::Affine3d convertPoseToAffine(Pose3d &pose) {
+    Eigen::Affine3d convertPoseToAffine(const Pose3d &pose) {
         Eigen::Affine3d mat;
         mat.translation() = pose.first;
         mat.linear() = pose.second.toRotationMatrix();
         return mat;
     }
 
-    Eigen::Affine2d convertPoseToAffine(Pose2d &pose) {
+    Eigen::Affine2d convertPoseToAffine(const Pose2d &pose) {
         Eigen::Affine2d mat;
         mat.translation() = pose.first;
         mat.linear() = Eigen::Rotation2Dd(pose.second).toRotationMatrix();
         return mat;
     }
 
-    Pose3d convertAffineToPose(Eigen::Affine3d &mat) {
+    Pose3d convertAffineToPose(const Eigen::Affine3d &mat) {
         return std::make_pair(mat.translation(), Eigen::Quaterniond(mat.linear()));
     }
 
-    Pose2d convertAffineToPose(Eigen::Affine2d &mat) {
+    Pose2d convertAffineToPose(const Eigen::Affine2d &mat) {
         Eigen::Rotation2Dd rotation(mat.linear());
         return std::make_pair(mat.translation(), rotation.angle());
+    }
+
+    Pose2d invertPose(const Pose2d &pose) {
+        return convertAffineToPose(convertPoseToAffine(pose).inverse());
+    }
+
+    Pose3d invertPose(const Pose3d &pose) {
+        return convertAffineToPose(convertPoseToAffine(pose).inverse());
+    }
+
+    Eigen::Vector3d
+    transformPoint(const pose::Pose3d &transform_to_target_frame, const Eigen::Vector3d &point_to_transform) {
+        return convertPoseToAffine(transform_to_target_frame) * point_to_transform;
     }
 
     Pose3d getPoseOfObj1RelToObj2(Pose3d obj1, Pose3d obj2) {
@@ -118,14 +131,14 @@ namespace pose {
  * @param pose_2
  * @return
  */
-    Pose3d combinePoses(Pose3d pose_1, Pose3d pose_2) {
+    Pose3d combinePoses(const Pose3d &pose_1, const Pose3d &pose_2) {
         Eigen::Affine3d affine_1 = convertPoseToAffine(pose_1);
         Eigen::Affine3d affine_2 = convertPoseToAffine(pose_2);
         Eigen::Affine3d combined_affine = affine_1 * affine_2;
         return convertAffineToPose(combined_affine);
     }
 
-    Pose2d combinePoses(Pose2d pose_1, Pose2d pose_2) {
+    Pose2d combinePoses(const Pose2d &pose_1, const Pose2d &pose_2) {
         Eigen::Affine2d affine_1 = convertPoseToAffine(pose_1);
         Eigen::Affine2d affine_2 = convertPoseToAffine(pose_2);
         Eigen::Affine2d combined_affine = affine_1 * affine_2;
@@ -159,16 +172,17 @@ namespace pose {
                                 rand_gen);
     }
 
-    std::pair<pose::Pose2d, Eigen::Vector3d> addPositionRelativeGaussianNoiseAndGetVariance(const pose::Pose2d &original_pose_2d,
-                                                                const Eigen::Vector3d &variances,
-                                                                util_random::Random &rand_gen) {
+    std::pair<pose::Pose2d, Eigen::Vector3d>
+    addPositionRelativeGaussianNoiseAndGetVariance(const pose::Pose2d &original_pose_2d,
+                                                   const Eigen::Vector3d &variances,
+                                                   util_random::Random &rand_gen) {
         double x_std_dev = sqrt(variances(0));
         double y_std_dev = sqrt(variances(1));
         double yaw_std_dev = sqrt(variances(2));
         double scaled_x_std_dev = original_pose_2d.first.x() * x_std_dev;
         double scaled_y_std_dev = original_pose_2d.first.y() * y_std_dev;
 
-        Eigen::Vector3d new_variances(pow(scaled_x_std_dev, 2), pow(scaled_y_std_dev, 2),variances(2));
+        Eigen::Vector3d new_variances(pow(scaled_x_std_dev, 2), pow(scaled_y_std_dev, 2), variances(2));
 
         return std::make_pair(addGaussianNoise(original_pose_2d, scaled_x_std_dev, scaled_y_std_dev, yaw_std_dev,
                                                rand_gen), new_variances);

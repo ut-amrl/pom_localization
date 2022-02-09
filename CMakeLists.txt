@@ -31,6 +31,10 @@ SET(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 find_package(PCL 1.3 REQUIRED)
 find_package(rosbag REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(cv_bridge)
+find_package(pcl_conversions)
+find_package(OpenCV)
+find_package(pcl_ros)
 pkg_search_module(EIGEN REQUIRED eigen3)
 
 include_directories(${EIGEN_INCLUDE_DIRS})
@@ -128,6 +132,10 @@ TARGET_LINK_LIBRARIES(runtime_params_config_writer ${libs} stdc++fs)
 
 ROSBUILD_ADD_EXECUTABLE(fake_pom_plotter src/evaluation/fake_pom_plotter.cc)
 TARGET_LINK_LIBRARIES(fake_pom_plotter ${libs} stdc++fs)
+
+ROSBUILD_ADD_EXECUTABLE(point_cloud_semantic_labeler_from_image src/semantic_segmentation/point_cloud_semantic_labeler_from_image.cpp)
+TARGET_LINK_LIBRARIES(point_cloud_semantic_labeler_from_image ${libs} stdc++fs ${PCL_LIBRARIES})
+#TARGET_LINK_LIBRARIES(point_cloud_semantic_labeler_from_image ${libs} stdc++fs )
 
 #ROSBUILD_ADD_EXECUTABLE(create_global_obj_locations_2d_from_3d_parking_spots src/evaluation/create_global_obj_locations_from_3d_parking_spots.cc)
 #TARGET_LINK_LIBRARIES(create_global_obj_locations_2d_from_3d_parking_spots ${libs} stdc++fs)

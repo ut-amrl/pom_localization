@@ -16,6 +16,8 @@
 #include <file_io/waypoints_and_timestamp_io.h>
 #include <file_io/trajectory_2d_by_timestamp.h>
 
+#include <base_lib/pose_utils.h>
+
 DEFINE_string(param_prefix, "", "param_prefix");
 
 const std::string kTrajectoryEstimateParam = "trajectory_estimate_2d";
@@ -25,6 +27,8 @@ const std::string kWaypointsByTimestampsFile = "waypoints_by_timestamps_file";
 const std::string kRosbagFileParamName = "bag_file_name";
 
 const double kPoseEquivTolerance = 1e2;
+
+using namespace pose;
 
 struct pair_hash {
     template<class T1, class T2>
@@ -46,14 +50,6 @@ struct timestamp_sort {
     }
 };
 
-uint64_t timestampToMillis(const std::pair<uint32_t, uint32_t> &timestamp) {
-    return timestamp.first * 1000 + (timestamp.second / 1e6);
-}
-
-bool posesSame(const pose::Pose2d &p1, const pose::Pose2d &p2) {
-    pose::Pose2d rel_pose = pose::getPoseOfObj1RelToObj2(p1, p2);
-    return ((rel_pose.first.norm() == 0) && (rel_pose.second == 0));
-}
 
 int main(int argc, char **argv) {
     google::ParseCommandLineFlags(&argc, &argv, false);
@@ -168,36 +164,9 @@ int main(int argc, char **argv) {
                     pose::Pose2d prev_pose = trajectory_est_poses[i - 1];
                     std::pair<uint32_t, uint32_t> prev_timestamp = trajectory_est_timestamps[i - 1];
 
-                    uint64_t curr_timestamp_millis = timestampToMillis(curr_timestamp);
-                    uint64_t prev_timestamp_millis = timestampToMillis(prev_timestamp);
-                    uint64_t next_waypoint_millis = timestampToMillis(next_waypoint_timestamp);
-
-                    double fraction = ((double) (next_waypoint_millis - prev_timestamp_millis)) /
-                                      (curr_timestamp_millis - prev_timestamp_millis);
-
-                    // Need to interpolate
-                    // TODO should we do this along the arc instead of a straight line?
-                    pose::Pose2d rel_pose = pose::getPoseOfObj1RelToObj2(curr_pose, prev_pose);
-                    pose::Pose2d rel_pose_interpolated;
-
-                    rel_pose_interpolated = pose::createPose2d(rel_pose.first.x() * fraction,
-                                                               rel_pose.first.y() * fraction,
-                                                               rel_pose.second * fraction);
-                    if (abs(rel_pose.second) > 1e-10) {
-                        double radius = sqrt(rel_pose.first.squaredNorm() / (2 * (1 - cos(rel_pose.second))));
-                        double x = radius * sin(abs(rel_pose.second) * fraction);
-                        double y = radius - (radius * cos(rel_pose.second * fraction));
-                        if (rel_pose.second < 0) {
-                            y = -y;
-                        }
-                        if (rel_pose.first.x() < 0) {
-                            y = -y;
-                            x = -x;
-                        }
-                        rel_pose_interpolated = pose::createPose2d(x, y, fraction * rel_pose.second);
-                    }
-                    LOG(INFO) << "Adding pose for waypoint num " << index_next_waypoint_timestamp_to_check;
-                    pose::Pose2d rel_pose_interp_global = pose::combinePoses(prev_pose, rel_pose_interpolated);
+                    pose::Pose2d rel_pose_interp_global = interpolatePoses(std::make_pair(prev_timestamp, prev_pose),
+                                                                           std::make_pair(curr_timestamp, curr_pose),
+                                                                           next_waypoint_timestamp);
                     timestamps_to_use.emplace_back(next_waypoint_timestamp);
                     poses_to_use.emplace_back(rel_pose_interp_global);
                 }
@@ -291,6 +260,7 @@ int main(int argc, char **argv) {
                             }
                             rel_pose_interpolated = pose::createPose2d(x, y, fraction * rel_pose.second);
                         }
+
                         accumulated_pose_since_last_node = rel_pose_interpolated;
 //                        LOG(INFO) << "Accumulated pose since last node " << accumulated_pose_since_last_node.first.x() << ", " << accumulated_pose_since_last_node.first.y() << ", " << accumulated_pose_since_last_node.second;
                     }
@@ -390,7 +360,9 @@ int main(int argc, char **argv) {
     }
 
     if (index_next_waypoint_timestamp_to_check < sorted_waypoint_timestamps.size()) {
-        LOG(INFO) << "Couldn't interpolate using odom even, next waypoint index " << index_next_waypoint_timestamp_to_check << ", total waypoint timestamps " << sorted_waypoint_timestamps.size();
+        LOG(INFO) << "Couldn't interpolate using odom even, next waypoint index "
+                  << index_next_waypoint_timestamp_to_check << ", total waypoint timestamps "
+                  << sorted_waypoint_timestamps.size();
     }
 
 

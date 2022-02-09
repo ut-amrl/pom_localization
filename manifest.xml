@@ -17,6 +17,9 @@
   <depend package="roscpp"/>
   <depend package="rosbag" />
   <depend package="tf"/>
+  <depend package="cv_bridge" />
+  <depend package="pcl_ros" />
+  <depend package="pcl_conversions" />
 
 </package>
 

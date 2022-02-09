@@ -15,6 +15,7 @@
 #include <file_io/node_id_and_timestamp_io.h>
 #include <file_io/trajectory_2d_io.h>
 #include <file_io/waypoints_and_timestamp_io.h>
+#include <base_lib/pose_utils.h>
 
 DEFINE_string(param_prefix, "", "param_prefix");
 
@@ -48,15 +49,6 @@ struct timestamp_sort {
         return timestamp1.second < timestamp2.second;
     }
 };
-
-uint64_t timestampToMillis(const std::pair<uint32_t, uint32_t> &timestamp) {
-    return timestamp.first * 1000 + (timestamp.second / 1e6);
-}
-
-bool posesSame(const pose::Pose2d &p1, const pose::Pose2d &p2) {
-    pose::Pose2d rel_pose = pose::getPoseOfObj1RelToObj2(p1, p2);
-    return ((rel_pose.first.norm() == 0) && (rel_pose.second == 0));
-}
 
 int main(int argc, char **argv) {
     google::ParseCommandLineFlags(&argc, &argv, false);
@@ -200,35 +192,10 @@ int main(int argc, char **argv) {
                     pose::Pose2d prev_pose = full_odom_frame_poses[i - 1];
                     std::pair<uint32_t, uint32_t> prev_timestamp = full_timestamps[i - 1];
 
-                    uint64_t curr_timestamp_millis = timestampToMillis(curr_timestamp);
-                    uint64_t prev_timestamp_millis = timestampToMillis(prev_timestamp);
-                    uint64_t next_obj_millis = timestampToMillis(next_obj_timestamp);
-
-                    double fraction = ((double) (next_obj_millis - prev_timestamp_millis)) /
-                                      (curr_timestamp_millis - prev_timestamp_millis);
-
-                    // Need to interpolate
-                    // TODO should we do this along the arc instead of a straight line?
-                    pose::Pose2d rel_pose = pose::getPoseOfObj1RelToObj2(curr_pose, prev_pose);
-                    pose::Pose2d rel_pose_interpolated;
-
-                    rel_pose_interpolated = pose::createPose2d(rel_pose.first.x() * fraction,
-                                                               rel_pose.first.y() * fraction,
-                                                               rel_pose.second * fraction);
-                    if (abs(rel_pose.second) > 1e-10) {
-                        double radius = sqrt(rel_pose.first.squaredNorm() / (2 * (1 - cos(rel_pose.second))));
-                        double x = radius * sin(abs(rel_pose.second) * fraction);
-                        double y = radius - (radius * cos(rel_pose.second * fraction));
-                        if (rel_pose.second < 0) {
-                            y = -y;
-                        }
-                        if (rel_pose.first.x() < 0) {
-                            y = -y;
-                            x = -x;
-                        }
-                        rel_pose_interpolated = pose::createPose2d(x, y, fraction * rel_pose.second);
-                    }
-                    pose::Pose2d rel_pose_interp_global = pose::combinePoses(prev_pose, rel_pose_interpolated);
+                    pose::Pose2d rel_pose_interp_global = pose::interpolatePoses(
+                            std::make_pair(prev_timestamp, prev_pose),
+                            std::make_pair(curr_timestamp, curr_pose),
+                            next_obj_timestamp);
                     timestamps_to_use.emplace_back(next_obj_timestamp);
                     poses_to_use.emplace_back(rel_pose_interp_global);
                 }
