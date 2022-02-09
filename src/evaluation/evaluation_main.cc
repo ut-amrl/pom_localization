@@ -54,7 +54,8 @@ pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams(const 
     cost_function_params.mean_position_kernel_var_ = config.mean_position_kernel_var_;
     cost_function_params.mean_orientation_kernel_var_ = config.mean_orientation_kernel_var_;
 
-    cost_function_params.default_obj_probability_input_variance_for_mean_ = config.default_obj_probability_input_variance_for_mean_;
+    cost_function_params.default_obj_probability_input_variance_for_mean_ =
+            config.default_obj_probability_input_variance_for_mean_;
 
     cost_function_params.var_position_kernel_len_ = config.var_position_kernel_len_;
     cost_function_params.var_orientation_kernel_len_ = config.var_orientation_kernel_len_;
@@ -62,7 +63,8 @@ pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams(const 
     cost_function_params.var_position_kernel_var_ = config.var_position_kernel_var_;
     cost_function_params.var_orientation_kernel_var_ = config.var_orientation_kernel_var_;
 
-    cost_function_params.default_obj_probability_input_variance_for_var_ = config.default_obj_probability_input_variance_for_var_;
+    cost_function_params.default_obj_probability_input_variance_for_var_ =
+            config.default_obj_probability_input_variance_for_var_;
 
     // TODO configure
 
@@ -106,7 +108,8 @@ pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams(const 
 }
 
 std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> createGpc(
-        const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>> &pose_graph,
+        const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3,
+                pose_graph::MovableObservationObjectPose2d>> &pose_graph,
         const std::string &semantic_class,
         const uint64_t &max_samples,
         const double &radius,
@@ -114,14 +117,15 @@ std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKer
     return pose_graph->getMovableObjGpcWithinRadius(semantic_class, radius, search_point, max_samples);
 }
 
-void runOptimizationVisualization(
-        const std::shared_ptr<visualization::VisualizationManager> &vis_manager,
-        const pose_graph::NodeId &max_node_id,
-        const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>> &pose_graph,
-        const offline_optimization::VisualizationTypeEnum &vis_stage,
-        const std::vector<pose::Pose2d> &ground_truth_trajectory,
-        const std::vector<pose::Pose2d> &unoptimized_trajectory,
-        const std::unordered_map<std::string, std::vector<std::vector<pose::Pose2d>>> &noisy_obj_observations_by_class) {
+void runOptimizationVisualization(const std::shared_ptr<visualization::VisualizationManager> &vis_manager,
+                                  const pose_graph::NodeId &max_node_id,
+                                  const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3,
+                                          2, double, 3, pose_graph::MovableObservationObjectPose2d>> &pose_graph,
+                                  const offline_optimization::VisualizationTypeEnum &vis_stage,
+                                  const std::vector<pose::Pose2d> &ground_truth_trajectory,
+                                  const std::vector<pose::Pose2d> &unoptimized_trajectory,
+                                  const std::unordered_map<std::string, std::vector<std::vector<pose::Pose2d>>>
+                                  &noisy_obj_observations_by_class) {
 
     // TODO make this more generic (not specifically car class)
     switch (vis_stage) {
@@ -155,8 +159,8 @@ void runOptimizationVisualization(
 //                        std::pair<Eigen::Vector2d, Eigen::Vector2d> min_max_points_to_display =
 //                                visualization::VisualizationManager::getMinMaxCornersForDistributionVisualization(
 //                                        poses_global_frame);
-                        std::function<std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
-                                const Eigen::Vector2d &)> gpc_creator =
+                        std::function<std::shared_ptr<gp_regression::GaussianProcessClassifier<3,
+                                gp_kernel::Pose2dKernel>>(const Eigen::Vector2d &)> gpc_creator =
                                 std::bind(createGpc, pose_graph, "car",
 //                                              5000,
                                           500,
@@ -270,7 +274,7 @@ void runOptimizationVisualization(
     }
 }
 
-std::vector<pose_graph::MovableObservationFactor2d> getMovableObservationFactorsFromDetectionsFile(
+std::vector<pose_graph::MovableObservationObjectPoseFactor2d> getMovableObservationFactorsFromDetectionsFile(
         const std::string &semantic_class,
         const double &detection_variance_transl_x,
         const double &detection_variance_transl_y,
@@ -282,10 +286,10 @@ std::vector<pose_graph::MovableObservationFactor2d> getMovableObservationFactors
     LOG(INFO) << "Reading from file " << object_detections_file_name;
     file_io::readObjectPositionsByPoseFromFile(object_detections_file_name, raw_obj_detections);
 
-    std::vector<pose_graph::MovableObservationFactor2d> observation_factors;
+    std::vector<pose_graph::MovableObservationObjectPoseFactor2d> observation_factors;
     for (const file_io::ObjectPositionByPose &raw_detection : raw_obj_detections) {
         if ((raw_detection.pose_number_ % pose_sample_ratio) == 0) {
-            pose_graph::MovableObservation2d observation;
+            pose_graph::MovableObservationObjectPose2d observation;
             observation.semantic_class_ = semantic_class;
             observation.observation_transl_ = Eigen::Vector2d(raw_detection.transl_x_, raw_detection.transl_y_);
             observation.observation_orientation_ = raw_detection.theta_;
@@ -298,7 +302,7 @@ std::vector<pose_graph::MovableObservationFactor2d> getMovableObservationFactors
             observation.observation_covariance_ = observation_cov;
 
             observation_factors.emplace_back(
-                    pose_graph::MovableObservationFactor2d(raw_detection.pose_number_, observation));
+                    pose_graph::MovableObservationObjectPoseFactor2d(raw_detection.pose_number_, observation));
         }
     }
     return observation_factors;
@@ -368,13 +372,14 @@ getTrajectoryEstimate(const std::vector<pose::Pose2d> &odom_est_trajectory,
                       const std::shared_ptr<visualization::VisualizationManager> &manager,
                       const std::vector<pose_graph::GaussianBinaryFactor2d> &odom_factors,
                       const std::vector<pose_graph::MapObjectObservation2d> &samples,
-                      const std::vector<pose_graph::MovableObservationFactor2d> &movable_object_observations,
+                      const std::vector<pose_graph::MovableObservationObjectPoseFactor2d> &movable_object_observations,
                       const file_io::RuntimeParamsConfig &runtime_params_config) {
 
-    offline_optimization::OfflinePoseOptimizer<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3> offline_optimizer;
+    offline_optimization::OfflinePoseOptimizer<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3,
+            pose_graph::MovableObservationObjectPose2d> offline_optimizer;
 
     std::unordered_map<std::string, std::vector<std::vector<pose::Pose2d>>> noisy_observations_by_class;
-    for (const pose_graph::MovableObservationFactor2d &movable_factor : movable_object_observations) {
+    for (const pose_graph::MovableObservationObjectPoseFactor2d &movable_factor : movable_object_observations) {
         pose_graph::NodeId observed_at_node = movable_factor.observed_at_node_;
         std::string semantic_class = movable_factor.observation_.semantic_class_;
 
@@ -404,23 +409,29 @@ getTrajectoryEstimate(const std::vector<pose::Pose2d> &odom_est_trajectory,
         initial_node_positions.emplace_back(new_node);
     }
 
-    offline_optimization::OfflineProblemData<2, double, 3, 2, double> offline_problem_data;
+    offline_optimization::OfflineProblemData<2, double, 3, 2, double,
+            pose_graph::MovableObservationObjectPose2d> offline_problem_data;
 
     offline_problem_data.odometry_factors_ = odom_factors;
     offline_problem_data.map_object_observations_ = samples;
     offline_problem_data.movable_observation_factors_ = movable_object_observations;
     offline_problem_data.initial_node_positions_ = initial_node_positions;
 
-    std::function<std::shared_ptr<ceres::IterationCallback>(const pose_graph::NodeId &,
-                                                            const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>> &)> callback_creator = [manager, noisy_observations_by_class](
-            const pose_graph::NodeId &node_id,
-            const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>> &pose_graph) {
-        return std::make_shared<offline_optimization::CeresVisualizationCallback2d>(
-                pose_graph, manager, node_id, noisy_observations_by_class);
-    };
+    std::function<std::shared_ptr<ceres::IterationCallback>(
+            const pose_graph::NodeId &,
+            const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3,
+                    pose_graph::MovableObservationObjectPose2d>> &)> callback_creator =
+            [manager, noisy_observations_by_class](
+                    const pose_graph::NodeId &node_id,
+                    const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3,
+                            pose_graph::MovableObservationObjectPose2d>> &pose_graph) {
+                return std::make_shared<offline_optimization::CeresVisualizationCallback2d>(
+                        pose_graph, manager, node_id, noisy_observations_by_class);
+            };
 
     std::function<void(const pose_graph::NodeId &,
-                       const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>> &,
+                       const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3,
+                               pose_graph::MovableObservationObjectPose2d>> &,
                        const offline_optimization::VisualizationTypeEnum &)> visualization_callback =
             std::bind(runOptimizationVisualization, manager,
                       std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
@@ -430,7 +441,7 @@ getTrajectoryEstimate(const std::vector<pose::Pose2d> &odom_est_trajectory,
     LOG(INFO) << "Running optimization";
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> optimization_results = offline_optimizer.runOfflineOptimization(
             offline_problem_data, setupPoseOptimizationParams(runtime_params_config),
-            pose_graph::utils::createFully2dPoseGraphFromParams,
+            pose_graph::utils::createFully2dPoseGraphObjectPoseDetectionsFromParams,
             callback_creator,
             visualization_callback);
 
@@ -551,7 +562,8 @@ int main(int argc, char **argv) {
     }
 
     if (!n.getParam(param_prefix + kTrajectoryOutputFilePrefixParamName, traj_est_output_file_prefix)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kTrajectoryOutputFilePrefixParamName;
+        LOG(INFO) << "No parameter value set for parameter with name "
+                  << param_prefix + kTrajectoryOutputFilePrefixParamName;
         exit(1);
     }
 
@@ -596,17 +608,15 @@ int main(int argc, char **argv) {
     }
 
     for (const auto &samples_for_prev_trajectories_with_class : samples_for_prev_trajectories) {
-        manager->displayPastSampleValues(samples_for_prev_trajectories_with_class.first, samples_for_prev_trajectories_with_class.second);
+        manager->displayPastSampleValues(samples_for_prev_trajectories_with_class.first,
+                                         samples_for_prev_trajectories_with_class.second);
     }
 
     // Read detections
-    std::vector<pose_graph::MovableObservationFactor2d> movable_observation_factors = getMovableObservationFactorsFromDetectionsFile(
-            car_semantic_class,
-            detection_variance_transl_x,
-            detection_variance_transl_y,
-            detection_variance_theta,
-            object_detections_file_name,
-            pose_sample_ratio);
+    std::vector<pose_graph::MovableObservationObjectPoseFactor2d> movable_observation_factors =
+            getMovableObservationFactorsFromDetectionsFile(car_semantic_class, detection_variance_transl_x,
+                                                           detection_variance_transl_y, detection_variance_theta,
+                                                           object_detections_file_name, pose_sample_ratio);
 
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> optimization_results = getTrajectoryEstimate(
             initial_trajectory_estimates, gt_trajectory, manager, odom_factors, samples,

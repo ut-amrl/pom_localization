@@ -236,7 +236,7 @@ int main(int argc, char **argv) {
     nodes_with_timestamps.emplace_back(first_node);
     deduped_poses_rel_to_origin.emplace_back(poses_rel_to_origin[0]);
     for (size_t i = 1; i < poses_rel_to_origin.size(); i++) {
-        if (!posesSame(poses_rel_to_origin[i - 1], poses_rel_to_origin[i])) {
+        if (!pose::posesSame(poses_rel_to_origin[i - 1], poses_rel_to_origin[i])) {
             deduped_poses_rel_to_origin.emplace_back(poses_rel_to_origin[i]);
         }
 

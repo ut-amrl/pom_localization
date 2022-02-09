@@ -21,22 +21,22 @@ namespace pose_graph {
     typedef Node<3, Eigen::Quaterniond> Node3d;
     typedef GaussianBinaryFactor<3, Eigen::Quaterniond, 6> GaussianBinaryFactor3d;
     typedef MapObjectObservation<2, double> MapObjectObservation2d;
-    typedef MovableObservation<3, Eigen::Quaterniond, 6> MovableObservation3d;
-    typedef MovableObservationFactor<3, Eigen::Quaterniond, 6> MovableObservationFactor3d;
+    typedef MovableObservationObjectPose<3, Eigen::Quaterniond, 6> MovableObservationObjectPose3d;
+    typedef MovableObservationFactor <MovableObservationObjectPose3d> MovableObservationObjectPoseFactor3d;
 
     typedef Node<2, double> Node2d;
     typedef GaussianBinaryFactor<2, double, 3> GaussianBinaryFactor2d;
-    typedef MovableObservation<2, double, 3> MovableObservation2d;
-    typedef MovableObservationFactor<2, double, 3> MovableObservationFactor2d;
+    typedef MovableObservationObjectPose<2, double, 3> MovableObservationObjectPose2d;
+    typedef MovableObservationFactor <MovableObservationObjectPose2d> MovableObservationObjectPoseFactor2d;
 
     /**
      * Pose Graph containing all factors that constrain the robot's pose and the nodes representing the robot's pose.
      */
     template<int MeasurementTranslationDim, typename MeasurementRotationType, int CovDim>
     class PoseGraphXdMovObjDistribution2d
-            : public PoseGraph<gp_kernel::Pose2dKernel, MeasurementTranslationDim, MeasurementRotationType, CovDim, 2, double, 3> {
+            : public PoseGraph<gp_kernel::Pose2dKernel, MeasurementTranslationDim, MeasurementRotationType, CovDim, 2, double, 3,
+                    MovableObservationObjectPose < MeasurementTranslationDim, MeasurementRotationType, CovDim>> {
     public:
-
         PoseGraphXdMovObjDistribution2d(
                 const std::function<ceres::LocalParameterization *()> &rotation_local_parameterization_creator,
                 const std::unordered_map<std::string, double> &obj_probability_prior_mean_by_class,
@@ -46,33 +46,27 @@ namespace pose_graph {
                 const std::unordered_map<std::string, double> &obj_probability_input_variance_by_class_for_var,
                 const double &default_obj_probability_input_variance_for_var,
                 const std::shared_ptr<gp_kernel::Pose2dKernel> &mean_kernel,
-                const std::function<std::shared_ptr<gp_kernel::Pose2dKernel>(const double &)> &var_kernel_creator) : PoseGraph<
-                gp_kernel::Pose2dKernel, MeasurementTranslationDim, MeasurementRotationType,
-                CovDim, 2, double, 3>(rotation_local_parameterization_creator,
-                                      obj_probability_prior_mean_by_class,
-                                      default_obj_probability_prior_mean,
-                                      obj_probability_input_variance_by_class_for_mean,
-                                      default_obj_probability_input_variance_for_mean,
-                                      obj_probability_input_variance_by_class_for_var,
-                                      default_obj_probability_input_variance_for_var,
-                                      mean_kernel,
-                                      var_kernel_creator) {}
+                const std::function<std::shared_ptr<gp_kernel::Pose2dKernel>(const double &)>
+                        &var_kernel_creator) : PoseGraph<gp_kernel::Pose2dKernel, MeasurementTranslationDim,
+                        MeasurementRotationType, CovDim, 2, double, 3, MovableObservationObjectPose<
+                                MeasurementTranslationDim, MeasurementRotationType, CovDim>>(
+                    rotation_local_parameterization_creator, obj_probability_prior_mean_by_class,
+                    default_obj_probability_prior_mean, obj_probability_input_variance_by_class_for_mean,
+                    default_obj_probability_input_variance_for_mean, obj_probability_input_variance_by_class_for_var,
+                    default_obj_probability_input_variance_for_var, mean_kernel,var_kernel_creator) {}
 
         ~PoseGraphXdMovObjDistribution2d() override = default;
 
-        bool getMatrixRepresentationOfDetections(
-                const std::vector<MapObjectObservation2d> &pos_observations,
-                Eigen::MatrixXd &input_matrix) const override {
-
+        bool getMatrixRepresentationOfDetections(const std::vector<MapObjectObservation2d> &pos_observations,
+                                                 Eigen::MatrixXd &input_matrix) const override {
             size_t pos_obs_count = pos_observations.size();
-
             if (pos_obs_count == 0) {
                 return false;
             }
 
             // Inputs should have 3 rows and as many columns as examples
             input_matrix = Eigen::MatrixXd(3, pos_obs_count);
-            for (size_t i = 0; i < pos_obs_count; i++) {
+            for (size_t i = 0; i<pos_obs_count; i++) {
                 input_matrix(0, i) = pos_observations[i].transl_.x();
                 input_matrix(1, i) = pos_observations[i].transl_.y();
                 input_matrix(2, i) = pos_observations[i].orientation_;
@@ -80,12 +74,11 @@ namespace pose_graph {
             return true;
         }
 
-        util_kdtree::KDNodeValue<double, 2> getKdRepForObs(
-                const MapObjectObservation2d &pos_observation,
-                const int &index) const override {
+        util_kdtree::KDNodeValue<double, 2> getKdRepForObs(const MapObjectObservation2d &pos_observation,
+                                                           const int &index) const override {
             return util_kdtree::KDNodeValue<double, 2>(
-                    Eigen::Vector2d(pos_observation.transl_.x(), pos_observation.transl_.y()), Eigen::Vector2d(0, 0),
-                    index);
+                    Eigen::Vector2d(pos_observation.transl_.x(), pos_observation.transl_.y()),
+                    Eigen::Vector2d(0, 0), index);
         }
     };
 
@@ -99,25 +92,25 @@ namespace pose_graph {
                 const std::unordered_map<std::string, double> &obj_probability_input_variance_by_class_for_var,
                 const double &default_obj_probability_input_variance_for_var,
                 const std::shared_ptr<gp_kernel::Pose2dKernel> &mean_kernel,
-                const std::function<std::shared_ptr<gp_kernel::Pose2dKernel> (const double &)> &var_kernel_creator) : PoseGraphXdMovObjDistribution2d<3, Eigen::Quaterniond, 6>(
-                createQuaternionParameterization,
-                obj_probability_prior_mean_by_class,
-                default_obj_probability_prior_mean,
-                obj_probability_input_variance_by_class_for_mean,
-                default_obj_probability_input_variance_for_mean,
-                obj_probability_input_variance_by_class_for_var,
-                default_obj_probability_input_variance_for_var,
-                mean_kernel,
-                var_kernel_creator) {
-        }
+                const std::function<std::shared_ptr<gp_kernel::Pose2dKernel>(const double &)>
+                        &var_kernel_creator): PoseGraphXdMovObjDistribution2d<3, Eigen::Quaterniond, 6>(
+                                createQuaternionParameterization,
+                                obj_probability_prior_mean_by_class,
+                                default_obj_probability_prior_mean,
+                                obj_probability_input_variance_by_class_for_mean,
+                                default_obj_probability_input_variance_for_mean,
+                                obj_probability_input_variance_by_class_for_var,
+                                default_obj_probability_input_variance_for_var,
+                                mean_kernel,var_kernel_creator) {}
 
         static ceres::LocalParameterization *createQuaternionParameterization() {
             return new ceres::EigenQuaternionParameterization();
         }
 
         ceres::CostFunction *createMovableObjectCostFunctor(
-                const std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> &movable_object_gpc,
-                const MovableObservationFactor<3, Eigen::Quaterniond, 6> &factor,
+                const std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>
+                &movable_object_gpc,
+                const MovableObservationObjectPoseFactor3d &factor,
                 const pose_optimization::CostFunctionParameters &cost_function_params) const override {
             std::vector<std::pair<Eigen::Vector3d, Eigen::Quaterniond>> observation_samples;
 //            util_random::Random random_generator;
@@ -128,14 +121,16 @@ namespace pose_graph {
                 // sampling each component independently
                 std::pair<Eigen::Vector3d, Eigen::Quaterniond> sample = {
                         factor.observation_.observation_transl_,
-                        factor.observation_.observation_orientation_};
+                        factor.observation_.observation_orientation_
+                };
                 observation_samples.emplace_back(sample);
             }
 
-            return new ceres::AutoDiffCostFunction<pose_optimization::SampleBasedMovableObservationCostFunctor3D<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>, 1, 3, 4>(
-                    new pose_optimization::SampleBasedMovableObservationCostFunctor3D<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
-                            movable_object_gpc,
-                            observation_samples));
+            return new ceres::AutoDiffCostFunction<pose_optimization::SampleBasedMovableObservationCostFunctor3D<
+                    gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>, 1, 3, 4>(
+                            new pose_optimization::SampleBasedMovableObservationCostFunctor3D<
+                                    gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
+                                            movable_object_gpc, observation_samples));
         }
 
         ceres::CostFunction *createGaussianBinaryCostFunctor(
@@ -151,8 +146,8 @@ namespace pose_graph {
             return {node_pose_pointers.first->data(), node_pose_pointers.second->coeffs().data()};
         };
 
-
-        std::pair<double, Eigen::Matrix<double, 2, 1>> getSampleSearchCriteria(MovableObservationFactorType mov_obj_factor) const override {
+        std::pair<double, Eigen::Matrix<double, 2, 1>> getSampleSearchCriteria(
+                MovableObservationFactorType mov_obj_factor) const override {
             if (nodes_.find(mov_obj_factor.observed_at_node_) == nodes_.end()) {
                 return std::make_pair(0, Eigen::Vector2d(0, 0));
             }
@@ -161,7 +156,8 @@ namespace pose_graph {
             pose::Pose3d obs_pos = std::make_pair(mov_obj_factor.observation_.observation_transl_,
                                                   mov_obj_factor.observation_.observation_orientation_);
             pose::Pose3d obs_pos_map_frame = pose::combinePoses(node_pos, obs_pos);
-            return std::make_pair(8.5,Eigen::Vector2d(obs_pos_map_frame.first.x(), obs_pos_map_frame.first.y()));
+
+            return std::make_pair(8.5, Eigen::Vector2d(obs_pos_map_frame.first.x(), obs_pos_map_frame.first.y()));
 //            return std::make_pair(std::min(7.5, mov_obj_factor.observation_.observation_transl_.norm() * 0.5),
 //                                  Eigen::Vector2d(obs_pos_map_frame.first.x(), obs_pos_map_frame.first.y()));
         }
@@ -177,23 +173,24 @@ namespace pose_graph {
                 const std::unordered_map<std::string, double> &obj_probability_input_variance_by_class_for_var,
                 const double &default_obj_probability_input_variance_for_var,
                 const std::shared_ptr<gp_kernel::Pose2dKernel> &mean_kernel,
-                const std::function<std::shared_ptr<gp_kernel::Pose2dKernel>(const double &)> &var_kernel_creator) : PoseGraphXdMovObjDistribution2d<2, double, 3>(
-                pose_optimization::AngleLocalParameterization::create,
-                obj_probability_prior_mean_by_class,
-                default_obj_probability_prior_mean,
-                obj_probability_input_variance_by_class_for_mean,
-                default_obj_probability_input_variance_for_mean,
-                obj_probability_input_variance_by_class_for_var,
-                default_obj_probability_input_variance_for_var,
-                mean_kernel,
-                var_kernel_creator) {
-        }
+                const std::function<std::shared_ptr<gp_kernel::Pose2dKernel>(const double &)>
+                        &var_kernel_creator) : PoseGraphXdMovObjDistribution2d<2, double, 3>(
+                                pose_optimization::AngleLocalParameterization::create,
+                                obj_probability_prior_mean_by_class,
+                                default_obj_probability_prior_mean,
+                                obj_probability_input_variance_by_class_for_mean,
+                                default_obj_probability_input_variance_for_mean,
+                                obj_probability_input_variance_by_class_for_var,
+                                default_obj_probability_input_variance_for_var,
+                                mean_kernel,
+                                var_kernel_creator) {}
 
         ~PoseGraph2dMovObjDistribution2d() override = default;
 
         ceres::CostFunction *createMovableObjectCostFunctor(
-                const std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> &movable_object_gpc,
-                const MovableObservationFactor<2, double, 3> &factor,
+                const std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>
+                &movable_object_gpc,
+                const MovableObservationObjectPoseFactor2d &factor,
                 const pose_optimization::CostFunctionParameters &cost_function_params) const override {
             std::vector<std::pair<Eigen::Vector2d, double>> observation_samples;
             util_random::Random rand_gen(std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -207,16 +204,16 @@ namespace pose_graph {
                 std::pair<Eigen::Vector2d, double> sample = {
                         Eigen::Vector2d(rand_gen.Gaussian(factor.observation_.observation_transl_.x(), x_std_dev),
                                         rand_gen.Gaussian(factor.observation_.observation_transl_.y(), y_std_dev)),
-                        rand_gen.Gaussian(factor.observation_.observation_orientation_, yaw_std_dev)};
+                                        rand_gen.Gaussian(factor.observation_.observation_orientation_, yaw_std_dev)};
                 observation_samples.emplace_back(sample);
             }
 
-            return new ceres::AutoDiffCostFunction<pose_optimization::SampleBasedMovableObservationCostFunctor2D<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>, 1, 2, 1>(
-                    new pose_optimization::SampleBasedMovableObservationCostFunctor2D<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
-                            movable_object_gpc,
-                            observation_samples,
-                            jet_cost_functor_timer_,
-                            double_cost_functor_timer_));
+            return new ceres::AutoDiffCostFunction<pose_optimization::SampleBasedMovableObservationCostFunctor2D<
+                    gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>, 1, 2, 1>(
+                            new pose_optimization::SampleBasedMovableObservationCostFunctor2D<
+                                    gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
+                                            movable_object_gpc, observation_samples,
+                                            jet_cost_functor_timer_,double_cost_functor_timer_));
         }
 
         ceres::CostFunction *createGaussianBinaryCostFunctor(
@@ -224,7 +221,7 @@ namespace pose_graph {
             return new ceres::AutoDiffCostFunction<pose_optimization::Odometry2dCostFunctor, 3, 2, 1, 2, 1>(
                     new pose_optimization::Odometry2dCostFunctor(
                             factor.translation_change_, factor.orientation_change_, factor.sqrt_information_));
-        };
+        }
 
         std::pair<double *, double *> getPointersToUnderlyingData(
                 const std::pair<std::shared_ptr<Eigen::Matrix<double, 2, 1>>,
@@ -232,7 +229,8 @@ namespace pose_graph {
             return {node_pose_pointers.first->data(), node_pose_pointers.second.get()};
         }
 
-        std::pair<double, Eigen::Matrix<double, 2, 1>> getSampleSearchCriteria(MovableObservationFactorType mov_obj_factor) const override {
+        std::pair<double, Eigen::Matrix<double, 2, 1>> getSampleSearchCriteria(
+                MovableObservationFactorType mov_obj_factor) const override {
             if (nodes_.find(mov_obj_factor.observed_at_node_) == nodes_.end()) {
                 return std::make_pair(0, Eigen::Vector2d(0, 0));
             }

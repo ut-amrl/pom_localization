@@ -11,13 +11,13 @@ namespace offline_optimization {
 
 
     template<int MeasurementTranslationDim, typename MeasurementRotationType, int CovDim,
-            int MovObjDistributionTranslationDim, typename MovObjDistributionRotationType>
+            int MovObjDistributionTranslationDim, typename MovObjDistributionRotationType, typename MovableObservationType>
     struct OfflineProblemData {
         std::vector<pose_graph::GaussianBinaryFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim>> odometry_factors_;
 
         std::vector<pose_graph::MapObjectObservation<MovObjDistributionTranslationDim, MovObjDistributionRotationType>> map_object_observations_;
 
-        std::vector<pose_graph::MovableObservationFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim>> movable_observation_factors_;
+        std::vector<pose_graph::MovableObservationFactor<MovableObservationType>> movable_observation_factors_;
 
         /**
          * Node ids and initial positions.

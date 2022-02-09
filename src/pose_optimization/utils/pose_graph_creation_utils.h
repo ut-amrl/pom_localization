@@ -9,8 +9,9 @@
 
 namespace pose_graph {
     namespace utils {
-        static std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>>
-        createFully2dPoseGraphFromParams(const pose_optimization::CostFunctionParameters &cost_function_params) {
+        static std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3,
+        MovableObservationObjectPose<2, double, 3>>> createFully2dPoseGraphObjectPoseDetectionsFromParams(
+                const pose_optimization::CostFunctionParameters &cost_function_params) {
 
             gp_kernel::GaussianKernel<2> mean_position_kernel(cost_function_params.mean_position_kernel_len_,
                                                               cost_function_params.mean_position_kernel_var_);

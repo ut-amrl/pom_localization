@@ -20,18 +20,19 @@ namespace offline_optimization {
     };
 
     template<typename MovObjKernelType, int MeasurementTranslationDim, typename MeasurementRotationType, int CovDim,
-            int MovObjDistributionTranslationDim, typename MovObjDistributionRotationType, int KernelDim>
+            int MovObjDistributionTranslationDim, typename MovObjDistributionRotationType, int KernelDim, typename MovableObservationType>
     class OfflinePoseOptimizer {
     public:
 
-        typedef pose_graph::PoseGraph<MovObjKernelType,
-                MeasurementTranslationDim, MeasurementRotationType, CovDim,
-                MovObjDistributionTranslationDim, MovObjDistributionRotationType, KernelDim> PoseGraphType;
+        typedef pose_graph::PoseGraph<MovObjKernelType, MeasurementTranslationDim, MeasurementRotationType, CovDim,
+                MovObjDistributionTranslationDim, MovObjDistributionRotationType, KernelDim,
+                MovableObservationType> PoseGraphType;
         typedef OfflineProblemData<MeasurementTranslationDim, MeasurementRotationType, CovDim,
-                MovObjDistributionTranslationDim, MovObjDistributionRotationType> OfflineProblemDataType;
+                MovObjDistributionTranslationDim, MovObjDistributionRotationType,
+                MovableObservationType> OfflineProblemDataType;
         typedef pose_graph::Node<MeasurementTranslationDim, MeasurementRotationType> NodeType;
         typedef pose_graph::GaussianBinaryFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> GaussianBinaryFactorType;
-        typedef pose_graph::MovableObservationFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> MovableObservationFactorType;
+        typedef pose_graph::MovableObservationFactor<MovableObservationType> MovableObservationFactorType;
         typedef pose_graph::MapObjectObservation<MovObjDistributionTranslationDim, MovObjDistributionRotationType> MapObjectObservationType;
         typedef Eigen::Matrix<double, MeasurementTranslationDim, 1> TranslType;
         typedef std::pair<TranslType, MeasurementRotationType> PoseType;
@@ -109,7 +110,8 @@ namespace offline_optimization {
             // TODO consider just adding prior to 0 instead of making it non-optimizable
 
             pose_optimization::PoseGraphOptimizer<MovObjKernelType, MeasurementTranslationDim, MeasurementRotationType,
-            CovDim, MovObjDistributionTranslationDim, MovObjDistributionRotationType, KernelDim> optimizer;
+                    CovDim, MovObjDistributionTranslationDim, MovObjDistributionRotationType, KernelDim,
+                    MovableObservationType> optimizer;
             ceres::Problem problem;
 
 //            std::unordered_set<pose_graph::NodeId> nodes_to_optimize;
@@ -120,17 +122,22 @@ namespace offline_optimization {
 
                 std::unordered_set<pose_graph::NodeId> nodes_to_optimize;
                 pose_graph::NodeId start_node_to_optimize;
-                if (((next_pose_to_optimize % problem_params.cost_function_params_.full_optimization_interval_) == 0) || (next_pose_to_optimize == max_node_id)) {
+                if (((next_pose_to_optimize % problem_params.cost_function_params_.full_optimization_interval_) == 0) ||
+                    (next_pose_to_optimize == max_node_id)) {
                     start_node_to_optimize = 0;
                 } else {
-                    if ((next_pose_to_optimize) >= (problem_params.cost_function_params_.num_nodes_in_optimization_window_ - 1)) {
-                        start_node_to_optimize = next_pose_to_optimize - (problem_params.cost_function_params_.num_nodes_in_optimization_window_ - 1);
+                    if ((next_pose_to_optimize) >=
+                        (problem_params.cost_function_params_.num_nodes_in_optimization_window_ - 1)) {
+                        start_node_to_optimize = next_pose_to_optimize -
+                                                 (problem_params.cost_function_params_.num_nodes_in_optimization_window_ -
+                                                  1);
                     } else {
                         start_node_to_optimize = 0;
                     }
                 }
                 LOG(INFO) << "Starting node " << start_node_to_optimize;
-                for (pose_graph::NodeId node_to_include = start_node_to_optimize; node_to_include <= next_pose_to_optimize; node_to_include++) {
+                for (pose_graph::NodeId node_to_include = start_node_to_optimize;
+                     node_to_include <= next_pose_to_optimize; node_to_include++) {
 //                    LOG(INFO) << "Adding node " << node_to_include;
                     nodes_to_optimize.insert(node_to_include);
                 }
@@ -178,7 +185,8 @@ namespace offline_optimization {
 //                if (next_pose_to_optimize == 1) {
 //                    new_nodes_to_optimize.insert(0);
 //                }
-                optimizer.buildPoseGraphOptimizationProblem(*(pose_graph.get()), start_node_to_optimize, nodes_to_optimize,
+                optimizer.buildPoseGraphOptimizationProblem(*(pose_graph.get()), start_node_to_optimize,
+                                                            nodes_to_optimize,
                                                             problem_params.cost_function_params_, &problem);
 
                 // Run any per-pose pre-solving visualization

@@ -108,15 +108,34 @@ namespace pose_graph {
     };
 
     /**
-     * 3D Observation of a movable object.
+     * High level class for a movable object observation.
      */
-    template<int TranslationDim, typename RotationType, int CovDim>
     struct MovableObservation {
 
         /**
          * Semantic class of the object.
          */
         std::string semantic_class_;
+    };
+
+    /**
+     * Variant of a movable object observation that consists of semantically labeled points detected on the same object.
+     *
+     * @tparam TranslationDim Dimension of the detected points (3 for 3D, 2 for 2D).
+     */
+    template <int TranslationDim>
+    struct MovableObservationSemanticPoints : MovableObservation {
+        /**
+         * Points observed on a single object.
+         */
+        std::vector<Eigen::Matrix<double, TranslationDim, 1>> object_points_;
+    };
+
+    /**
+     * 3D Observation of a movable object.
+     */
+    template<int TranslationDim, typename RotationType, int CovDim>
+    struct MovableObservationObjectPose : MovableObservation {
 
         /**
          * Relative location of the object.
@@ -133,11 +152,10 @@ namespace pose_graph {
     };
 
 
-
     /**
      * Factor that encodes a sighting of a movable object.
      */
-    template<int TranslationDim, typename RotationType, int CovDim>
+    template<typename ObservationType >
     struct MovableObservationFactor {
 
         /**
@@ -147,7 +165,7 @@ namespace pose_graph {
          * @param observation   Observation of the object, relative to the robot.
          */
         MovableObservationFactor(const NodeId &node_id,
-                                 const MovableObservation<TranslationDim, RotationType, CovDim> &observation) :
+                                 const ObservationType &observation) :
                 observed_at_node_(node_id), observation_(observation) {}
 
 //        MovableObservationFactor(const MovableObservationFactor<TranslationDim, RotationType, CovDim> &observation_factor) :
@@ -163,7 +181,7 @@ namespace pose_graph {
         /**
          * Observation of the object, relative to the robot.
          */
-        MovableObservation<TranslationDim, RotationType, CovDim> observation_;
+        ObservationType observation_;
     };
 
     /**
@@ -173,13 +191,12 @@ namespace pose_graph {
      * to a dimension.
      */
     template<typename MovObjKernelType, int MeasurementTranslationDim, typename MeasurementRotationType, int CovDim,
-            int MovObjDistributionTranslationDim, typename MovObjDistributionRotationType, int KernelDim>
+            int MovObjDistributionTranslationDim, typename MovObjDistributionRotationType, int KernelDim, typename MovableObservationType>
     class PoseGraph {
     public:
 
         typedef Node<MeasurementTranslationDim, MeasurementRotationType> NodeType;
-        typedef MovableObservation<MeasurementTranslationDim, MeasurementRotationType, CovDim> MovableObservationType;
-        typedef MovableObservationFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> MovableObservationFactorType;
+        typedef MovableObservationFactor<MovableObservationType> MovableObservationFactorType;
         typedef GaussianBinaryFactor<MeasurementTranslationDim, MeasurementRotationType, CovDim> GaussianBinaryFactorType;
         typedef MapObjectObservation<MovObjDistributionTranslationDim, MovObjDistributionRotationType> MapObjectObservationType;
         typedef gp_regression::GaussianProcessClassifier<KernelDim, MovObjKernelType> GpcType;

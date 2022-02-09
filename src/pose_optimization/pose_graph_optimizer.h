@@ -17,7 +17,7 @@
 namespace pose_optimization {
 
     template<typename MovObjKernelType, int MeasurementTranslationDim, typename MeasurementRotationType, int CovDim,
-            int MovObjDistributionTranslationDim, typename MovObjDistributionRotationType, int KernelDim>
+            int MovObjDistributionTranslationDim, typename MovObjDistributionRotationType, int KernelDim, typename MovableObservationType>
     class PoseGraphOptimizer {
     public:
         PoseGraphOptimizer() = default;
@@ -43,7 +43,7 @@ namespace pose_optimization {
          */
         void buildPoseGraphOptimizationProblem(
                 pose_graph::PoseGraph<MovObjKernelType, MeasurementTranslationDim, MeasurementRotationType, CovDim,
-                        MovObjDistributionTranslationDim, MovObjDistributionRotationType, KernelDim> &pose_graph,
+                        MovObjDistributionTranslationDim, MovObjDistributionRotationType, KernelDim, MovableObservationType> &pose_graph,
                 const pose_graph::NodeId &min_node_id,
                 const std::unordered_set<pose_graph::NodeId> &nodes_to_optimize,
                 const CostFunctionParameters &cost_function_params, ceres::Problem *problem) {
@@ -149,7 +149,8 @@ namespace pose_optimization {
                 } else {
                     LOG(INFO) << "Refreshing GP for observation from node " << factor.second.observed_at_node_;
                     movable_object_gpc = pose_graph.getMovableObjGpcWithinRadius(
-                            factor.second.observation_.semantic_class_, search_criteria.first, search_criteria.second, cost_function_params.max_gpc_samples_);
+                            factor.second.observation_.semantic_class_, search_criteria.first, search_criteria.second,
+                            cost_function_params.max_gpc_samples_);
 
                     factor_id_to_gpc_[factor.first] = movable_object_gpc;
                     factor_id_to_search_criteria_[factor.first] = search_criteria;
@@ -284,7 +285,7 @@ namespace pose_optimization {
 //                LOG(INFO) << "Last optimized nodes empty";
 //                if (last_min_pose_id_ != min_node_id) {}
             if (((!last_optimized_nodes_.empty()) && (last_min_pose_id_ != min_node_id) &&
-                (nodes_to_optimize.find(last_min_pose_id_) != nodes_to_optimize.end())) && (last_min_pose_id_ != 0)) {
+                 (nodes_to_optimize.find(last_min_pose_id_) != nodes_to_optimize.end())) && (last_min_pose_id_ != 0)) {
 
                 std::pair<std::shared_ptr<Eigen::Matrix<double, MeasurementTranslationDim, 1>>,
                         std::shared_ptr<MeasurementRotationType>> pose_vars;
@@ -300,9 +301,9 @@ namespace pose_optimization {
 
 //            if (min_node_id == 0) {
 //            if (nodes_with_obs_.find(min_node_id) != nodes_with_obs_.end()) {
-                LOG(INFO) << "Setting parameter block " << min_node_id << " constant";
-                problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.first);
-                problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.second);
+            LOG(INFO) << "Setting parameter block " << min_node_id << " constant";
+            problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.first);
+            problem->SetParameterBlockConstant(raw_pointers_for_start_node_data.second);
 //            }
 //            }
             last_min_pose_id_ = min_node_id;

@@ -61,7 +61,8 @@ generateObjConfigurations(const std::string &semantic_class) {
                     createPose2d(4, 0, 0),
                     createPose2d(5, 0, 0),
                     createPose2d(6, 0, 0)
-            },             {
+            },
+            {
                     createPose2d(1, 0, 0),
                     createPose2d(2, 0, 0),
                     createPose2d(4, 0, 0),
@@ -207,8 +208,10 @@ int main(int argc, char **argv) {
     params.cost_function_params_.mean_position_kernel_len_ = 0.45;
     params.cost_function_params_.mean_orientation_kernel_len_ = 100;
 
-    std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>> pose_graph = pose_graph::utils::createFully2dPoseGraphFromParams(
-            params.cost_function_params_);
+    std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3,
+            pose_graph::MovableObservationObjectPose<2, double, 3>>> pose_graph =
+            pose_graph::utils::createFully2dPoseGraphObjectPoseDetectionsFromParams(
+                    params.cost_function_params_);
     std::unordered_map<std::string, std::vector<pose_graph::MapObjectObservation2d>> observations_by_class;
     for (const pose_graph::MapObjectObservation2d &map_observation : samples) {
         std::vector<pose_graph::MapObjectObservation2d> observations_for_class;
