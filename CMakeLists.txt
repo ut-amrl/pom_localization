@@ -135,6 +135,16 @@ TARGET_LINK_LIBRARIES(fake_pom_plotter ${libs} stdc++fs)
 
 ROSBUILD_ADD_EXECUTABLE(point_cloud_semantic_labeler_from_image src/semantic_segmentation/point_cloud_semantic_labeler_from_image.cpp)
 TARGET_LINK_LIBRARIES(point_cloud_semantic_labeler_from_image ${libs} stdc++fs ${PCL_LIBRARIES})
+
+ROSBUILD_ADD_EXECUTABLE(semantic_point_evaluation_main src/semantic_point_based_pom/semantic_point_evaluation_main.cc)
+TARGET_LINK_LIBRARIES(semantic_point_evaluation_main ${libs} stdc++fs)
+
+ROSBUILD_ADD_EXECUTABLE(find_node_ids_for_semantic_points_and_waypoints_with_timestamps src/semantic_point_based_pom/find_node_ids_for_semantic_points_and_waypoints_with_timestamps.cc)
+TARGET_LINK_LIBRARIES(find_node_ids_for_semantic_points_and_waypoints_with_timestamps ${libs} stdc++fs)
+
+ROSBUILD_ADD_EXECUTABLE(wheel_odom_rosbag_extraction_semantic_points src/semantic_point_based_pom/wheel_odom_rosbag_extraction_semantic_points.cc)
+TARGET_LINK_LIBRARIES(wheel_odom_rosbag_extraction_semantic_points ${libs} stdc++fs)
+
 #TARGET_LINK_LIBRARIES(point_cloud_semantic_labeler_from_image ${libs} stdc++fs )
 
 #ROSBUILD_ADD_EXECUTABLE(create_global_obj_locations_2d_from_3d_parking_spots src/evaluation/create_global_obj_locations_from_3d_parking_spots.cc)

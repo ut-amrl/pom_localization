@@ -2,16 +2,17 @@
 // Created by amanda on 2/5/22.
 //
 
-#ifndef AUTODIFF_GP_SEMANTIC_POINT_IO_H
-#define AUTODIFF_GP_SEMANTIC_POINT_IO_H
+#ifndef AUTODIFF_GP_SEMANTIC_POINT_WITH_TIMESTAMP_IO_H
+#define AUTODIFF_GP_SEMANTIC_POINT_WITH_TIMESTAMP_IO_H
 
 #include <stdint.h>
 #include <fstream>
 #include <vector>
 #include <sstream>
+#include <file_io/file_io_utils.h>
 
 namespace semantic_segmentation {
-    struct SemanticallyLabeledPointWithFrameInfo {
+    struct SemanticallyLabeledPointWithTimestampInfo {
 
         /**
          * X coordinate of the point in the lidar frame.
@@ -52,33 +53,34 @@ namespace semantic_segmentation {
         uint32_t cluster_label;
     };
 
-    void writeSemanticallyLabeledPointWithFrameInfoHeaderToFile(std::ofstream &file_stream) {
-        file_stream << "point_x" << ", " << "point_y" << ", " << "point_z" << ", " << "semantic_label" << ", "
-                    << "seconds" << ", " << "nanoseconds" << ", " << "cluster_label" << "\n";
+    void writeSemanticallyLabeledPointWithTimestampInfoHeaderToFile(std::ofstream &file_stream) {
+        file_io::writeCommaSeparatedStringsLineToFile(
+                {"point_x", "point_y", "point_z", "semantic_label", "seconds", "nanoseconds", "cluster_label"},
+                file_stream);
     }
 
 
-    void writeSemanticallyLabeledPointWithFrameInfoEntryLineToFile(
-            const SemanticallyLabeledPointWithFrameInfo &semantic_point,
+    void writeSemanticallyLabeledPointWithTimestampInfoEntryLineToFile(
+            const SemanticallyLabeledPointWithTimestampInfo &semantic_point,
             std::ofstream &file_stream) {
         file_stream << semantic_point.point_x << ", " << semantic_point.point_y << ", " << semantic_point.point_z <<
                     ", " << semantic_point.semantic_label << ", " << semantic_point.seconds << ", "
                     << semantic_point.nano_seconds << ", " << semantic_point.cluster_label << "\n";
     }
 
-    void writeSemanticallyLabeledPointWithFrameInfosToFile(const std::string &file_name,
-                                                           const std::vector<SemanticallyLabeledPointWithFrameInfo> &semantic_points) {
+    void writeSemanticallyLabeledPointWithTimestampInfosToFile(const std::string &file_name,
+                                                               const std::vector<SemanticallyLabeledPointWithTimestampInfo> &semantic_points) {
         std::ofstream csv_file(file_name, std::ios::trunc);
-        writeSemanticallyLabeledPointWithFrameInfoHeaderToFile(csv_file);
-        for (const SemanticallyLabeledPointWithFrameInfo &node_with_timestamp : semantic_points) {
-            writeSemanticallyLabeledPointWithFrameInfoEntryLineToFile(node_with_timestamp, csv_file);
+        writeSemanticallyLabeledPointWithTimestampInfoHeaderToFile(csv_file);
+        for (const SemanticallyLabeledPointWithTimestampInfo &node_with_timestamp : semantic_points) {
+            writeSemanticallyLabeledPointWithTimestampInfoEntryLineToFile(node_with_timestamp, csv_file);
         }
 
         csv_file.close();
     }
 
-    void readSemanticallyLabeledPointWithFrameInfoLine(const std::string &line_in_file,
-                                                       SemanticallyLabeledPointWithFrameInfo &semantic_point) {
+    void readSemanticallyLabeledPointWithTimestampInfoLine(const std::string &line_in_file,
+                                                           SemanticallyLabeledPointWithTimestampInfo &semantic_point) {
         std::stringstream ss(line_in_file);
         std::string substr;
 
@@ -111,8 +113,8 @@ namespace semantic_segmentation {
         stream_cluster_label >> semantic_point.cluster_label;
     }
 
-    void readSemanticallyLabeledPointWithFrameInfoFromFile(const std::string &file_name,
-                                                           std::vector<SemanticallyLabeledPointWithFrameInfo> &semantic_points) {
+    void readSemanticallyLabeledPointWithTimestampInfoFromFile(const std::string &file_name,
+                                                               std::vector<SemanticallyLabeledPointWithTimestampInfo> &semantic_points) {
         std::ifstream file_obj(file_name);
         std::string line;
         bool first_line = true;
@@ -121,11 +123,11 @@ namespace semantic_segmentation {
                 first_line = false;
                 continue;
             }
-            SemanticallyLabeledPointWithFrameInfo semantic_point;
-            readSemanticallyLabeledPointWithFrameInfoLine(line, semantic_point);
+            SemanticallyLabeledPointWithTimestampInfo semantic_point;
+            readSemanticallyLabeledPointWithTimestampInfoLine(line, semantic_point);
             semantic_points.emplace_back(semantic_point);
         }
     }
 }
 
-#endif //AUTODIFF_GP_SEMANTIC_POINT_IO_H
+#endif //AUTODIFF_GP_SEMANTIC_POINT_WITH_TIMESTAMP_IO_H

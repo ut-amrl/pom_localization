@@ -25,22 +25,27 @@ namespace visualization {
     class VisualizationManager {
     public:
 
-        VisualizationManager(ros::NodeHandle &node_handle, const std::string &prefix = "") : node_handle_(node_handle), prefix_(prefix) {
-            gt_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>(prefix + "gt_visualization_marker", 10000);
-            other_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>(prefix + "other_visualization_marker", 10000);
+        VisualizationManager(ros::NodeHandle &node_handle, const std::string &prefix = "") : node_handle_(node_handle),
+                                                                                             prefix_(prefix) {
+            gt_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>(prefix + "gt_visualization_marker",
+                                                                                10000);
+            other_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>(
+                    prefix + "other_visualization_marker", 10000);
             est_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>(prefix + "est_pos_marker", 10000);
             odom_marker_pub_ = node_handle_.advertise<visualization_msgs::Marker>(prefix + "odom_pos_marker", 10000);
             regressor_max_val_for_pos_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>(
                     prefix + "regressor_max_val_for_pos", 2);
-            variance_max_val_for_pos_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>(prefix + "variance_max_val_for_pos",
-                                                                                            2);
+            variance_max_val_for_pos_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>(
+                    prefix + "variance_max_val_for_pos",
+                    2);
             classifier_max_val_for_pos_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>(
                     prefix + "classifier_max_val_for_pos", 2);
-            robot_pose_max_val_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>(prefix +"robot_pose_max_val", 2);
+            robot_pose_max_val_pub_ = node_handle_.advertise<nav_msgs::OccupancyGrid>(prefix + "robot_pose_max_val", 2);
 
             waypoint_pub_ = node_handle_.advertise<visualization_msgs::Marker>(prefix + "waypoints", 500);
 
-            parking_spot_3d_pub_ = node_handle_.advertise<visualization_msgs::Marker>(prefix + "parking_spots_3d", 10000);
+            parking_spot_3d_pub_ = node_handle_.advertise<visualization_msgs::Marker>(prefix + "parking_spots_3d",
+                                                                                      10000);
             LOG(INFO) << "Vis manager 1";
             ros::Duration(2).sleep();
             LOG(INFO) << "Vis manager 2";
@@ -74,7 +79,7 @@ namespace visualization {
                 regressor_for_angle_mult_[i] = node_handle_.advertise<nav_msgs::OccupancyGrid>(
                         prefix + regressor_heat_topic_name, 2);
                 variance_for_angle_mult_[i] = node_handle_.advertise<nav_msgs::OccupancyGrid>(
-                        prefix + variance_heat_topic_name,2);
+                        prefix + variance_heat_topic_name, 2);
                 robot_pose_pub_for_angle_mult_[i] = node_handle_.advertise<nav_msgs::OccupancyGrid>(
                         prefix + robot_pose_topic_name, 2);
             }
@@ -125,11 +130,6 @@ namespace visualization {
                 LOG(INFO) << "Publishing spot " << i;
                 publishParkingSpot3d(parking_spot_3d_pub_, pose, color, kCarGtPosesMin + i, spot_x_dim, spot_y_dim);
             }
-
-//            for (int32_t i = kCarGtPosesMin + car_poses_count; i <= kCarGtPosesMax; i++) {
-//                LOG(INFO) << "Removing " << i;
-//                removeMarker(i, parking_spot_3d_pub_);
-//            }
         }
 
         void displayObjObservationsFromGtTrajectory(const std::vector<pose::Pose3d> &gt_trajectory,
@@ -166,6 +166,32 @@ namespace visualization {
                                                 kObservedFromEstCarDetectionsMin, kObservedFromEstCarDetectionsMax);
         }
 
+        void displaySemanticPointObsFromEstTrajectory(const std::vector<pose::Pose2d> &est_trajectory,
+                                                       const std::vector<std::vector<std::vector<Eigen::Vector2d>>> &relative_semantic_points,
+                                                       const std::string &obj_class) {
+            std_msgs::ColorRGBA color;
+            color.a = 0.5;
+            color.r = 1.0;
+            color.g = 0.7;
+
+            ros::Publisher pub;
+            getOrCreatePublisherForTrajTypeAndClass(ESTIMATED, obj_class, pub);
+
+            std::vector<std::vector<Eigen::Vector3d>> relative_points_3d;
+            for (const std::vector<std::vector<Eigen::Vector2d>> &relative_semantic_points_for_pose : relative_semantic_points) {
+                for (const std::vector<Eigen::Vector2d> &points_for_object : relative_semantic_points_for_pose) {
+                    relative_points_3d.emplace_back(convert2DPointsTo3D(points_for_object));
+                }
+            }
+
+            std::vector<pose::Pose3d> est_trajectory_3d = convert2DPosesTo3D(est_trajectory);
+
+            publishLinesToSemanticPointDetections(pub, est_trajectory_3d, relative_points_3d, color,
+                                                  kObservedFromGtCarDetectionLines);
+            publishSemanticPointDetectionsRelToRobotPoses(pub, est_trajectory_3d, relative_points_3d, color,
+                                                          kSemanticPointsMin);
+        }
+
         void displayObjObservationsFromOdomTrajectory(const std::vector<pose::Pose3d> &odom_trajectory,
                                                       const std::vector<std::vector<pose::Pose3d>> &relative_car_poses,
                                                       const std::string &obj_class) {
@@ -183,6 +209,33 @@ namespace visualization {
                                         kObservedFromOdomCarDetectionLines);
             publishObjDetectionsRelToRobotPoses(pub, odom_trajectory, relative_car_poses, color,
                                                 kObservedFromOdomCarDetectionsMin, kObservedFromOdomCarDetectionsMax);
+        }
+
+        void displaySemanticPointObsFromOdomTrajectory(const std::vector<pose::Pose2d> &odom_trajectory,
+                                                     const std::vector<std::vector<std::vector<Eigen::Vector2d>>> &relative_semantic_points,
+                                                     const std::string &obj_class) {
+            std_msgs::ColorRGBA color;
+            color.a = 0.5;
+            color.b = 1.0;
+            color.r = 0.7;
+            color.g = 0.2;
+
+            ros::Publisher pub;
+            getOrCreatePublisherForTrajTypeAndClass(ODOM_ONLY, obj_class, pub);
+
+            std::vector<std::vector<Eigen::Vector3d>> relative_points_3d;
+            for (const std::vector<std::vector<Eigen::Vector2d>> &relative_semantic_points_for_pose : relative_semantic_points) {
+                for (const std::vector<Eigen::Vector2d> &points_for_object : relative_semantic_points_for_pose) {
+                    relative_points_3d.emplace_back(convert2DPointsTo3D(points_for_object));
+                }
+            }
+
+            std::vector<pose::Pose3d> odom_trajectory_3d = convert2DPosesTo3D(odom_trajectory);
+
+            publishLinesToSemanticPointDetections(pub, odom_trajectory_3d, relative_points_3d, color,
+                                                  kObservedFromGtCarDetectionLines);
+            publishSemanticPointDetectionsRelToRobotPoses(pub, odom_trajectory_3d, relative_points_3d, color,
+                                                          kSemanticPointsMin);
         }
 
         void displayOdomTrajectory(const std::vector<pose::Pose3d> &odom_trajectory) {
@@ -432,7 +485,8 @@ namespace visualization {
         }
 
         void displayMaxGpRegressorOutput(
-                std::function<std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> (const Eigen::Vector2d&)> gpc_creator,
+                std::function<std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
+                        const Eigen::Vector2d &)> gpc_creator,
                 const double &resolution, const double &x_min, const double &x_max, const double &y_min,
                 const double &y_max) {
             int64_t x_min_unscaled = floor(x_min / resolution);
@@ -495,8 +549,9 @@ namespace visualization {
             std::unordered_map<int, Eigen::Matrix<double, 1, Eigen::Dynamic>> output_mats;
             std::unordered_map<int, Eigen::Matrix<double, 1, Eigen::Dynamic>> output_mats_regressor_val;
             std::unordered_map<int, Eigen::Matrix<double, 1, Eigen::Dynamic>> output_mats_variance;
-            Eigen::Matrix<double, 1, Eigen::Dynamic> close_to_parking_spots_mat = Eigen::Matrix<double, 1, Eigen::Dynamic>(1, best_occ_grid.info.width *
-                                                                                                                         best_occ_grid.info.height);
+            Eigen::Matrix<double, 1, Eigen::Dynamic> close_to_parking_spots_mat = Eigen::Matrix<double, 1, Eigen::Dynamic>(
+                    1, best_occ_grid.info.width *
+                       best_occ_grid.info.height);
 
             std::vector<Eigen::Vector2d> parking_spots;
             parking_spots.emplace_back(Eigen::Vector2d(5.430979, -4.871888));
@@ -701,14 +756,16 @@ namespace visualization {
 
                     bool close_to_parking_spot = false;
                     for (const Eigen::Vector2d &parking_spot : parking_spots) {
-                        if ((parking_spot - Eigen::Vector2d((x_val * resolution), (y_val * resolution))).norm() < 0.25) {
+                        if ((parking_spot - Eigen::Vector2d((x_val * resolution), (y_val * resolution))).norm() <
+                            0.25) {
                             close_to_parking_spot = true;
                             continue;
                         }
                     }
                     close_to_parking_spots_mat(0, data_index) = close_to_parking_spot ? 1 : 0;
 
-                    std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc = gpc_creator(Eigen::Vector2d(x_val * resolution, y_val * resolution));
+                    std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc = gpc_creator(
+                            Eigen::Vector2d(x_val * resolution, y_val * resolution));
                     std::shared_ptr<gp_regression::GaussianProcessRegression<3, 1, gp_kernel::Pose2dKernel>> gp_regressor;
                     if (gpc) {
                         gp_regressor = gpc->getUnderlyingGpRegressor();
@@ -743,7 +800,9 @@ namespace visualization {
                                                                         1).inverse().matrix();
                         output_mats_variance[i].col(data_index) = regressor_out.second;
                         if (close_to_parking_spot) {
-                            LOG(INFO) << "Class, reg, var : " << gpc_output << ", " << output_mats_regressor_val[i].col(data_index) << ", " << output_mats_variance[i].col(data_index);
+                            LOG(INFO) << "Class, reg, var : " << gpc_output << ", "
+                                      << output_mats_regressor_val[i].col(data_index) << ", "
+                                      << output_mats_variance[i].col(data_index);
                         }
 
                         if (gpc) {
@@ -766,7 +825,8 @@ namespace visualization {
 //                    ros::Publisher pub_for_angle = classifier_for_angle_mult_[i];
                     double inf_val = output_mats[j](0, i);
                     double regressor_val = (int8_t) 100 * output_mats_regressor_val[j](0, i);
-                    double variance_val = (int8_t) (100) * std::max(0.0, ((output_mats_variance[j](0, i) - variance_min_value) /
+                    double variance_val =
+                            (int8_t) (100) * std::max(0.0, ((output_mats_variance[j](0, i) - variance_min_value) /
                                                             (variance_max_value - variance_min_value)));
 
 
@@ -1051,6 +1111,32 @@ namespace visualization {
                                                 kObservedFromGtCarDetectionsMin, kObservedFromGtCarDetectionsMax);
         }
 
+        void displaySemanticPointObsFromGtTrajectory(const std::vector<pose::Pose2d> &gt_trajectory,
+                                                     const std::vector<std::vector<std::vector<Eigen::Vector2d>>> &relative_semantic_points,
+                                                     const std::string &obj_class) {
+            std_msgs::ColorRGBA color;
+            color.a = 0.5;
+            color.g = 1.0;
+            color.b = 1.0;
+
+            ros::Publisher pub;
+            getOrCreatePublisherForTrajTypeAndClass(GROUND_TRUTH, obj_class, pub);
+
+            std::vector<std::vector<Eigen::Vector3d>> relative_points_3d;
+            for (const std::vector<std::vector<Eigen::Vector2d>> &relative_semantic_points_for_pose : relative_semantic_points) {
+                for (const std::vector<Eigen::Vector2d> &points_for_object : relative_semantic_points_for_pose) {
+                    relative_points_3d.emplace_back(convert2DPointsTo3D(points_for_object));
+                }
+            }
+
+            std::vector<pose::Pose3d> gt_trajectory_3d = convert2DPosesTo3D(gt_trajectory);
+
+            publishLinesToSemanticPointDetections(pub, gt_trajectory_3d, relative_points_3d, color,
+                                                  kObservedFromGtCarDetectionLines);
+            publishSemanticPointDetectionsRelToRobotPoses(pub, gt_trajectory_3d, relative_points_3d, color,
+                                                          kSemanticPointsMin);
+        }
+
         void displayPastSampleValues(const std::string &obj_class,
                                      const std::vector<std::pair<pose::Pose2d, double>> &sample_poses_and_values) {
             ros::Publisher publisher;
@@ -1217,13 +1303,13 @@ namespace visualization {
                 std::vector<std::vector<pose::Pose2d>> poses_for_traj = waypoints[i];
 
                 size_t half_poses = poses_for_traj.size() / 2;
-                for (size_t j=0; j < poses_for_traj.size(); j++) {
-                    if (j % 2 ) {
-                        color.b = ((double) (j/2)) / half_poses;
+                for (size_t j = 0; j < poses_for_traj.size(); j++) {
+                    if (j % 2) {
+                        color.b = ((double) (j / 2)) / half_poses;
                         color.g = 1.0;
                     } else {
                         color.b = 1.0;
-                        color.g = ((double) ((poses_for_traj.size() - j)/2)) / half_poses;
+                        color.g = ((double) ((poses_for_traj.size() - j) / 2)) / half_poses;
                     }
                     LOG(INFO) << "j: " << j << ", color: " << color;
                     std::vector<pose::Pose3d> poses_3d = convert2DPosesTo3D(poses_for_traj[j]);
@@ -1248,13 +1334,14 @@ namespace visualization {
             std::vector<std_msgs::ColorRGBA> colors;
             for (size_t i = 0; i < trajectory_poses.size(); i++) {
                 std_msgs::ColorRGBA color = base_color;
-                color.b = ((double) i)/(trajectory_poses.size() - 1);
+                color.b = ((double) i) / (trajectory_poses.size() - 1);
                 colors.emplace_back(color);
 
                 trajectory_poses_3d.emplace_back(convert2DPosesTo3D(trajectory_poses[i]));
             }
 
-            publishTrajectories(est_marker_pub_, colors, trajectory_poses_3d, kEstTrajectoryId, kRobotEstPosesMin, kRobotEstPosesMax);
+            publishTrajectories(est_marker_pub_, colors, trajectory_poses_3d, kEstTrajectoryId, kRobotEstPosesMin,
+                                kRobotEstPosesMax);
         }
 
     private:
@@ -1288,6 +1375,7 @@ namespace visualization {
         const int32_t kRobotOdomPosesMin = kRobotGtPosesMin + kMaxTrajectoryLen;
         const int32_t kRobotEstPosesMin = kRobotOdomPosesMin + kMaxTrajectoryLen;
         const int32_t kWaypointsPosesMin = kRobotEstPosesMin + kMaxTrajectoryLen;
+        const int32_t kSemanticPointsMin = kWaypointsPosesMin + kMaxTrajectoryLen;
 
         const int32_t kObservedFromGtCarDetectionsMax = kObservedFromOdomCarDetectionsMin - 1;
         const int32_t kObservedFromOdomCarDetectionsMax = kObservedFromEstCarDetectionsMin - 1;
@@ -1354,7 +1442,8 @@ namespace visualization {
             }
 
             if (pubs_for_traj_type_.find(obj_class) == pubs_for_traj_type_.end()) {
-                std::string topic_name = prefix_ + getStringRepForTrajType(trajectory_type) + "_" + obj_class + "_obs_marker";
+                std::string topic_name =
+                        prefix_ + getStringRepForTrajType(trajectory_type) + "_" + obj_class + "_obs_marker";
                 ros::Publisher new_pub_for_class = node_handle_.advertise<visualization_msgs::Marker>(topic_name,
                                                                                                       kObservationPubQueueSize);
                 pubs_for_traj_type_[obj_class] = new_pub_for_class;
@@ -1396,6 +1485,14 @@ namespace visualization {
                 poses_3d.emplace_back(pose::toPose3d(pose_2d));
             }
             return poses_3d;
+        }
+
+        std::vector<Eigen::Vector3d> convert2DPointsTo3D(const std::vector<Eigen::Vector2d> &points_2d) {
+            std::vector<Eigen::Vector3d> points_3d;
+            for (const Eigen::Vector2d &point_2d : points_2d) {
+                points_3d.emplace_back(pose::toPoint3d(point_2d));
+            }
+            return points_3d;
         }
 
         void publishMarker(visualization_msgs::Marker &marker_msg, ros::Publisher &marker_pub) {
@@ -1448,8 +1545,9 @@ namespace visualization {
         }
 
         void publishTrajectories(ros::Publisher &marker_pub, const std::vector<std_msgs::ColorRGBA> &colors,
-                               const std::vector<std::vector<pose::Pose3d>> &trajectory_poses,
-                               const int32_t &first_trajectory_id, const int32_t &min_pose_id, const int32_t &max_pose_id) {
+                                 const std::vector<std::vector<pose::Pose3d>> &trajectory_poses,
+                                 const int32_t &first_trajectory_id, const int32_t &min_pose_id,
+                                 const int32_t &max_pose_id) {
 
             int32_t next_robot_pose_id = min_pose_id;
             for (size_t i = 0; i < trajectory_poses.size(); i++) {
@@ -1467,6 +1565,7 @@ namespace visualization {
                     point.z = traj_pose.first.z();
                     marker_msg.points.emplace_back(point);
                 }
+//            LOG(INFO) << "Trajecto
 //            LOG(INFO) << "Trajectory len " << marker_msg.points.size();
 
                 marker_msg.pose.orientation.w = 1.0;
@@ -1494,7 +1593,7 @@ namespace visualization {
         }
 
         void publishRobotPose(ros::Publisher &marker_pub, pose::Pose3d &robot_pose, const std_msgs::ColorRGBA &color,
-                              const int32_t id, bool bigger=false) {
+                              const int32_t id, bool bigger = false) {
 
             visualization_msgs::Marker marker_msg;
 
@@ -1627,6 +1726,37 @@ namespace visualization {
 //            }
         }
 
+        void publishSemanticPointDetectionsRelToRobotPoses(ros::Publisher &marker_pub,
+                                                           const std::vector<pose::Pose3d> &robot_poses,
+                                                           const std::vector<std::vector<Eigen::Vector3d>> &point_detections,
+                                                           const std_msgs::ColorRGBA &color, const int32_t marker_id) {
+            visualization_msgs::Marker marker_msg;
+
+            for (size_t i = 0; i < robot_poses.size(); i++) {
+                pose::Pose3d robot_pose = robot_poses[i];
+
+                for (const Eigen::Vector3d &semantic_point : point_detections[i]) {
+                    Eigen::Vector3d global_point_3d = pose::transformPoint(robot_pose, semantic_point);
+
+                    geometry_msgs::Point point_msg;
+                    point_msg.x = global_point_3d.x();
+                    point_msg.y = global_point_3d.y();
+                    point_msg.z = global_point_3d.z();
+
+                    marker_msg.points.emplace_back(point_msg);
+                }
+            }
+
+            marker_msg.pose.orientation.w = 1.0;
+            marker_msg.scale.x = 0.075;
+            marker_msg.type = visualization_msgs::Marker::SPHERE_LIST;
+
+            marker_msg.id = marker_id;
+            marker_msg.color = color;
+
+            publishMarker(marker_msg, marker_pub);
+        }
+
         void publishLinesToCarDetections(ros::Publisher &marker_pub, const std::vector<pose::Pose3d> &robot_poses,
                                          const std::vector<std::vector<pose::Pose3d>> &car_detections,
                                          const std_msgs::ColorRGBA &color, const int32_t id) {
@@ -1647,6 +1777,43 @@ namespace visualization {
                     point_2.x = pose_3d.first.x();
                     point_2.y = pose_3d.first.y();
                     point_2.z = pose_3d.first.z();
+
+                    marker_msg.points.emplace_back(point_1);
+                    marker_msg.points.emplace_back(point_2);
+                }
+            }
+
+            marker_msg.pose.orientation.w = 1.0;
+            marker_msg.scale.x = 0.05;
+            marker_msg.type = visualization_msgs::Marker::LINE_LIST;
+
+            marker_msg.id = id;
+            marker_msg.color = color;
+
+            publishMarker(marker_msg, marker_pub);
+        }
+
+        void publishLinesToSemanticPointDetections(ros::Publisher &marker_pub,
+                                                   const std::vector<pose::Pose3d> &robot_poses,
+                                                   const std::vector<std::vector<Eigen::Vector3d>> &semantic_points,
+                                                   const std_msgs::ColorRGBA &color, const int32_t id) {
+            visualization_msgs::Marker marker_msg;
+
+            for (size_t i = 0; i < robot_poses.size(); i++) {
+                pose::Pose3d robot_pose = robot_poses[i];
+
+                geometry_msgs::Point point_1;
+                point_1.x = robot_pose.first.x();
+                point_1.y = robot_pose.first.y();
+                point_1.z = robot_pose.first.z();
+
+                for (const Eigen::Vector3d &semantic_point_for_pose : semantic_points[i]) {
+                    Eigen::Vector3d point_global = pose::transformPoint(robot_pose, semantic_point_for_pose);
+
+                    geometry_msgs::Point point_2;
+                    point_2.x = point_global.x();
+                    point_2.y = point_global.y();
+                    point_2.z = point_global.z();
 
                     marker_msg.points.emplace_back(point_1);
                     marker_msg.points.emplace_back(point_2);

@@ -5,7 +5,7 @@
 #include <glog/logging.h>
 
 #include <ros/ros.h>
-#include <file_io/semantic_point_io.h>
+#include <file_io/semantic_point_with_timestamp_io.h>
 #include <unordered_set>
 #include <semantic_segmentation/point_cloud_label_utils.h>
 #include <file_io/pose_3d_io.h>
@@ -70,15 +70,15 @@ public:
               labels_of_interest_(labels_of_interest),
               max_time_between_lidar_and_cam_(max_time_between_lidar_and_cam) {}
 
-    std::vector<semantic_segmentation::SemanticallyLabeledPointWithFrameInfo> getSemanticallyLabeledPoints() {
+    std::vector<semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo> getSemanticallyLabeledPoints() {
 
         setPointCloudsToLabel();
         extractRelevantImageData();
         extractOdometry();
 
-        std::vector<semantic_segmentation::SemanticallyLabeledPointWithFrameInfo> points_with_frame_info;
+        std::vector<semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo> points_with_frame_info;
         for (size_t i = 0; i < point_clouds_to_label_.size(); i++) {
-            std::vector<semantic_segmentation::SemanticallyLabeledPointWithFrameInfo> points_for_frame =
+            std::vector<semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo> points_for_frame =
                     transformPointCloudAndGetSemanticallyLabeledPointsForScan(point_clouds_to_label_[i],
                                                                               image_for_point_clouds_[i],
                                                                               odometry_around_point_clouds_[i]);
@@ -90,7 +90,7 @@ public:
         return points_with_frame_info;
     }
 
-    std::vector<semantic_segmentation::SemanticallyLabeledPointWithFrameInfo>
+    std::vector<semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo>
     transformPointCloudAndGetSemanticallyLabeledPointsForScan(const sensor_msgs::PointCloud2ConstPtr &point_cloud,
                                                               const ImageWithCamIndex &image,
                                                               const std::vector<nav_msgs::OdometryConstPtr> &odom) {
@@ -180,7 +180,7 @@ public:
                                                    camera_pose_rel_lidar);
     }
 
-    std::vector<semantic_segmentation::SemanticallyLabeledPointWithFrameInfo>
+    std::vector<semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo>
     getSemanticallyLabeledPointsForScan(const sensor_msgs::PointCloud2 &point_cloud,
                                         const sensor_msgs::CameraInfoConstPtr &camera_info,
                                         const sensor_msgs::ImageConstPtr &segmentation_image,
@@ -194,12 +194,12 @@ public:
         // Apply clustering algorithm
         std::vector<std::vector<std::pair<unsigned short, Eigen::Vector3d>>> points_by_cluster; // TODO
 
-        std::vector<semantic_segmentation::SemanticallyLabeledPointWithFrameInfo> semantically_labeled_points;
+        std::vector<semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo> semantically_labeled_points;
 
         for (size_t cluster_num = 0; cluster_num < points_by_cluster.size(); cluster_num++) {
             std::vector<std::pair<unsigned short, Eigen::Vector3d>> points_for_cluster = points_by_cluster[cluster_num];
             for (const std::pair<unsigned short, Eigen::Vector3d> &point : points_for_cluster) {
-                semantic_segmentation::SemanticallyLabeledPointWithFrameInfo point_with_info;
+                semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo point_with_info;
                 point_with_info.point_x = point.second.x();
                 point_with_info.point_y = point.second.y();
                 point_with_info.point_z = point.second.z();
@@ -517,10 +517,10 @@ int main(int argc, char **argv) {
                                                                   labels_of_interest,
                                                                   FLAGS_max_time_between_lidar_and_cam);
 
-    std::vector<semantic_segmentation::SemanticallyLabeledPointWithFrameInfo> semantically_labeled_points =
+    std::vector<semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo> semantically_labeled_points =
             point_cloud_processor.getSemanticallyLabeledPoints();
 
 
-    semantic_segmentation::writeSemanticallyLabeledPointWithFrameInfosToFile(FLAGS_semantic_points_file,
-                                                                             semantically_labeled_points);
+    semantic_segmentation::writeSemanticallyLabeledPointWithTimestampInfosToFile(FLAGS_semantic_points_file,
+                                                                                 semantically_labeled_points);
 }

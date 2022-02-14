@@ -52,7 +52,12 @@ namespace pose {
         return convertPoseToAffine(transform_to_target_frame) * point_to_transform;
     }
 
-    Pose3d getPoseOfObj1RelToObj2(Pose3d obj1, Pose3d obj2) {
+    Eigen::Vector2d
+    transformPoint(const pose::Pose2d &transform_to_target_frame, const Eigen::Vector2d &point_to_transform) {
+        return convertPoseToAffine(transform_to_target_frame) * point_to_transform;
+    }
+
+    Pose3d getPoseOfObj1RelToObj2(const Pose3d &obj1, const Pose3d &obj2) {
 
         Eigen::Affine3d affine_1 = convertPoseToAffine(obj1);
         Eigen::Affine3d affine_2 = convertPoseToAffine(obj2);
@@ -60,7 +65,7 @@ namespace pose {
         return convertAffineToPose(combined_affine);
     }
 
-    Pose2d getPoseOfObj1RelToObj2(Pose2d obj1, Pose2d obj2) {
+    Pose2d getPoseOfObj1RelToObj2(const Pose2d &obj1, const Pose2d &obj2) {
 
         Eigen::Affine2d affine_1 = convertPoseToAffine(obj1);
         Eigen::Affine2d affine_2 = convertPoseToAffine(obj2);
@@ -68,7 +73,7 @@ namespace pose {
         return convertAffineToPose(combined_affine);
     }
 
-    Pose3d toPose3d(Pose2d pose_2d) {
+    Pose3d toPose3d(const Pose2d &pose_2d) {
         Eigen::Vector3d transl(pose_2d.first.x(), pose_2d.first.y(), 0);
         Eigen::Quaterniond rot;
         rot = Eigen::AngleAxisd(pose_2d.second, Eigen::Vector3d::UnitZ());
@@ -108,7 +113,7 @@ namespace pose {
         return Eigen::Vector3d(roll, pitch, yaw);
     }
 
-    Pose2d toPose2d(Pose3d pose_3d) {
+    Pose2d toPose2d(const Pose3d &pose_3d) {
         Eigen::Vector3d euler_angles = toEulerAngles(pose_3d.second);
         double yaw = euler_angles[2];
         if ((abs(euler_angles[0]) > 0.2) || (abs(euler_angles[1]) > 0.2)) {
@@ -119,6 +124,10 @@ namespace pose {
         }
         pose::Pose2d pose = pose::createPose2d(pose_3d.first.x(), pose_3d.first.y(), yaw);
         return pose;
+    }
+
+    Eigen::Vector3d toPoint3d(const Eigen::Vector2d &point2d) {
+        return Eigen::Vector3d(point2d.x(), point2d.y(), 0);
     }
 
 /**

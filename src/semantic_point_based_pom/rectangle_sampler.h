@@ -63,7 +63,7 @@ namespace semantic_point_pom {
 
     std::vector<pose::Pose2d> generateConsistentSamples(const std::vector<Eigen::Vector2d> &points_for_object,
                                                         const size_t &num_samples_to_generate,
-                                                        const int &samples_per_point,
+                                                        const uint64_t &samples_per_point,
                                                         const double &position_bin_size,
                                                         const double &orientation_bin_size,
                                                         const double &rect_width,
@@ -79,7 +79,7 @@ namespace semantic_point_pom {
 
         for (size_t i = 0; i < points_for_object.size(); i++) {
             Eigen::Vector2d object_point = points_for_object[i];
-            for (int j = 0; j < samples_per_point; j++) {
+            for (uint64_t j = 0; j < samples_per_point; j++) {
                 unfiltered_candidate_rects.emplace_back(
                         std::make_pair(i, generateConsistentRectangleSample(object_point, rect_width, rect_height,
                                                                             point_std_dev, random_generator)));
