@@ -49,7 +49,7 @@ namespace pose_graph {
                 MovableObservationSemanticPoints<2>>> createFully2dPoseGraphSemanticPointDetectionsFromParams(
                 const pose_optimization::CostFunctionParameters &cost_function_params,
                 const pose::Pose2d &observation_sensor_pose_rel_base_link,
-                const std::function<std::vector<pose::Pose2d>(const MovableObservationSemanticPoints2d &,
+                const std::function<std::vector<pose::Pose2d>(const MovableObservationSemanticPointsFactor2d &,
                                                               const pose::Pose2d)> &sample_object_pose_generator) {
 
             gp_kernel::GaussianKernel<2> mean_position_kernel(cost_function_params.mean_position_kernel_len_,

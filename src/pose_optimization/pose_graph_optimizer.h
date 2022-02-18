@@ -160,6 +160,11 @@ namespace pose_optimization {
                     ceres::CostFunction *cost_function =
                             pose_graph.createMovableObjectCostFunctor(movable_object_gpc, factor.second,
                                                                       cost_function_params);
+                    if (cost_function == nullptr) {
+                        // TODO maybe we should just let this cause a failure?
+                        LOG(WARNING) << "Could not create cost functor for factor at node " << factor.second.observed_at_node_;
+                        continue;
+                    }
 
                     std::pair<double *, double *> raw_pointers_for_node_data = pose_graph.getPointersToUnderlyingData(
                             pose_vars_);

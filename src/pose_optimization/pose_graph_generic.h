@@ -125,6 +125,14 @@ namespace pose_graph {
      */
     template <int TranslationDim>
     struct MovableObservationSemanticPoints : MovableObservation {
+
+        /**
+         * Number of the cluster. Must be unique to the frame that it was observed at.
+         *
+         * Mainly used as an index so we don't have to recompute samples every time.
+         */
+        size_t cluster_num_;
+
         /**
          * Points observed on a single object.
          */

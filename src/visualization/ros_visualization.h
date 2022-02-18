@@ -167,8 +167,10 @@ namespace visualization {
         }
 
         void displaySemanticPointObsFromEstTrajectory(const std::vector<pose::Pose2d> &est_trajectory,
-                                                       const std::vector<std::vector<std::vector<Eigen::Vector2d>>> &relative_semantic_points,
-                                                       const std::string &obj_class) {
+                                                      const std::vector<std::vector<std::vector<Eigen::Vector2d>>> &relative_semantic_points,
+                                                      const std::string &obj_class,
+                                                      const std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose2d>>> &relative_object_samples_for_cluster = {},
+                                                      const Eigen::Vector2d &dimensions_for_samples = Eigen::Vector2d()) {
             std_msgs::ColorRGBA color;
             color.a = 0.5;
             color.r = 1.0;
@@ -177,19 +179,9 @@ namespace visualization {
             ros::Publisher pub;
             getOrCreatePublisherForTrajTypeAndClass(ESTIMATED, obj_class, pub);
 
-            std::vector<std::vector<Eigen::Vector3d>> relative_points_3d;
-            for (const std::vector<std::vector<Eigen::Vector2d>> &relative_semantic_points_for_pose : relative_semantic_points) {
-                for (const std::vector<Eigen::Vector2d> &points_for_object : relative_semantic_points_for_pose) {
-                    relative_points_3d.emplace_back(convert2DPointsTo3D(points_for_object));
-                }
-            }
-
-            std::vector<pose::Pose3d> est_trajectory_3d = convert2DPosesTo3D(est_trajectory);
-
-            publishLinesToSemanticPointDetections(pub, est_trajectory_3d, relative_points_3d, color,
-                                                  kObservedFromGtCarDetectionLines);
-            publishSemanticPointDetectionsRelToRobotPoses(pub, est_trajectory_3d, relative_points_3d, color,
-                                                          kSemanticPointsMin);
+            displaySemanticPointObsFromTrajectory(est_trajectory, relative_semantic_points, 0.15,
+                                                kObservedFromEstCarDetectionLines, color, pub,
+                                                relative_object_samples_for_cluster, dimensions_for_samples);
         }
 
         void displayObjObservationsFromOdomTrajectory(const std::vector<pose::Pose3d> &odom_trajectory,
@@ -213,7 +205,9 @@ namespace visualization {
 
         void displaySemanticPointObsFromOdomTrajectory(const std::vector<pose::Pose2d> &odom_trajectory,
                                                      const std::vector<std::vector<std::vector<Eigen::Vector2d>>> &relative_semantic_points,
-                                                     const std::string &obj_class) {
+                                                     const std::string &obj_class,
+                                                     const std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose2d>>> &relative_object_samples_for_cluster = {},
+                                                     const Eigen::Vector2d &dimensions_for_samples = Eigen::Vector2d()) {
             std_msgs::ColorRGBA color;
             color.a = 0.5;
             color.b = 1.0;
@@ -223,19 +217,9 @@ namespace visualization {
             ros::Publisher pub;
             getOrCreatePublisherForTrajTypeAndClass(ODOM_ONLY, obj_class, pub);
 
-            std::vector<std::vector<Eigen::Vector3d>> relative_points_3d;
-            for (const std::vector<std::vector<Eigen::Vector2d>> &relative_semantic_points_for_pose : relative_semantic_points) {
-                for (const std::vector<Eigen::Vector2d> &points_for_object : relative_semantic_points_for_pose) {
-                    relative_points_3d.emplace_back(convert2DPointsTo3D(points_for_object));
-                }
-            }
-
-            std::vector<pose::Pose3d> odom_trajectory_3d = convert2DPosesTo3D(odom_trajectory);
-
-            publishLinesToSemanticPointDetections(pub, odom_trajectory_3d, relative_points_3d, color,
-                                                  kObservedFromGtCarDetectionLines);
-            publishSemanticPointDetectionsRelToRobotPoses(pub, odom_trajectory_3d, relative_points_3d, color,
-                                                          kSemanticPointsMin);
+            displaySemanticPointObsFromTrajectory(odom_trajectory, relative_semantic_points, 0.15,
+                                                kObservedFromOdomCarDetectionLines, color, pub,
+                                                relative_object_samples_for_cluster, dimensions_for_samples);
         }
 
         void displayOdomTrajectory(const std::vector<pose::Pose3d> &odom_trajectory) {
@@ -1113,7 +1097,9 @@ namespace visualization {
 
         void displaySemanticPointObsFromGtTrajectory(const std::vector<pose::Pose2d> &gt_trajectory,
                                                      const std::vector<std::vector<std::vector<Eigen::Vector2d>>> &relative_semantic_points,
-                                                     const std::string &obj_class) {
+                                                     const std::string &obj_class,
+                                                     const std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose2d>>> &relative_object_samples_for_cluster = {},
+                                                     const Eigen::Vector2d &dimensions_for_samples = Eigen::Vector2d()) {
             std_msgs::ColorRGBA color;
             color.a = 0.5;
             color.g = 1.0;
@@ -1122,19 +1108,9 @@ namespace visualization {
             ros::Publisher pub;
             getOrCreatePublisherForTrajTypeAndClass(GROUND_TRUTH, obj_class, pub);
 
-            std::vector<std::vector<Eigen::Vector3d>> relative_points_3d;
-            for (const std::vector<std::vector<Eigen::Vector2d>> &relative_semantic_points_for_pose : relative_semantic_points) {
-                for (const std::vector<Eigen::Vector2d> &points_for_object : relative_semantic_points_for_pose) {
-                    relative_points_3d.emplace_back(convert2DPointsTo3D(points_for_object));
-                }
-            }
-
-            std::vector<pose::Pose3d> gt_trajectory_3d = convert2DPosesTo3D(gt_trajectory);
-
-            publishLinesToSemanticPointDetections(pub, gt_trajectory_3d, relative_points_3d, color,
-                                                  kObservedFromGtCarDetectionLines);
-            publishSemanticPointDetectionsRelToRobotPoses(pub, gt_trajectory_3d, relative_points_3d, color,
-                                                          kSemanticPointsMin);
+            displaySemanticPointObsFromTrajectory(gt_trajectory, relative_semantic_points, 0.15,
+                                                  kObservedFromGtCarDetectionLines, color, pub,
+                                                  relative_object_samples_for_cluster, dimensions_for_samples);
         }
 
         void displayPastSampleValues(const std::string &obj_class,
@@ -1350,7 +1326,7 @@ namespace visualization {
 
         static constexpr const double kExtraMarginDistribution = 2.5;
 
-        const uint32_t kObservationPubQueueSize = 1000;
+        const uint32_t kObservationPubQueueSize = 100000;
 
         const double kTrajectoryScaleX = 0.05;
 
@@ -1366,7 +1342,7 @@ namespace visualization {
 
         // TODO might need to increase these
         const int32_t kMaxObservationsToDisplay = 2000;
-        const int32_t kMaxTrajectoryLen = 500;
+        const int32_t kMaxTrajectoryLen = 50000;
         const int32_t kObservedFromGtCarDetectionsMin = 100;
         const int32_t kObservedFromOdomCarDetectionsMin = kObservedFromGtCarDetectionsMin + kMaxObservationsToDisplay;
         const int32_t kObservedFromEstCarDetectionsMin = kObservedFromOdomCarDetectionsMin + kMaxObservationsToDisplay;
@@ -1385,6 +1361,7 @@ namespace visualization {
         const int32_t kRobotOdomPosesMax = kRobotEstPosesMin - 1;
         const int32_t kRobotEstPosesMax = kWaypointsPosesMin - 1;
         const int32_t kWaypointsPosesMax = kWaypointsPosesMin + kMaxTrajectoryLen - 1;
+        const int32_t kSemanticPointsMax = kSemanticPointsMin + kMaxTrajectoryLen - 1;
 
         const double kWaypoint2DHeight = 0.2;
 
@@ -1650,6 +1627,33 @@ namespace visualization {
             publishMarker(marker_msg, marker_pub);
         }
 
+        void publishObjectSample(ros::Publisher &marker_pub, pose::Pose3d &sample_pose, const std_msgs::ColorRGBA &color,
+                             const int32_t id,
+                             const Eigen::Vector2d &shape_dim) {
+
+            visualization_msgs::Marker marker_msg;
+
+            marker_msg.scale.x = shape_dim.x();
+            marker_msg.scale.y = shape_dim.y();
+            marker_msg.scale.z = 0.15;
+
+            marker_msg.pose.position.x = sample_pose.first.x();
+            marker_msg.pose.position.y = sample_pose.first.y();
+            marker_msg.pose.position.z = sample_pose.first.z();
+
+            marker_msg.pose.orientation.w = sample_pose.second.w();
+            marker_msg.pose.orientation.x = sample_pose.second.x();
+            marker_msg.pose.orientation.y = sample_pose.second.y();
+            marker_msg.pose.orientation.z = sample_pose.second.z();
+
+            marker_msg.type = visualization_msgs::Marker::CUBE;
+
+            marker_msg.color = color;
+            marker_msg.id = id;
+
+            publishMarker(marker_msg, marker_pub);
+        }
+
         void publishParkingSpot3d(ros::Publisher &marker_pub, pose::Pose3d &car_pose, const std_msgs::ColorRGBA &color,
                                   const int32_t id, const double &spot_x_dim, const double &spot_y_dim) {
 
@@ -1748,7 +1752,7 @@ namespace visualization {
             }
 
             marker_msg.pose.orientation.w = 1.0;
-            marker_msg.scale.x = 0.075;
+            marker_msg.scale.x = 0.175;
             marker_msg.type = visualization_msgs::Marker::SPHERE_LIST;
 
             marker_msg.id = marker_id;
@@ -1821,13 +1825,83 @@ namespace visualization {
             }
 
             marker_msg.pose.orientation.w = 1.0;
-            marker_msg.scale.x = 0.05;
+            marker_msg.scale.x = 0.005;
             marker_msg.type = visualization_msgs::Marker::LINE_LIST;
 
             marker_msg.id = id;
             marker_msg.color = color;
-
             publishMarker(marker_msg, marker_pub);
+        }
+
+        void publishSampledObjPoseRelToRobotPoses(ros::Publisher &marker_pub, const std::vector<pose::Pose3d> &robot_poses,
+                                                  const std::unordered_map<size_t, std::unordered_map<size_t, std::vector<pose::Pose3d>>> &samples,
+                                                  const std_msgs::ColorRGBA &color,
+                                            const Eigen::Vector2d &shape_dim,
+                                            const int32_t min_id,
+                                            const int32_t max_id) {
+
+            int marker_num = min_id;
+            for (size_t i = 0; i < robot_poses.size(); i++) {
+                pose::Pose3d robot_pose = robot_poses[i];
+                if (samples.find(i) != samples.end()) {
+                    for (const auto &cluster_info : samples.at(i)) {
+                        for (const pose::Pose3d &sample_pose_rel : cluster_info.second) {
+                            if (marker_num > max_id) {
+                                break;
+                            }
+                            pose::Pose3d sample_pose = pose::combinePoses(robot_pose, sample_pose_rel);
+                            publishObjectSample(marker_pub, sample_pose, color, marker_num++, shape_dim);
+                        }
+                    }
+                }
+            }
+        }
+
+        void displaySemanticPointObsFromTrajectory(const std::vector<pose::Pose2d> &trajectory,
+                                                 const std::vector<std::vector<std::vector<Eigen::Vector2d>>> &relative_semantic_points,
+                                                 const double &samples_color_a,
+                                                 const int32_t &lines_to_obs_id,
+                                                 std_msgs::ColorRGBA color,
+                                                 ros::Publisher &pub,
+                                                 const std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose2d>>> &relative_object_samples_for_cluster = {},
+                                                 const Eigen::Vector2d &dimensions_for_samples = Eigen::Vector2d()) {
+
+
+            std::vector<std::vector<Eigen::Vector3d>> relative_points_3d;
+            for (const std::vector<std::vector<Eigen::Vector2d>> &relative_semantic_points_for_pose : relative_semantic_points) {
+                std::vector<Eigen::Vector3d> points_for_pose;
+                for (const std::vector<Eigen::Vector2d> &points_for_object : relative_semantic_points_for_pose) {
+                    std::vector<Eigen::Vector3d> points_for_obj_3d = convert2DPointsTo3D(points_for_object);
+                    points_for_pose.insert(points_for_pose.end(), points_for_obj_3d.begin(), points_for_obj_3d.end());
+                }
+                relative_points_3d.emplace_back(points_for_pose);
+            }
+
+            std::vector<pose::Pose3d> trajectory_3d = convert2DPosesTo3D(trajectory);
+
+            publishLinesToSemanticPointDetections(pub, trajectory_3d, relative_points_3d, color, lines_to_obs_id);
+            publishSemanticPointDetectionsRelToRobotPoses(pub, trajectory_3d, relative_points_3d, color,
+                                                          kSemanticPointsMin);
+
+            if (!relative_object_samples_for_cluster.empty()) {
+
+                color.a = samples_color_a;
+
+                std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose3d>>> relative_object_samples_for_cluster_3d;
+                for (const auto &samples_for_node : relative_object_samples_for_cluster) {
+                    for (const auto &samples_for_cluster : samples_for_node.second) {
+                        relative_object_samples_for_cluster_3d[samples_for_node.first][samples_for_cluster.first] = convert2DPosesTo3D(
+                                samples_for_cluster.second);
+                    }
+                }
+
+                publishSampledObjPoseRelToRobotPoses(pub, trajectory_3d,
+                                                     relative_object_samples_for_cluster_3d,
+                                                     color,
+                                                     dimensions_for_samples,
+                                                     kSemanticPointsMin + 1,
+                                                     kSemanticPointsMax);
+            }
         }
     };
 }

@@ -10,6 +10,7 @@
 #include <pose_optimization/offline/offline_problem_runner.h>
 #include <pose_optimization/utils/pose_graph_creation_utils.h>
 #include <pose_optimization/offline/ceres_visualization_callback_semantic_points_2d.h>
+#include <semantic_point_based_pom/rectangle_sampler.h>
 
 #include <file_io/trajectory_2d_io.h>
 #include <file_io/past_sample_io.h>
@@ -31,7 +32,7 @@ const std::string kPastSamplesFilesParamName = "past_samples_files";
 
 const std::string kOdomTrajectoryEstimatesFileParamName = "odom_traj_est_file";
 
-const std::string kObjDetectionsCurrTrajectoryFileParamName = "obj_det_curr_traj_file";
+const std::string kSemanticPointDetectionsCurrTrajectoryFileParamName = "semantic_point_det_curr_traj_file";
 
 const std::string kTrajectoryOutputFilePrefixParamName = "traj_est_output_file_prefix";
 
@@ -100,8 +101,8 @@ void runOptimizationVisualization(const std::shared_ptr<visualization::Visualiza
                                   const std::vector<pose::Pose2d> &unoptimized_trajectory,
                                   const std::unordered_map<std::string, std::vector<std::vector<std::vector<Eigen::Vector2d>>>>
                                   &noisy_obj_observations_by_class,
-                                  const pose::Pose2d &observation_sensor_rel_base_link) {
-
+                                  const std::unordered_map<std::string, std::unordered_map<pose_graph::NodeId, std::unordered_map<size_t, std::vector<pose::Pose2d>>>> &rectangle_samples,
+                                  const std::unordered_map<std::string, Eigen::Vector2d> &shape_dimensions_by_class) {
     // TODO make this more generic (not specifically car class)
     switch (vis_stage) {
         case offline_optimization::VisualizationTypeEnum::BEFORE_ANY_OPTIMIZATION:
@@ -139,7 +140,6 @@ void runOptimizationVisualization(const std::shared_ptr<visualization::Visualiza
                         );
                     }
                 }
-
 
                 if (FLAGS_skip_optimization) {
                     exit(0);
@@ -184,10 +184,15 @@ void runOptimizationVisualization(const std::shared_ptr<visualization::Visualiza
                 std::string semantic_class = obs_with_class.first;
                 std::vector<std::vector<std::vector<Eigen::Vector2d>>> noisy_obj_observations = obs_with_class.second;
                 vis_manager->displaySemanticPointObsFromEstTrajectory(node_poses_list, noisy_obj_observations,
-                                                                      semantic_class);
+                                                                      semantic_class,
+                                                                      rectangle_samples.at(semantic_class),
+                                                                      shape_dimensions_by_class.at(semantic_class));
                 if (!ground_truth_trajectory.empty()) {
+                    std::unordered_map<pose_graph::NodeId, std::unordered_map<size_t, std::vector<pose::Pose2d>>> rectangle_samples_for_class;
                     vis_manager->displaySemanticPointObsFromGtTrajectory(ground_truth_trajectory,
-                                                                         noisy_obj_observations, semantic_class);
+                                                                         noisy_obj_observations,
+                                                                         semantic_class);
+
                 }
                 vis_manager->displaySemanticPointObsFromOdomTrajectory(limited_odom_poses_list,
                                                                        noisy_obj_observations, semantic_class);
@@ -220,8 +225,10 @@ std::vector<pose_graph::MovableObservationSemanticPointsFactor2d> getMovableObse
     std::unordered_map<uint64_t, std::unordered_map<uint32_t,
             std::vector<semantic_segmentation::SemanticallyLabeledPointWithNodeIdInfo>>> points_by_node_and_cluster;
     for (const semantic_segmentation::SemanticallyLabeledPointWithNodeIdInfo &semantic_points : raw_obj_detections) {
-        points_by_node_and_cluster[semantic_points.node_id][semantic_points.cluster_label].emplace_back(
-                semantic_points);
+        if ((semantic_points.node_id % pose_sample_ratio) == 0) {
+            points_by_node_and_cluster[semantic_points.node_id][semantic_points.cluster_label].emplace_back(
+                    semantic_points);
+        }
     }
 
     for (const auto &points_for_node : points_by_node_and_cluster) {
@@ -236,6 +243,7 @@ std::vector<pose_graph::MovableObservationSemanticPointsFactor2d> getMovableObse
             std::string semantic_string = semantic_index_to_string_map.at(semantic_index);
             pose_graph::MovableObservationSemanticPoints2d observation;
             observation.semantic_class_ = semantic_string;
+            observation.cluster_num_ = points_for_cluster.first;
             for (const semantic_segmentation::SemanticallyLabeledPointWithNodeIdInfo &semantic_point : points_for_cluster.second) {
                 observation.object_points_.emplace_back(
                         Eigen::Vector2d(semantic_point.point_x, semantic_point.point_y));
@@ -328,7 +336,12 @@ getTrajectoryEstimate(const std::vector<pose::Pose2d> &odom_est_trajectory,
         } else {
             observations_for_class = noisy_observations_by_class[semantic_class];
         }
-        observations_for_class[observed_at_node].emplace_back(movable_factor.observation_.object_points_);
+        std::vector<Eigen::Vector2d> baselink_detection_points;
+        for (const Eigen::Vector2d &sensor_detection_point : movable_factor.observation_.object_points_) {
+            baselink_detection_points.emplace_back(
+                    pose::transformPoint(detections_sensor_rel_baselink, sensor_detection_point));
+        }
+        observations_for_class[observed_at_node].emplace_back(baselink_detection_points);
         noisy_observations_by_class[semantic_class] = observations_for_class;
     }
 
@@ -352,54 +365,90 @@ getTrajectoryEstimate(const std::vector<pose::Pose2d> &odom_est_trajectory,
     offline_problem_data.movable_observation_factors_ = movable_object_observations;
     offline_problem_data.initial_node_positions_ = initial_node_positions;
 
+    std::unordered_map<std::string, std::unordered_map<pose_graph::NodeId, std::unordered_map<size_t, std::vector<pose::Pose2d>>>> relative_object_samples_for_cluster;
+    std::unordered_map<std::string, Eigen::Vector2d> shape_dimensions_by_semantic_class;
+    file_io::readShapeDimensions2dBySemanticClassMapFromFile(shape_dimensions_by_semantic_class_file,
+                                                             shape_dimensions_by_semantic_class);
+
+
     std::function<std::shared_ptr<ceres::IterationCallback>(
             const pose_graph::NodeId &,
             const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3,
                     pose_graph::MovableObservationSemanticPoints2d>> &)> callback_creator =
-            [manager, noisy_observations_by_class](
+            [manager, noisy_observations_by_class, &relative_object_samples_for_cluster, shape_dimensions_by_semantic_class](
                     const pose_graph::NodeId &node_id,
                     const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3,
                             pose_graph::MovableObservationSemanticPoints2d>> &pose_graph) {
                 return std::make_shared<offline_optimization::CeresVisualizationCallbackSemanticPoints2d>(
-                        pose_graph, manager, node_id, noisy_observations_by_class);
+                        pose_graph, manager, node_id, noisy_observations_by_class, relative_object_samples_for_cluster,
+                        shape_dimensions_by_semantic_class);
             };
 
     std::function<void(const pose_graph::NodeId &,
                        const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3,
                                pose_graph::MovableObservationSemanticPoints<2>>> &,
                        const offline_optimization::VisualizationTypeEnum &)> visualization_callback =
-            std::bind(runOptimizationVisualization, manager,
-                      std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
-                      gt_trajectory, odom_est_trajectory,
-                      noisy_observations_by_class, detections_sensor_rel_baselink);
+
+            [manager, gt_trajectory, odom_est_trajectory, noisy_observations_by_class, &relative_object_samples_for_cluster, shape_dimensions_by_semantic_class](
+                    const pose_graph::NodeId &max_node_id,
+                    const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3,
+                            pose_graph::MovableObservationSemanticPoints<2>>> &pose_graph,
+                    const offline_optimization::VisualizationTypeEnum &vis_stage) {
+        return runOptimizationVisualization(manager, max_node_id, pose_graph, vis_stage, gt_trajectory,
+                                            odom_est_trajectory, noisy_observations_by_class,
+                                            relative_object_samples_for_cluster,
+                                            shape_dimensions_by_semantic_class);
+    };
 
     pose_optimization::PoseOptimizationParameters pose_opt_params = setupPoseOptimizationParams(runtime_params_config);
-
-    std::unordered_map<std::string, Eigen::Vector2d> shape_dimensions_by_semantic_class;
-    file_io::readShapeDimensions2dBySemanticClassMapFromFile(shape_dimensions_by_semantic_class_file,
-                                                             shape_dimensions_by_semantic_class);
 
     file_io::SemanticPointObjectSamplerConfig semantic_point_object_sampler_config;
     file_io::readSemanticPointObjectSamplerConfigFromFile(semantic_point_object_sampler_config_file,
                                                           semantic_point_object_sampler_config);
-    std::function<std::vector<pose::Pose2d>(const pose_graph::MovableObservationSemanticPoints2d &,
+    std::function<std::vector<pose::Pose2d>(const pose_graph::MovableObservationSemanticPointsFactor2d &,
                                             const pose::Pose2d)> sample_object_pose_generator =
-            [semantic_point_object_sampler_config, pose_opt_params, shape_dimensions_by_semantic_class, &random_generator](
-                    const pose_graph::MovableObservationSemanticPoints2d &observation,
+            [semantic_point_object_sampler_config, pose_opt_params, shape_dimensions_by_semantic_class, &random_generator, &relative_object_samples_for_cluster](
+                    const pose_graph::MovableObservationSemanticPointsFactor2d &factor,
                     const pose::Pose2d &object_detection_sensor_pose_rel_baselink) {
 
-                return semantic_point_pom::generateConsistentSamples(observation.object_points_,
-                                                                     pose_opt_params.cost_function_params_.num_samples_per_movable_obj_observation_,
-                                                                     semantic_point_object_sampler_config.samples_per_point,
-                                                                     semantic_point_object_sampler_config.position_bin_size,
-                                                                     semantic_point_object_sampler_config.orientation_bin_size,
-                                                                     shape_dimensions_by_semantic_class.at(
-                                                                             observation.semantic_class_).x(),
-                                                                     shape_dimensions_by_semantic_class.at(
-                                                                             observation.semantic_class_).y(),
-                                                                     semantic_point_object_sampler_config.point_std_dev,
-                                                                     semantic_point_object_sampler_config.min_bin_count,
-                                                                     random_generator);
+                if (relative_object_samples_for_cluster.find(factor.observation_.semantic_class_) !=
+                    relative_object_samples_for_cluster.end()) {
+                    if (relative_object_samples_for_cluster[factor.observation_.semantic_class_].find(
+                            factor.observed_at_node_) !=
+                        relative_object_samples_for_cluster[factor.observation_.semantic_class_].end()) {
+                        if (relative_object_samples_for_cluster[factor.observation_.semantic_class_][factor.observed_at_node_].find(
+                                factor.observation_.cluster_num_) !=
+                            relative_object_samples_for_cluster[factor.observation_.semantic_class_][factor.observed_at_node_].end()) {
+                            return relative_object_samples_for_cluster[factor.observation_.semantic_class_][factor.observed_at_node_][factor.observation_.cluster_num_];
+                        }
+                    }
+                }
+                double shape_dimensions_x = shape_dimensions_by_semantic_class.at(
+                        factor.observation_.semantic_class_).x();
+                double shape_dimensions_y = shape_dimensions_by_semantic_class.at(
+                        factor.observation_.semantic_class_).y();
+
+                std::vector<pose::Pose2d> poses = semantic_point_pom::generateConsistentSamples(
+                        factor.observation_.object_points_,
+                        pose_opt_params.cost_function_params_.num_samples_per_movable_obj_observation_,
+                        semantic_point_object_sampler_config.samples_per_point,
+                        semantic_point_object_sampler_config.position_bin_size,
+                        semantic_point_object_sampler_config.orientation_bin_size,
+                        shape_dimensions_x,
+                        shape_dimensions_y,
+                        semantic_point_object_sampler_config.point_std_dev,
+                        semantic_point_object_sampler_config.min_points_repped_in_bin,
+                        semantic_point_object_sampler_config.minimum_bins,
+                        random_generator);
+
+                std::vector<pose::Pose2d> transformed_into_baselink;
+                for (const pose::Pose2d &sample_pose : poses) {
+                    transformed_into_baselink.emplace_back(
+                            pose::combinePoses(object_detection_sensor_pose_rel_baselink, sample_pose));
+                }
+
+                relative_object_samples_for_cluster[factor.observation_.semantic_class_][factor.observed_at_node_][factor.observation_.cluster_num_] = transformed_into_baselink;
+                return transformed_into_baselink;
             };
 
 
@@ -435,6 +484,57 @@ pose::Pose2d getDetectionsSensorRelBaselinkPoseFromFile(const std::string &detec
     return sensor_pose_2d;
 }
 
+void plotRectangleSamplesForCluster(const pose_graph::MovableObservationSemanticPointsFactor2d &factor,
+                                    const pose::Pose2d &detections_sensor_rel_baselink,
+                                    const std::string &shape_dimensions_by_semantic_class_file,
+                                    const std::string &semantic_point_object_sampler_config_file,
+                                    std::shared_ptr<visualization::VisualizationManager> &vis_manager,
+                                    util_random::Random &random_generator) {
+
+    std::unordered_map<std::string, Eigen::Vector2d> shape_dimensions_by_semantic_class;
+    file_io::readShapeDimensions2dBySemanticClassMapFromFile(shape_dimensions_by_semantic_class_file,
+                                                             shape_dimensions_by_semantic_class);
+
+    double shape_dimensions_x = shape_dimensions_by_semantic_class.at(
+            factor.observation_.semantic_class_).x();
+    double shape_dimensions_y = shape_dimensions_by_semantic_class.at(
+            factor.observation_.semantic_class_).y();
+
+    file_io::SemanticPointObjectSamplerConfig semantic_point_object_sampler_config;
+    file_io::readSemanticPointObjectSamplerConfigFromFile(semantic_point_object_sampler_config_file,
+                                                          semantic_point_object_sampler_config);
+
+    std::vector<pose::Pose2d> poses = semantic_point_pom::generateConsistentSamples(
+            factor.observation_.object_points_,
+            50,
+            semantic_point_object_sampler_config.samples_per_point,
+            semantic_point_object_sampler_config.position_bin_size,
+            semantic_point_object_sampler_config.orientation_bin_size,
+            shape_dimensions_x,
+            shape_dimensions_y,
+            semantic_point_object_sampler_config.point_std_dev,
+            semantic_point_object_sampler_config.min_points_repped_in_bin,
+            semantic_point_object_sampler_config.minimum_bins,
+            random_generator);
+
+    std::vector<pose::Pose2d> poses_rel_baselink;
+    for (const pose::Pose2d &pose_rel_sensor : poses) {
+        poses_rel_baselink.emplace_back(pose::combinePoses(detections_sensor_rel_baselink, pose_rel_sensor));
+    }
+
+    std::vector<Eigen::Vector2d> points_rel_baselink;
+    for (const Eigen::Vector2d &point_rel_sensor : factor.observation_.object_points_) {
+        points_rel_baselink.emplace_back(transformPoint(detections_sensor_rel_baselink, point_rel_sensor));
+        break;
+    }
+    vis_manager->displaySemanticPointObsFromEstTrajectory({pose::createPose2d(0, 0, 0)},
+                                                          {{factor.observation_.object_points_}},
+                                                          factor.observation_.semantic_class_,
+                                                          {{0, {{0, poses_rel_baselink}}}},
+                                                          Eigen::Vector2d(shape_dimensions_x, shape_dimensions_y));
+
+}
+
 int main(int argc, char **argv) {
 
     google::ParseCommandLineFlags(&argc, &argv, false);
@@ -443,8 +543,10 @@ int main(int argc, char **argv) {
     FLAGS_logtostderr = true;
 
 
-    util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch()).count());
+    util_random::Random random_generator;
+//
+//    util_random::Random random_generator(std::chrono::duration_cast<std::chrono::milliseconds>(
+//            std::chrono::system_clock::now().time_since_epoch()).count());
 
     std::string param_prefix = FLAGS_param_prefix;
     std::string node_prefix = FLAGS_param_prefix;
@@ -469,6 +571,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
+    LOG(INFO) << "Reading runtime params config from file " << runtime_params_config_file_name;
     file_io::RuntimeParamsConfig runtime_params_config;
     file_io::readRuntimeParamsConfigFromFile(runtime_params_config_file_name, runtime_params_config);
 
@@ -483,7 +586,7 @@ int main(int argc, char **argv) {
 
     std::vector<std::string> past_sample_files;
     std::string odom_estimates_file_name;
-    std::string object_detections_file_name;
+    std::string semantic_point_detections_file_name;
     std::string traj_est_output_file_prefix;
     std::string gt_traj_file;
     std::string detection_sensor_rel_baselink_file;
@@ -502,9 +605,10 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    if (!n.getParam(param_prefix + kObjDetectionsCurrTrajectoryFileParamName, object_detections_file_name)) {
+    if (!n.getParam(param_prefix + kSemanticPointDetectionsCurrTrajectoryFileParamName,
+                    semantic_point_detections_file_name)) {
         LOG(INFO) << "No parameter value set for parameter with name "
-                  << param_prefix + kObjDetectionsCurrTrajectoryFileParamName;
+                  << param_prefix + kSemanticPointDetectionsCurrTrajectoryFileParamName;
         exit(1);
     }
 
@@ -591,8 +695,16 @@ int main(int argc, char **argv) {
 
     // Read detections
     std::vector<pose_graph::MovableObservationSemanticPointsFactor2d> movable_observation_factors =
-            getMovableObservationFactorsFromDetectionsFile(object_detections_file_name, pose_sample_ratio,
+            getMovableObservationFactorsFromDetectionsFile(semantic_point_detections_file_name, pose_sample_ratio,
                                                            semantic_index_to_string_file);
+
+//    pose_graph::MovableObservationSemanticPointsFactor2d factor_to_plot_samples_for = movable_observation_factors[0];
+//    plotRectangleSamplesForCluster(factor_to_plot_samples_for,
+//                                   detections_sensor_rel_baselink,
+//                                   shape_dimensions_by_semantic_class_file,
+//                                   semantic_point_object_sampler_config_file,
+//                                   manager,
+//                                   random_generator);
 
     std::unordered_map<pose_graph::NodeId, pose::Pose2d> optimization_results = getTrajectoryEstimate(
             initial_trajectory_estimates, gt_trajectory, manager, odom_factors, samples,

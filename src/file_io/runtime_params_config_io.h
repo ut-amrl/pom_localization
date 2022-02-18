@@ -120,6 +120,10 @@ namespace file_io {
             // There should only be one line after the header
             readRuntimeParamsConfigFromLine(line, config);
         }
+        if (first_line) {
+            LOG(ERROR) << "Config file was empty or non existent";
+            exit(1);
+        }
     }
 
     void writeRuntimeParamsConfigToFile(const std::string &file_name,

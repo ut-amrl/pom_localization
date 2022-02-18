@@ -19,7 +19,8 @@ namespace file_io {
         double position_bin_size;
         double orientation_bin_size;
         double point_std_dev;
-        uint64_t min_bin_count;
+        double min_points_repped_in_bin;
+        uint16_t minimum_bins;
     };
 
     void readSemanticPointObjectSamplerConfigFromLine(const std::string &line_in_file,
@@ -41,8 +42,11 @@ namespace file_io {
         config.point_std_dev = std::stod(substr);
 
         getline(ss, substr, ',');
-        std::istringstream min_bin_count_stream(substr);
-        min_bin_count_stream >> config.min_bin_count;
+        config.min_points_repped_in_bin = std::stod(substr);
+
+        getline(ss, substr, ',');
+        std::istringstream min_bins_stream(substr);
+        min_bins_stream >> config.minimum_bins;
     }
 
     void readSemanticPointObjectSamplerConfigFromFile(const std::string &file_name,
@@ -59,20 +63,25 @@ namespace file_io {
             // There should only be one line after the header
             readSemanticPointObjectSamplerConfigFromLine(line, config);
         }
+        if (first_line) {
+            LOG(ERROR) << "Empty config file " << file_name;
+            exit(1);
+        }
     }
 
     void writeSemanticPointObjectSamplerConfigToFile(const std::string &file_name,
                                                      const SemanticPointObjectSamplerConfig &config) {
         std::ofstream csv_file(file_name, std::ios::trunc);
         writeCommaSeparatedStringsLineToFile(
-                {"samples_per_point", "position_bin_size", "orientation_bin_size", "point_std_dev", "min_bin_count"},
+                {"samples_per_point", "position_bin_size", "orientation_bin_size", "point_std_dev", "min_points_repped_in_bin", "minimum_bins"},
                 csv_file);
         writeCommaSeparatedStringsLineToFile({
                                                      std::to_string(config.samples_per_point),
                                                      std::to_string(config.position_bin_size),
                                                      std::to_string(config.orientation_bin_size),
                                                      std::to_string(config.point_std_dev),
-                                                     std::to_string(config.min_bin_count)}, csv_file);
+                                                     std::to_string(config.min_points_repped_in_bin),
+                                                     std::to_string(config.minimum_bins)}, csv_file);
         csv_file.close();
     }
 }
