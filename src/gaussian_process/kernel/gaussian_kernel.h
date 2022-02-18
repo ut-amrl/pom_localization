@@ -37,6 +37,34 @@ namespace gp_kernel {
 
         template<typename T>
         T evaluateKernel(const InputType<T>& x1, const InputType<T>& x2) {
+//            T squared_norm = (x1 - x2).squaredNorm();
+//            if (ceres::IsNaN(squared_norm)) {
+//                LOG(INFO) << "x1: " << x1;
+//                LOG(INFO) << "x2: " << x2;
+//                LOG(INFO) << x1 - x2;
+//                LOG(INFO) << "Squared norm is NaN";
+//                exit(1);
+//            } else {
+//                T exponent_part = T(norm_factor_) * squared_norm;
+//                if (ceres::IsNaN(exponent_part)) {
+//                    LOG(INFO) << "Exponent part is NaN";
+//                    exit(1);
+//                } else {
+//
+//                    T evaluated_exponent = exp(exponent_part);
+//                    if (ceres::IsNaN(evaluated_exponent)) {
+//                        LOG(INFO) << "Evaluated exponent is NaN";
+//                        exit(1);
+//                    } else {
+//
+//                        T return_val = static_cast<T>(variance_) * evaluated_exponent;
+//                        if (ceres::IsNaN(return_val)) {
+//                            LOG(INFO) << "Return val is NaN";
+//                            exit(1);
+//                        }
+//                    }
+//                }
+//            }
             return static_cast<T>(variance_) * exp(T(norm_factor_) * (x1 - x2).squaredNorm());
         }
 

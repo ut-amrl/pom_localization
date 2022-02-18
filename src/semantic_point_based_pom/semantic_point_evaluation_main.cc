@@ -388,12 +388,12 @@ getTrajectoryEstimate(const std::vector<pose::Pose2d> &odom_est_trajectory,
                        const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3,
                                pose_graph::MovableObservationSemanticPoints<2>>> &,
                        const offline_optimization::VisualizationTypeEnum &)> visualization_callback =
-
-            [manager, gt_trajectory, odom_est_trajectory, noisy_observations_by_class, &relative_object_samples_for_cluster, shape_dimensions_by_semantic_class](
-                    const pose_graph::NodeId &max_node_id,
-                    const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3,
-                            pose_graph::MovableObservationSemanticPoints<2>>> &pose_graph,
-                    const offline_optimization::VisualizationTypeEnum &vis_stage) {
+                               [manager, gt_trajectory, odom_est_trajectory, noisy_observations_by_class,
+                                &relative_object_samples_for_cluster, shape_dimensions_by_semantic_class](
+                                        const pose_graph::NodeId &max_node_id,
+                                        const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double,
+                                        3, 2, double, 3, pose_graph::MovableObservationSemanticPoints<2>>> &pose_graph,
+                                        const offline_optimization::VisualizationTypeEnum &vis_stage) {
         return runOptimizationVisualization(manager, max_node_id, pose_graph, vis_stage, gt_trajectory,
                                             odom_est_trajectory, noisy_observations_by_class,
                                             relative_object_samples_for_cluster,

@@ -192,6 +192,11 @@ namespace gp_regression {
         Inference(const Eigen::Matrix<double, N, Eigen::Dynamic> &x) {
 
             CumulativeFunctionTimer::Invocation invoc(double_overall_timer_.get());
+//            if (x.hasNaN()) {
+//                LOG(INFO) << "X in GPR inference " << x;
+//                LOG(INFO) << "Has nan";
+//                exit(1);
+//            }
 
 //            Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> k_x_transp_mean_kernel(x.cols(), num_datapoints_);
 //
@@ -229,6 +234,11 @@ namespace gp_regression {
 
             CumulativeFunctionTimer::Invocation invoc(double_kernel_eval_timer_.get());
 
+//            if (x.hasNaN()) {
+//                LOG(INFO) << "X in compute kernel " << x;
+//                LOG(INFO) << "Has nan";
+//                exit(1);
+//            }
             Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> k_x_transp_mean_kernel(x.cols(), num_datapoints_);
 
             Eigen::Matrix<double, 1, Eigen::Dynamic> kde_based_var = Eigen::Matrix<double, 1, Eigen::Dynamic>::Constant(1,
@@ -267,6 +277,11 @@ namespace gp_regression {
         Inference(const Eigen::Matrix<ceres::Jet<double, JetDim>, N, Eigen::Dynamic> &x) {
 
             CumulativeFunctionTimer::Invocation invoc(jet_overall_timer_.get());
+//            if (x.hasNaN()) {
+//                LOG(INFO) << "X in GPR inference " << x;
+//                LOG(INFO) << "Has nan";
+//                exit(1);
+//            }
 
 //            Eigen::Matrix<ceres::Jet<double, JetDim>, Eigen::Dynamic, Eigen::Dynamic> k_x_transp_mean_kernel(x.cols(),
 //                                                                                                             num_datapoints_);
@@ -311,7 +326,11 @@ namespace gp_regression {
 
             Eigen::Matrix<ceres::Jet<double, JetDim>, Eigen::Dynamic, Eigen::Dynamic> k_x_transp_mean_kernel(x.cols(),
                                                                                                              num_datapoints_);
-
+//            if (x.hasNaN()) {
+//                LOG(INFO) << "X in compute kernel " << x;
+//                LOG(INFO) << "Has nan";
+//                exit(1);
+//            }
             Eigen::Matrix<ceres::Jet<double, JetDim>, 1, Eigen::Dynamic> kde_based_var = Eigen::Matrix<ceres::Jet<double, JetDim>, 1, Eigen::Dynamic>::Constant(
                     1, x.cols(), ceres::Jet<double, JetDim>(min_val_));
             for (int i = 0; i < num_datapoints_; i++) {
@@ -321,7 +340,9 @@ namespace gp_regression {
                     Eigen::Matrix<ceres::Jet<double, JetDim>, N, 1> eval_input = x.col(j);
                     k_x_transp_mean_kernel(j, i) = mean_kernel_->evaluateKernel(input_i, eval_input);
                     if (ceres::IsNaN(k_x_transp_mean_kernel(j, i))) {
+                        LOG(INFO) << "Eval input " << eval_input;
                         LOG(INFO) << "Kernel entry " << j << ", " << i << " is nan";
+                        exit(1);
                     }
                     kde_based_var(0, j) += variance_kernel_->evaluateKernel(input_i, eval_input);
                 }

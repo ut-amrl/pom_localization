@@ -48,11 +48,11 @@ out_file_base_50_50=traj_est_out_${str_50_50}${out_file_suffix}
 out_file_base_80_20=traj_est_out_${str_80_20}${out_file_suffix}
 out_file_base_100plus_0=traj_est_out_${str_100plus_0}${out_file_suffix}
 
-ros_prefix_0_100=kitti_eval_${str_0_100}prefix
-ros_prefix_20_80=kitti_eval_${str_20_80}prefix
-ros_prefix_50_50=kitti_eval_${str_50_50}prefix
-ros_prefix_80_20=kitti_eval_${str_80_20}prefix
-ros_prefix_100plus_0=kitti_eval_${str_100plus_0}prefix
+ros_prefix_0_100=kitti_eval_${str_0_100}prefix_${sequence_num}
+ros_prefix_20_80=kitti_eval_${str_20_80}prefix_${sequence_num}
+ros_prefix_50_50=kitti_eval_${str_50_50}prefix_${sequence_num}
+ros_prefix_80_20=kitti_eval_${str_80_20}prefix_${sequence_num}
+ros_prefix_100plus_0=kitti_eval_${str_100plus_0}prefix_${sequence_num}
 
 
 #ros_prefix_0_100=kitti_eval_${str_0_100}prefix_${sequence_num}
@@ -99,16 +99,18 @@ echo Estimating trajectories
 ./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_100plus_0} & # TODO pipe output to file
 wait
 
+results_computation_namespace=compute_results_${sequence_num}
+
 # Compute results
-rosparam set /odom_traj_est_file "${odom_traj_est_file_name}"
+rosparam set /${results_computation_namespace}/odom_traj_est_file "${odom_traj_est_file_name}"
 rosparam set /gt_trajectory_file "${gt_trajectory_file_name}"
 
 # Results computed by this approach under different samples
-rosparam set /misaligned_est_traj_file "${output_dir}${out_file_base_0_100}"
-rosparam set /eighty_percent_misaligned_est_traj_file "${output_dir}${out_file_base_20_80}"
-rosparam set /fifty_percent_misaligned_est_traj_file "${output_dir}${out_file_base_50_50}"
-rosparam set /twenty_percent_misaligned_est_traj_file "${output_dir}${out_file_base_80_20}"
-rosparam set /aligned_est_traj_file "${output_dir}${out_file_base_100plus_0}"
+rosparam set /${results_computation_namespace}/misaligned_est_traj_file "${output_dir}${out_file_base_0_100}"
+rosparam set /${results_computation_namespace}/eighty_percent_misaligned_est_traj_file "${output_dir}${out_file_base_20_80}"
+rosparam set /${results_computation_namespace}/fifty_percent_misaligned_est_traj_file "${output_dir}${out_file_base_50_50}"
+rosparam set /${results_computation_namespace}/twenty_percent_misaligned_est_traj_file "${output_dir}${out_file_base_80_20}"
+rosparam set /${results_computation_namespace}/aligned_est_traj_file "${output_dir}${out_file_base_100plus_0}"
 
-#make && ./bin/compute_kitti_results --run_viz
+#make && ./bin/compute_kitti_results --run_viz --param_prefix ${results_computation_namespace}
 

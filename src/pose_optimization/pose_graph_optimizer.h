@@ -340,6 +340,11 @@ namespace pose_optimization {
             ceres::Solve(options, problem, &summary);
             std::cout << summary.FullReport() << '\n';
 
+            if ((summary.termination_type == ceres::TerminationType::FAILURE) || (summary.termination_type == ceres::TerminationType::USER_FAILURE)) {
+                LOG(ERROR) << "Ceres optimization failed";
+                exit(1);
+            }
+
             return summary.IsSolutionUsable();
         }
 

@@ -132,6 +132,11 @@ namespace gp_regression {
 
         Eigen::Matrix<double, 1, Eigen::Dynamic> Inference(const Eigen::Matrix<double, N, Eigen::Dynamic> &x) {
             CumulativeFunctionTimer::Invocation invoc(double_gpc_timer_.get());
+//            if (x.hasNaN()) {
+//                LOG(INFO) << "X in GPC inference " << x;
+//                LOG(INFO) << "Has Nan";
+//                exit(1);
+//            }
             std::pair<Eigen::Matrix<double, 1, Eigen::Dynamic>, Eigen::Matrix<double, 1, Eigen::Dynamic>> regressor_out = gp_regressor_->Inference(
                     x);
 //            LOG(INFO) << "Regressor out mean " << regressor_out.first;
@@ -149,6 +154,11 @@ namespace gp_regression {
         Eigen::Matrix<ceres::Jet<double, JetDim>, 1, Eigen::Dynamic>
         Inference(const Eigen::Matrix<ceres::Jet<double, JetDim>, N, Eigen::Dynamic> &x) {
             CumulativeFunctionTimer::Invocation invoc(jet_gpc_timer_.get());
+//            if (x.hasNaN()) {
+//                LOG(INFO) << "X in GPC inference " << x;
+//                LOG(INFO) << "Has nan";
+//                exit(1);
+//            }
             std::pair<Eigen::Matrix<ceres::Jet<double, JetDim>, 1, Eigen::Dynamic>, Eigen::Matrix<ceres::Jet<double, JetDim>, 1, Eigen::Dynamic>> regressor_out = gp_regressor_->Inference(
                     x);
 //            LOG(INFO) << "Regressor out mean " << regressor_out.first;

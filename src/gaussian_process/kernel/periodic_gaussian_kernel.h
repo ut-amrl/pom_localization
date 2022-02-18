@@ -46,6 +46,52 @@ namespace gp_kernel {
 //            T intermediate_dist = (x1 - x2).norm();
 //            T period_invariant_dist = M_PI * intermediate_dist / static_cast<T>(period_);
 
+//            T norm_val = (x1 - x2).norm();
+//
+//            if (ceres::IsNaN(norm_val)) {
+//                LOG(INFO) << "x1: " << x1;
+//                LOG(INFO) << "x2: " << x2;
+//                LOG(INFO) << x1 - x2;
+//                LOG(INFO) << "norm is NaN";
+//                exit(1);
+//            } else {
+//                T inside_sin_val = norm_val * T(inside_sin_multiplier_);
+//                if (ceres::IsNaN(inside_sin_val)) {
+//                    LOG(INFO) << "Inside sin val is NaN";
+//                    exit(1);
+//                } else {
+//                    T sin_val = sin(inside_sin_val);
+//                    if (ceres::IsNaN(sin_val)) {
+//                        LOG(INFO) << "Sin val is NaN";
+//                        exit(1);
+//                    } else {
+//                        T squared_sin_val = math_util::Sq(sin_val);
+//                        if (ceres::IsNaN(squared_sin_val)) {
+//                            LOG(INFO) << "Squared sin val is NaN";
+//                            exit(1);
+//                        } else {
+//                            T inside_exponent = T(exponential_multiplier_) * squared_sin_val;
+//                            if (ceres::IsNaN(inside_exponent)) {
+//                                LOG(INFO) << "Inside exponent is NaN";
+//                                exit(1);
+//                            } else {
+//                                T exponent_val = exp(inside_exponent);
+//                                if (ceres::IsNaN(exponent_val)) {
+//                                    LOG(INFO) << "Exponent val is NaN";
+//                                    exit(1);
+//                                } else {
+//                                    T return_val = static_cast<T>(variance_) * exponent_val;
+//                                    if (ceres::IsNaN(return_val)) {
+//                                        LOG(INFO) << "Return val is NaN";
+//                                        exit(1);
+//                                    }
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+
             return static_cast<T>(variance_) *
                    exp(T(exponential_multiplier_) * math_util::Sq(sin((x1 - x2).norm() * T(inside_sin_multiplier_))));
 //            T intermediate_dist = (x1 - x2).norm();

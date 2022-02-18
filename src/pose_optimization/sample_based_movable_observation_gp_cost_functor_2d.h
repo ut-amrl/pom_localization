@@ -52,7 +52,7 @@ namespace pose_optimization {
                 jet_cost_functor_timer_(jet_cost_functor_timer), double_cost_functor_timer_(double_cost_functor_timer) {
             num_samples_ = observation_samples.size();
             CHECK_GT(num_samples_, 0);
-            for (const std::pair<Eigen::Vector2d, double> &observation_sample : observation_samples) {
+            for (const pose::Pose2d &observation_sample : observation_samples) {
                 observation_transforms_.emplace_back(convertTranslationAndRotationToMatrix(observation_sample.first,
                                                                                            observation_sample.second));
             }

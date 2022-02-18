@@ -165,8 +165,9 @@ namespace semantic_point_pom {
 
         LOG(INFO) << "Generating samples from " << refined_candidates.size() << " samples";
         std::vector<pose::Pose2d> samples;
+        int sample_range_end = refined_candidates.size() - 1;
         for (size_t i = 0; i < num_samples_to_generate; i++) {
-            size_t sample_index = random_generator.RandomInt((int) 0, (int) refined_candidates.size());
+            size_t sample_index = random_generator.RandomInt((int) 0, sample_range_end);
             samples.emplace_back(refined_candidates[sample_index]);
         }
         return samples;
