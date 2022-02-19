@@ -201,7 +201,7 @@ namespace offline_optimization {
                 }
 
                 // Set up callback for visualization
-                optimizer.SolveOptimizationProblem(&problem, ceres_callbacks);
+                optimizer.SolveOptimizationProblem(&problem, ceres_callbacks, next_pose_to_optimize == max_node_id);
 
                 // Run any per-pose post-solving visualization
                 visualization_callback(next_pose_to_optimize, pose_graph,

@@ -1247,6 +1247,26 @@ namespace visualization {
         }
 
         static std::pair<Eigen::Vector2d, Eigen::Vector2d>
+        getMinMaxCornersForDistributionVisualization(const std::vector<Eigen::Vector2d> &map_frame_obj_points) {
+            double min_x = std::numeric_limits<double>::infinity();
+            double max_x = -std::numeric_limits<double>::infinity();
+            double min_y = std::numeric_limits<double>::infinity();
+            double max_y = -std::numeric_limits<double>::infinity();
+
+            for (const Eigen::Vector2d &point : map_frame_obj_points) {
+                min_x = std::min(point.x(), min_x);
+                max_x = std::max(point.x(), max_x);
+                min_y = std::min(point.y(), min_y);
+                max_y = std::max(point.y(), max_y);
+            }
+
+            LOG(INFO) << "Min x, max x, min y, max y: " << min_x << ", " << max_x << ", " << min_y << ", " << max_y;
+
+            return std::make_pair(Eigen::Vector2d(min_x - kExtraMarginDistribution, min_y - kExtraMarginDistribution),
+                                  Eigen::Vector2d(max_x + kExtraMarginDistribution, max_y + kExtraMarginDistribution));
+        }
+
+        static std::pair<Eigen::Vector2d, Eigen::Vector2d>
         getMinMaxCornersForDistributionVisualization(const std::vector<pose::Pose2d> &map_frame_obj_poses) {
             double min_x = std::numeric_limits<double>::infinity();
             double max_x = -std::numeric_limits<double>::infinity();

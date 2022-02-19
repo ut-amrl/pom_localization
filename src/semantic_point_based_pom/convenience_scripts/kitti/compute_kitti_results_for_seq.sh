@@ -92,18 +92,19 @@ done
 
 
 echo Estimating trajectories
-#./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_0_100} & # TODO pipe output to file
-#./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_20_80} & # TODO pipe output to file
-#./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_50_50} & # TODO pipe output to file
-#./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_80_20} & # TODO pipe output to file
+./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_0_100} & # TODO pipe output to file
+./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_20_80} & # TODO pipe output to file
+./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_50_50} & # TODO pipe output to file
+./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_80_20} & # TODO pipe output to file
 ./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_100plus_0} & # TODO pipe output to file
+#./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_100plus_0} --run_gpc_viz --skip_optimization & # TODO pipe output to file
 wait
 
 results_computation_namespace=compute_results_${sequence_num}
 
 # Compute results
 rosparam set /${results_computation_namespace}/odom_traj_est_file "${odom_traj_est_file_name}"
-rosparam set /gt_trajectory_file "${gt_trajectory_file_name}"
+rosparam set /${results_computation_namespace}/gt_trajectory_file "${gt_trajectory_file_name}"
 
 # Results computed by this approach under different samples
 rosparam set /${results_computation_namespace}/misaligned_est_traj_file "${output_dir}${out_file_base_0_100}"
@@ -112,5 +113,5 @@ rosparam set /${results_computation_namespace}/fifty_percent_misaligned_est_traj
 rosparam set /${results_computation_namespace}/twenty_percent_misaligned_est_traj_file "${output_dir}${out_file_base_80_20}"
 rosparam set /${results_computation_namespace}/aligned_est_traj_file "${output_dir}${out_file_base_100plus_0}"
 
-#make && ./bin/compute_kitti_results --run_viz --param_prefix ${results_computation_namespace}
+make && ./bin/compute_kitti_results --run_viz --param_prefix ${results_computation_namespace}
 

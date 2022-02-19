@@ -65,7 +65,9 @@ namespace pose_graph {
                 gp_kernel::GaussianKernel<2> var_position_kernel(cost_function_params.var_position_kernel_len_,
                                                                  (1.0 / subsampling_ratio) *
                                                                  cost_function_params.var_position_kernel_var_);
-                gp_kernel::PeriodicGaussianKernel<1> var_orientation_kernel(M_PI * 2,
+                gp_kernel::PeriodicGaussianKernel<1> var_orientation_kernel(
+//                        M_PI * 2,
+                        M_PI,
                                                                             cost_function_params.var_orientation_kernel_var_,
                                                                             cost_function_params.var_orientation_kernel_len_);
 

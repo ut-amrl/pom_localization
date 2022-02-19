@@ -127,7 +127,8 @@ namespace pose_graph {
             Eigen::Vector2d mean_detected_point_rel_map = pose::transformPoint(
                     pose::combinePoses(node_pos, object_detection_sensor_pose_rel_baselink_), mean_detected_point);
 
-            return std::make_pair(mean_detected_point.norm(), mean_detected_point_rel_map);
+            return std::make_pair(10, mean_detected_point_rel_map);
+//            return std::make_pair(mean_detected_point.norm(), mean_detected_point_rel_map);
         }
 
     private:

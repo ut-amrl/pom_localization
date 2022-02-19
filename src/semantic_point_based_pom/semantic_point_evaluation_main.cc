@@ -118,15 +118,21 @@ void runOptimizationVisualization(const std::shared_ptr<visualization::Visualiza
                                                                          semantic_class);
                 }
                 {
-//                    std::vector<Eigen::Vector2d> poses_global_frame;
-//                    for (size_t node = 0; node < unoptimized_trajectory.size(); node++) {
-//                        pose::Pose2d robot_pose = unoptimized_trajectory[node];
-//                        for (const Eigen::Vector2d &semantic_detection_point : noisy_obj_observations[node]) {
-//                            poses_global_frame.emplace_back(pose::transformPoint(robot_pose, semantic_detection_point));
-//                        }
-//                    }
+
 
                     if (FLAGS_run_gpc_viz) {
+                        std::vector<Eigen::Vector2d> poses_global_frame;
+                        for (size_t node = 0; node < unoptimized_trajectory.size(); node++) {
+                            pose::Pose2d robot_pose = unoptimized_trajectory[node];
+                            for (const std::vector<Eigen::Vector2d> &semantic_detection_points : noisy_obj_observations[node]) {
+                                for (const Eigen::Vector2d &semantic_point : semantic_detection_points) {
+                                    poses_global_frame.emplace_back(pose::transformPoint(robot_pose, semantic_point));
+                                }
+                            }
+                        }
+                        std::pair<Eigen::Vector2d, Eigen::Vector2d> min_max_points_to_display =
+                                visualization::VisualizationManager::getMinMaxCornersForDistributionVisualization(
+                                        poses_global_frame);
                         std::function<std::shared_ptr<gp_regression::GaussianProcessClassifier<3,
                                 gp_kernel::Pose2dKernel>>(const Eigen::Vector2d &)> gpc_creator =
                                 std::bind(createGpc, pose_graph, "car",
@@ -135,8 +141,11 @@ void runOptimizationVisualization(const std::shared_ptr<visualization::Visualiza
                                           std::placeholders::_1);
                         vis_manager->displayMaxGpRegressorOutput(
                                 gpc_creator,
-                                .5,
-                                -65, 40, -10, 95
+                                1,
+                                min_max_points_to_display.first.x(),
+                                min_max_points_to_display.second.x(),
+                                min_max_points_to_display.first.y(),
+                                min_max_points_to_display.second.y()
                         );
                     }
                 }
@@ -388,17 +397,17 @@ getTrajectoryEstimate(const std::vector<pose::Pose2d> &odom_est_trajectory,
                        const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3,
                                pose_graph::MovableObservationSemanticPoints<2>>> &,
                        const offline_optimization::VisualizationTypeEnum &)> visualization_callback =
-                               [manager, gt_trajectory, odom_est_trajectory, noisy_observations_by_class,
-                                &relative_object_samples_for_cluster, shape_dimensions_by_semantic_class](
-                                        const pose_graph::NodeId &max_node_id,
-                                        const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double,
-                                        3, 2, double, 3, pose_graph::MovableObservationSemanticPoints<2>>> &pose_graph,
-                                        const offline_optimization::VisualizationTypeEnum &vis_stage) {
-        return runOptimizationVisualization(manager, max_node_id, pose_graph, vis_stage, gt_trajectory,
-                                            odom_est_trajectory, noisy_observations_by_class,
-                                            relative_object_samples_for_cluster,
-                                            shape_dimensions_by_semantic_class);
-    };
+            [manager, gt_trajectory, odom_est_trajectory, noisy_observations_by_class,
+                    &relative_object_samples_for_cluster, shape_dimensions_by_semantic_class](
+                    const pose_graph::NodeId &max_node_id,
+                    const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double,
+                            3, 2, double, 3, pose_graph::MovableObservationSemanticPoints<2>>> &pose_graph,
+                    const offline_optimization::VisualizationTypeEnum &vis_stage) {
+                return runOptimizationVisualization(manager, max_node_id, pose_graph, vis_stage, gt_trajectory,
+                                                    odom_est_trajectory, noisy_observations_by_class,
+                                                    relative_object_samples_for_cluster,
+                                                    shape_dimensions_by_semantic_class);
+            };
 
     pose_optimization::PoseOptimizationParameters pose_opt_params = setupPoseOptimizationParams(runtime_params_config);
 

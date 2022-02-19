@@ -316,14 +316,21 @@ namespace pose_optimization {
 
         }
 
-        bool SolveOptimizationProblem(ceres::Problem *problem, std::vector<ceres::IterationCallback *> callbacks) {
+        bool SolveOptimizationProblem(ceres::Problem *problem, std::vector<ceres::IterationCallback *> callbacks, const bool &extra_refinement) {
             CHECK(problem != NULL);
             ceres::Solver::Options options;
 //            options.max_num_iterations = 100000;
 
 //            options.max_num_iterations = 1000;
-            options.max_num_iterations = 150;
+            if (extra_refinement) {
+                options.max_num_iterations = 1000;
+            } else {
+                options.max_num_iterations = 150;
+            }
             options.minimizer_progress_to_stdout = true;
+            if (extra_refinement) {
+                options.function_tolerance = 1e-15;
+            }
 //            options.function_tolerance = 1e-10;
 //            options.function_tolerance = 1e-20;
             options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
