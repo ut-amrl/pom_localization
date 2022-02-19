@@ -81,7 +81,7 @@ for i in ${!namespaces[@]}; do
   rosparam set /${curr_namespace}/past_samples_files "['${past_samples_file}']"
   rosparam set /${curr_namespace}/odom_traj_est_file "${odom_traj_est_file_name}"
   rosparam set /${curr_namespace}/semantic_point_det_curr_traj_file "${semantic_point_det_curr_traj_file_name}"
-  rosparam set /${curr_namespace}/traj_est_output_file_prefix "${output_dir}${traj_out_file_base}"
+  rosparam set /${curr_namespace}/traj_est_output_file "${output_dir}${traj_out_file_base}"
   rosparam set /${curr_namespace}/gt_trajectory_file "${gt_trajectory_file_name}"
   rosparam set /${curr_namespace}/runtime_params_config_file "${runtime_params_config_file_name}"
   rosparam set /${curr_namespace}/detection_sensor_rel_baselink_file "${detection_sensor_rel_baselink_file_name}"

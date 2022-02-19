@@ -34,7 +34,7 @@ const std::string kOdomTrajectoryEstimatesFileParamName = "odom_traj_est_file";
 
 const std::string kSemanticPointDetectionsCurrTrajectoryFileParamName = "semantic_point_det_curr_traj_file";
 
-const std::string kTrajectoryOutputFilePrefixParamName = "traj_est_output_file_prefix";
+const std::string kTrajectoryOutputFileParamName = "traj_est_output_file";
 
 const std::string kGtTrajectoryFile = "gt_trajectory_file";
 
@@ -192,9 +192,13 @@ void runOptimizationVisualization(const std::shared_ptr<visualization::Visualiza
             for (const auto &obs_with_class : noisy_obj_observations_by_class) {
                 std::string semantic_class = obs_with_class.first;
                 std::vector<std::vector<std::vector<Eigen::Vector2d>>> noisy_obj_observations = obs_with_class.second;
+                std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose2d>>> rectangle_samples_for_class;
+                if (rectangle_samples.find(semantic_class) != rectangle_samples.end()) {
+                    rectangle_samples_for_class = rectangle_samples.at(semantic_class);
+                }
                 vis_manager->displaySemanticPointObsFromEstTrajectory(node_poses_list, noisy_obj_observations,
                                                                       semantic_class,
-                                                                      rectangle_samples.at(semantic_class),
+                                                                      rectangle_samples_for_class,
                                                                       shape_dimensions_by_class.at(semantic_class));
                 if (!ground_truth_trajectory.empty()) {
                     std::unordered_map<pose_graph::NodeId, std::unordered_map<size_t, std::vector<pose::Pose2d>>> rectangle_samples_for_class;
@@ -596,7 +600,7 @@ int main(int argc, char **argv) {
     std::vector<std::string> past_sample_files;
     std::string odom_estimates_file_name;
     std::string semantic_point_detections_file_name;
-    std::string traj_est_output_file_prefix;
+    std::string traj_est_output_file;
     std::string gt_traj_file;
     std::string detection_sensor_rel_baselink_file;
     std::string semantic_index_to_string_file;
@@ -621,9 +625,9 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    if (!n.getParam(param_prefix + kTrajectoryOutputFilePrefixParamName, traj_est_output_file_prefix)) {
+    if (!n.getParam(param_prefix + kTrajectoryOutputFileParamName, traj_est_output_file)) {
         LOG(INFO) << "No parameter value set for parameter with name "
-                  << param_prefix + kTrajectoryOutputFilePrefixParamName;
+                  << param_prefix + kTrajectoryOutputFileParamName;
         exit(1);
     }
 
@@ -657,7 +661,6 @@ int main(int argc, char **argv) {
             runtime_params_config_file_name.find_last_of("/\\") + 1);
     size_t lastindex = config_file_base_name.find_last_of(".");
     config_file_base_name = config_file_base_name.substr(0, lastindex);
-    std::string traj_est_output_file = traj_est_output_file_prefix + config_file_base_name + ".csv";
 
     std::shared_ptr<visualization::VisualizationManager> manager = std::make_shared<visualization::VisualizationManager>(
             n, param_prefix);
