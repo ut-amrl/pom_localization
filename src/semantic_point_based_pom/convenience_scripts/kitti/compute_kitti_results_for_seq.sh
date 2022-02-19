@@ -26,7 +26,7 @@ runtime_params_config_file_base_name=${runtime_params_config_file_base}.txt
 rectangle_sampler_config_file_base_name=${rectangle_sampler_config_file_base}.csv
 
 # Common to all
-out_file_suffix=${runtime_params_config_file_base}_${rectangle_sampler_config_file_base}_${sequence_num}.csv
+config_specific_suffix=${runtime_params_config_file_base}_${rectangle_sampler_config_file_base}_${sequence_num}
 odom_traj_est_file_name=${input_dir}lego_loam_2d_traj_est_${sequence_num}.txt
 gt_trajectory_file_name=${input_dir}planar_approx_poses_${sequence_num}.txt
 runtime_params_config_file_name=${input_dir}${runtime_params_config_file_base_name}
@@ -42,17 +42,17 @@ str_50_50=50_50_
 str_80_20=80_20_
 str_100plus_0=100plus_0_
 
-out_file_base_0_100=traj_est_out_${str_0_100}${out_file_suffix}
-out_file_base_20_80=traj_est_out_${str_20_80}${out_file_suffix}
-out_file_base_50_50=traj_est_out_${str_50_50}${out_file_suffix}
-out_file_base_80_20=traj_est_out_${str_80_20}${out_file_suffix}
-out_file_base_100plus_0=traj_est_out_${str_100plus_0}${out_file_suffix}
+out_file_base_0_100=traj_est_out_${str_0_100}${config_specific_suffix}.csv
+out_file_base_20_80=traj_est_out_${str_20_80}${config_specific_suffix}.csv
+out_file_base_50_50=traj_est_out_${str_50_50}${config_specific_suffix}.csv
+out_file_base_80_20=traj_est_out_${str_80_20}${config_specific_suffix}.csv
+out_file_base_100plus_0=traj_est_out_${str_100plus_0}${config_specific_suffix}.csv
 
-ros_prefix_0_100=kitti_eval_${str_0_100}prefix_${sequence_num}
-ros_prefix_20_80=kitti_eval_${str_20_80}prefix_${sequence_num}
-ros_prefix_50_50=kitti_eval_${str_50_50}prefix_${sequence_num}
-ros_prefix_80_20=kitti_eval_${str_80_20}prefix_${sequence_num}
-ros_prefix_100plus_0=kitti_eval_${str_100plus_0}prefix_${sequence_num}
+ros_prefix_0_100=kitti_eval_${str_0_100}prefix_${config_specific_suffix}
+ros_prefix_20_80=kitti_eval_${str_20_80}prefix_${config_specific_suffix}
+ros_prefix_50_50=kitti_eval_${str_50_50}prefix_${config_specific_suffix}
+ros_prefix_80_20=kitti_eval_${str_80_20}prefix_${config_specific_suffix}
+ros_prefix_100plus_0=kitti_eval_${str_100plus_0}prefix_${config_specific_suffix}
 
 
 #ros_prefix_0_100=kitti_eval_${str_0_100}prefix_${sequence_num}
@@ -100,7 +100,7 @@ echo Estimating trajectories
 #./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_100plus_0} --run_gpc_viz --skip_optimization & # TODO pipe output to file
 wait
 
-results_computation_namespace=compute_results_${sequence_num}
+results_computation_namespace=compute_results_${config_specific_suffix}
 
 # Compute results
 rosparam set /${results_computation_namespace}/odom_traj_est_file "${odom_traj_est_file_name}"
