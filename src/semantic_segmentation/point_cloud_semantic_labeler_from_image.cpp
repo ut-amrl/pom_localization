@@ -9,10 +9,43 @@
 #include <unordered_set>
 #include <semantic_segmentation/point_cloud_label_utils.h>
 #include <file_io/pose_3d_io.h>
+
+// Fix for conflicting LZ4 definitions in PCL vs rosbag from https://github.com/ethz-asl/lidar_align/issues/16
+#define LZ4_stream_t LZ4_stream_t_deprecated
+#define LZ4_resetStream LZ4_resetStream_deprecated
+#define LZ4_createStream LZ4_createStream_deprecated
+#define LZ4_freeStream LZ4_freeStream_deprecated
+#define LZ4_loadDict LZ4_loadDict_deprecated
+#define LZ4_compress_fast_continue LZ4_compress_fast_continue_deprecated
+#define LZ4_saveDict LZ4_saveDict_deprecated
+#define LZ4_streamDecode_t LZ4_streamDecode_t_deprecated
+#define LZ4_compress_continue LZ4_compress_continue_deprecated
+#define LZ4_compress_limitedOutput_continue LZ4_compress_limitedOutput_continue_deprecated
+#define LZ4_createStreamDecode LZ4_createStreamDecode_deprecated
+#define LZ4_freeStreamDecode LZ4_freeStreamDecode_deprecated
+#define LZ4_setStreamDecode LZ4_setStreamDecode_deprecated
+#define LZ4_decompress_safe_continue LZ4_decompress_safe_continue_deprecated
+#define LZ4_decompress_fast_continue LZ4_decompress_fast_continue_deprecated
 #include <rosbag/bag.h>
+#undef LZ4_stream_t
+#undef LZ4_resetStream
+#undef LZ4_createStream
+#undef LZ4_freeStream
+#undef LZ4_loadDict
+#undef LZ4_compress_fast_continue
+#undef LZ4_saveDict
+#undef LZ4_streamDecode_t
+#undef LZ4_compress_continue
+#undef LZ4_compress_limitedOutput_continue
+#undef LZ4_createStreamDecode
+#undef LZ4_freeStreamDecode
+#undef LZ4_setStreamDecode
+#undef LZ4_decompress_safe_continue
+#undef LZ4_decompress_fast_continue
 #include <rosbag/view.h>
 #include <nav_msgs/Odometry.h>
 #include <base_lib/pose_utils.h>
+#include <semantic_segmentation/clustering.h>
 
 #include <pcl_ros/transforms.h>
 
@@ -39,6 +72,8 @@ DEFINE_string(lidar_pose_rel_base_link_file,
 DEFINE_double(max_time_between_lidar_and_cam,
               2, "Maximum time between a lidar point cloud and a segmentation frame");
 
+
+
 struct CameraParams {
     std::string image_topic;
 
@@ -60,7 +95,9 @@ public:
                                             const std::string &odom_topic,
                                             const std::string &point_cloud_topic,
                                             const std::unordered_set<unsigned short> &labels_of_interest,
-                                            const double &max_time_between_lidar_and_cam)
+                                            const double &max_time_between_lidar_and_cam,
+                                            const std::string &node_prefix,
+                                            ros::NodeHandle &node_handle)
             : bag_file_name_(bag_file_name),
               min_time_between_frames_(min_time_between_frames),
               lidar_pose_rel_baselink_(lidar_pose_rel_baselink),
@@ -68,7 +105,8 @@ public:
               odom_topic_(odom_topic),
               point_cloud_topic_(point_cloud_topic),
               labels_of_interest_(labels_of_interest),
-              max_time_between_lidar_and_cam_(max_time_between_lidar_and_cam) {}
+              max_time_between_lidar_and_cam_(max_time_between_lidar_and_cam),
+              clusterer_(node_handle, node_prefix) {}
 
     std::vector<semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo> getSemanticallyLabeledPoints() {
 
@@ -180,6 +218,60 @@ public:
                                                    camera_pose_rel_lidar);
     }
 
+
+    // Apply clustering algorithm
+    std::vector<std::pair<unsigned short, std::vector<Eigen::Vector3d>>>
+    combineLabelsAndClusters(const std::vector<std::vector<Eigen::Vector3d>> &clusters,
+                             const std::vector<std::pair<unsigned short, Eigen::Vector3d>> &labeled_points) {
+
+        std::vector<std::pair<unsigned short, std::vector<Eigen::Vector3d>>> labeled_clusters;
+
+        for (size_t cluster_num = 0; cluster_num < clusters.size(); cluster_num++) {
+            std::vector<Eigen::Vector3d> points_in_cluster = clusters[cluster_num];
+            std::unordered_map<unsigned short, size_t> class_count_by_class;
+
+            for (const Eigen::Vector3d &cluster_point : points_in_cluster) {
+                for (const std::pair<unsigned short, Eigen::Vector3d> &labeled_point : labeled_points) {
+                    if (cluster_point == labeled_point.second) {
+                        if (class_count_by_class.find(labeled_point.first) == class_count_by_class.end()) {
+                            class_count_by_class[labeled_point.first] = 0;
+                        }
+                        class_count_by_class[labeled_point.first] = class_count_by_class[labeled_point.first] + 1;
+                    }
+                }
+
+            }
+            if (class_count_by_class.empty()) {
+                continue;
+            }
+            unsigned short most_common_class;
+            if (class_count_by_class.size() > 1) {
+                size_t largest_class_count = 0;
+                size_t second_largest_class_count = 0;
+                for (const auto &entry : class_count_by_class) {
+                    if (entry.second > largest_class_count) {
+                        most_common_class = entry.first;
+                        largest_class_count = entry.second;
+                        second_largest_class_count = entry.second;
+                    } else if (entry.second > second_largest_class_count) {
+                        second_largest_class_count = entry.second;
+                    }
+                }
+                if ((((double) largest_class_count) / second_largest_class_count) < min_class_frequency_multiplier_) {
+                    continue;
+                }
+            } else {
+                for (const auto &single_entry : class_count_by_class) {
+                    most_common_class = single_entry.first;
+                }
+            }
+            // TODO consider excluding points that are labeled and don't have the most common class (would probably help with ground detection)
+            // Would need some way to include classes to compare against, but then exclude those classes from file writing.
+            labeled_clusters.emplace_back(std::make_pair(most_common_class, points_in_cluster));
+        }
+        return labeled_clusters;
+    }
+
     std::vector<semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo>
     getSemanticallyLabeledPointsForScan(const sensor_msgs::PointCloud2 &point_cloud,
                                         const sensor_msgs::CameraInfoConstPtr &camera_info,
@@ -191,19 +283,24 @@ public:
                         point_cloud, segmentation_image, camera_info, camera_pose_rel_lidar,
                         semantic_segmentation::getValueForPixel, labels_of_interest_);
 
+        std::vector<std::vector<Eigen::Vector3d>> clusters = clusterer_.clusterPoints(point_cloud);
+
         // Apply clustering algorithm
-        std::vector<std::vector<std::pair<unsigned short, Eigen::Vector3d>>> points_by_cluster; // TODO
+        std::vector<std::pair<unsigned short, std::vector<
+                Eigen::Vector3d>>> points_by_cluster = combineLabelsAndClusters(
+                clusters, labeled_points);
 
         std::vector<semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo> semantically_labeled_points;
 
         for (size_t cluster_num = 0; cluster_num < points_by_cluster.size(); cluster_num++) {
-            std::vector<std::pair<unsigned short, Eigen::Vector3d>> points_for_cluster = points_by_cluster[cluster_num];
-            for (const std::pair<unsigned short, Eigen::Vector3d> &point : points_for_cluster) {
+            std::pair<unsigned short, std::vector<Eigen::Vector3d>> semantic_class_and_points_for_cluster = points_by_cluster[cluster_num];
+
+            for (const Eigen::Vector3d &point : semantic_class_and_points_for_cluster.second) {
                 semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo point_with_info;
-                point_with_info.point_x = point.second.x();
-                point_with_info.point_y = point.second.y();
-                point_with_info.point_z = point.second.z();
-                point_with_info.semantic_label = point.first;
+                point_with_info.point_x = point.x();
+                point_with_info.point_y = point.y();
+                point_with_info.point_z = point.z();
+                point_with_info.semantic_label = semantic_class_and_points_for_cluster.first;
                 point_with_info.cluster_label = cluster_num;
                 point_with_info.seconds = segmentation_image->header.stamp.sec;
                 point_with_info.nano_seconds = segmentation_image->header.stamp.nsec;
@@ -422,6 +519,8 @@ public:
 
 private:
 
+    double min_class_frequency_multiplier_ = 4; // TODO make this configurable
+
     std::string bag_file_name_;
     double min_time_between_frames_;
     pose::Pose3d lidar_pose_rel_baselink_;
@@ -439,6 +538,8 @@ private:
     std::vector<ImageWithCamIndex> image_for_point_clouds_;
 
     std::vector<std::vector<nav_msgs::Odometry::ConstPtr>> odometry_around_point_clouds_;
+
+    semantic_segmentation::Clusterer clusterer_;
 
 
 };
@@ -515,7 +616,8 @@ int main(int argc, char **argv) {
                                                                   FLAGS_odom_topic,
                                                                   FLAGS_lidar_point_cloud_topic,
                                                                   labels_of_interest,
-                                                                  FLAGS_max_time_between_lidar_and_cam);
+                                                                  FLAGS_max_time_between_lidar_and_cam,
+                                                                  "", n);
 
     std::vector<semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo> semantically_labeled_points =
             point_cloud_processor.getSemanticallyLabeledPoints();

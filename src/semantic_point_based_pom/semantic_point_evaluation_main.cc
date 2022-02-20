@@ -201,7 +201,6 @@ void runOptimizationVisualization(const std::shared_ptr<visualization::Visualiza
                                                                       rectangle_samples_for_class,
                                                                       shape_dimensions_by_class.at(semantic_class));
                 if (!ground_truth_trajectory.empty()) {
-                    std::unordered_map<pose_graph::NodeId, std::unordered_map<size_t, std::vector<pose::Pose2d>>> rectangle_samples_for_class;
                     vis_manager->displaySemanticPointObsFromGtTrajectory(ground_truth_trajectory,
                                                                          noisy_obj_observations,
                                                                          semantic_class);
