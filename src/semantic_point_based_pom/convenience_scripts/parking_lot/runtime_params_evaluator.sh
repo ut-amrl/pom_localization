@@ -56,8 +56,8 @@ past_samples_file=${base_dir}samples_distribution_config_narrower_yet_5_traj.txt
 runtime_params_config_file_name=${runtime_cfgs_dir}${runtime_cfg_base_name}${csv_suffix}
 detection_sensor_rel_baselink_file_name=${semantic_point_config_dir}${detection_sensor_rel_baselink_file_base}
 semantic_index_to_string_file_name=${semantic_point_config_dir}${semantic_index_to_string_file_base}
-shape_dimensions_by_semantic_class_file_name=${semantic_point_generated_dir}${shape_dim_base_name}
-semantic_point_object_sampler_config_file_name=${semantic_point_generated_dir}${rectangle_sampler_config_file_base}${csv_suffix}
+shape_dimensions_by_semantic_class_file_name=${semantic_point_config_dir}${shape_dim_base_name}
+semantic_point_object_sampler_config_file_name=${semantic_point_config_dir}${rectangle_sampler_config_file_base}${csv_suffix}
 
 traj_out_common_prefix=${output_dir}${traj_est_base_prefix}
 
