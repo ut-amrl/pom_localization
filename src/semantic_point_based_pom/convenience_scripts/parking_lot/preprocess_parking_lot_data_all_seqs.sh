@@ -14,9 +14,15 @@ eighth_traj_date=2021-08-04-11-27-59
 bag_time_strings=(${first_traj_date} ${second_traj_date} ${third_traj_date} ${fourth_traj_date} ${fifth_traj_date} ${sixth_traj_date} ${seventh_traj_date} ${eighth_traj_date})
 bag_traj_identifers=("first" "second" "third" "fourth" "fifth" "sixth" "seventh" "eighth")
 
-for i in ${!bag_file_bases[@]}; do
+for i in ${!bag_time_strings[@]}; do
   bag_time_string=${bag_time_strings[$i]}
   bag_traj_identifer=${bag_traj_identifers[$i]}
-
-  ./src/semantic_point_based_pom/convenience_scripts/parking_lot/preprocess_parking_lot_data_for_seq ${clustering_config_file_base} ${bag_time_string} ${bag_traj_identifer}
+  echo "Bag time string"
+  echo ${bag_time_string}
+  echo "Bag traj identifier"
+  echo ${bag_traj_identifer}
+  ./src/semantic_point_based_pom/convenience_scripts/parking_lot/preprocess_parking_lot_data_for_seq ${clustering_config_file_base} ${bag_time_string} ${bag_traj_identifer} &
 done
+
+wait
+echo Done with all trajectories
