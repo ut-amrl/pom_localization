@@ -7,7 +7,8 @@ MESSAGE(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 MESSAGE(STATUS "Arch: ${CMAKE_SYSTEM_PROCESSOR}")
 
 #SET(CMAKE_CXX_FLAGS "-std=c++11 -Wall")
-SET(CMAKE_CXX_FLAGS "-std=c++17 -lstdc++fs -Wall -Wno-unused-function -Wno-unused-variable -Werror -O2")
+# TODO add back -Werror once I figure out how to downgrade specific warnings from error just to warning (have some deprecation in dependencies)
+SET(CMAKE_CXX_FLAGS "-std=c++17 -lstdc++fs -Wall -Wno-deprecated -Wno-unused-function -Wno-unused-variable -O2")
 
 IF(${CMAKE_BUILD_TYPE} MATCHES "Release")
   MESSAGE(STATUS "Additional Flags for Release mode")
@@ -128,13 +129,17 @@ TARGET_LINK_LIBRARIES(find_node_ids_for_objs_with_timestamps ${libs} stdc++fs)
 
 ROSBUILD_ADD_EXECUTABLE(runtime_params_config_writer src/evaluation/runtime_params_config_writer.cc)
 TARGET_LINK_LIBRARIES(runtime_params_config_writer ${libs} stdc++fs)
-
-
-ROSBUILD_ADD_EXECUTABLE(fake_pom_plotter src/evaluation/fake_pom_plotter.cc)
-TARGET_LINK_LIBRARIES(fake_pom_plotter ${libs} stdc++fs)
-
+#
+#
+#ROSBUILD_ADD_EXECUTABLE(fake_pom_plotter src/evaluation/fake_pom_plotter.cc)
+#TARGET_LINK_LIBRARIES(fake_pom_plotter ${libs} stdc++fs)
+#
 ROSBUILD_ADD_EXECUTABLE(point_cloud_semantic_labeler_from_image src/semantic_segmentation/point_cloud_semantic_labeler_from_image.cpp)
 TARGET_LINK_LIBRARIES(point_cloud_semantic_labeler_from_image ${libs} stdc++fs ${PCL_LIBRARIES})
+
+
+ROSBUILD_ADD_EXECUTABLE(point_cloud_labeler_from_cluster_heuristics src/semantic_segmentation/point_cloud_labeler_from_cluster_heuristics.cpp)
+TARGET_LINK_LIBRARIES(point_cloud_labeler_from_cluster_heuristics ${libs} stdc++fs ${PCL_LIBRARIES})
 
 ROSBUILD_ADD_EXECUTABLE(semantic_point_evaluation_main src/semantic_point_based_pom/semantic_point_evaluation_main.cc)
 TARGET_LINK_LIBRARIES(semantic_point_evaluation_main ${libs} stdc++fs)

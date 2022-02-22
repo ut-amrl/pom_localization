@@ -26,7 +26,9 @@
 #define LZ4_setStreamDecode LZ4_setStreamDecode_deprecated
 #define LZ4_decompress_safe_continue LZ4_decompress_safe_continue_deprecated
 #define LZ4_decompress_fast_continue LZ4_decompress_fast_continue_deprecated
+
 #include <rosbag/bag.h>
+
 #undef LZ4_stream_t
 #undef LZ4_resetStream
 #undef LZ4_createStream
@@ -42,6 +44,7 @@
 #undef LZ4_setStreamDecode
 #undef LZ4_decompress_safe_continue
 #undef LZ4_decompress_fast_continue
+
 #include <rosbag/view.h>
 #include <nav_msgs/Odometry.h>
 #include <base_lib/pose_utils.h>
@@ -54,8 +57,6 @@ DEFINE_string(semantic_points_file,
 DEFINE_string(camera_pose_rel_base_link_files,
               "xxx",
               "Comma separated names of the files that provides the camera pose relative to the base link frame");
-DEFINE_double(min_time_between_frames,
-              5.0, "Minimum time in seconds between frames to output semantic labels for");
 DEFINE_string(camera_topics,
               "/left/color/image_raw", "Comma separated strings (no spaces) for camera topics");
 DEFINE_string(camera_info_topics,
@@ -71,6 +72,7 @@ DEFINE_string(lidar_pose_rel_base_link_file,
               "xxx", "File providing the pose of the lidar in the base link frame");
 DEFINE_double(max_time_between_lidar_and_cam,
               2, "Maximum time between a lidar point cloud and a segmentation frame");
+DEFINE_string(cluster_config_file, "", "Clustering config file");
 
 
 
@@ -88,8 +90,8 @@ public:
     typedef std::pair<size_t, sensor_msgs::Image::ConstPtr> ImageWithCamIndex;
 
     // Need to change this to take in lidar relative to baselink and cameras relative to baselink
-    PointCloudSemanticSegmentationProcessor(const std::string &bag_file_name,
-                                            const double &min_time_between_frames,
+    PointCloudSemanticSegmentationProcessor(const file_io::ClusteringConfig &clustering_config,
+                                            const std::string &bag_file_name,
                                             const pose::Pose3d &lidar_pose_rel_baselink,
                                             const std::vector<CameraParams> &camera_params,
                                             const std::string &odom_topic,
@@ -99,14 +101,14 @@ public:
                                             const std::string &node_prefix,
                                             ros::NodeHandle &node_handle)
             : bag_file_name_(bag_file_name),
-              min_time_between_frames_(min_time_between_frames),
+              min_time_between_frames_(clustering_config.time_between_frames),
               lidar_pose_rel_baselink_(lidar_pose_rel_baselink),
               camera_params_(camera_params),
               odom_topic_(odom_topic),
               point_cloud_topic_(point_cloud_topic),
               labels_of_interest_(labels_of_interest),
               max_time_between_lidar_and_cam_(max_time_between_lidar_and_cam),
-              clusterer_(node_handle, node_prefix) {}
+              clusterer_(clustering_config, node_handle, node_prefix) {}
 
     std::vector<semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo> getSemanticallyLabeledPoints() {
 
@@ -576,10 +578,18 @@ int main(int argc, char **argv) {
 
     std::unordered_set<unsigned short> labels_of_interest = {7};
 
-    if (FLAGS_min_time_between_frames < 0) {
-        LOG(ERROR) << "Minimum time between frames needs to be positive";
+    if (FLAGS_cluster_config_file.empty()) {
+        LOG(ERROR) << "No cluster config file specified";
         exit(1);
     }
+
+
+    std::string clustering_config_file_name = FLAGS_cluster_config_file;
+
+    LOG(INFO) << "Reading clustering config from file " << clustering_config_file_name;
+    file_io::ClusteringConfig clustering_config;
+    file_io::readClusteringConfigFromFile(clustering_config_file_name, clustering_config);
+
 
     std::vector<std::string> camera_topics = parseCommaSeparatedStrings(FLAGS_camera_topics);
     std::vector<std::string> camera_info_topics = parseCommaSeparatedStrings(FLAGS_camera_info_topics);
@@ -609,8 +619,8 @@ int main(int argc, char **argv) {
     file_io::readPose3dsFromFile(FLAGS_lidar_pose_rel_base_link_file, lidar_pose_vec);
     pose::Pose3d lidar_pose_rel_baselink = lidar_pose_vec.front();
 
-    PointCloudSemanticSegmentationProcessor point_cloud_processor(FLAGS_bag_file_name,
-                                                                  FLAGS_min_time_between_frames,
+    PointCloudSemanticSegmentationProcessor point_cloud_processor(clustering_config,
+                                                                  FLAGS_bag_file_name,
                                                                   lidar_pose_rel_baselink,
                                                                   camera_params,
                                                                   FLAGS_odom_topic,
