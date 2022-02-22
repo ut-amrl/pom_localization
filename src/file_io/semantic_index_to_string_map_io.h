@@ -53,6 +53,7 @@ namespace file_io {
 
     void readSemanticIndexToStringMapFromFile(const std::string &file_name,
                                               std::unordered_map<unsigned short, std::string> &semantic_index_to_string_map) {
+        LOG(INFO) << "Reading semantic index map from file " << file_name;
         std::ifstream file_obj(file_name);
         std::string line;
         bool first_line = true;
@@ -64,6 +65,10 @@ namespace file_io {
             std::pair<unsigned short, std::string> semantic_index_to_string_entry;
             readSemanticIndexToStringEntryLine(line, semantic_index_to_string_entry);
             semantic_index_to_string_map[semantic_index_to_string_entry.first] = semantic_index_to_string_entry.second;
+        }
+        if (first_line) {
+            LOG(ERROR) << "File " << file_name << " was empty. Exiting";
+            exit(1);
         }
     }
 }

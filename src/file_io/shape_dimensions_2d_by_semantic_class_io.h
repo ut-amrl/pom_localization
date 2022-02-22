@@ -61,6 +61,7 @@ namespace file_io {
     void readShapeDimensions2dBySemanticClassMapFromFile(const std::string &file_name,
                                                          std::unordered_map<std::string, Eigen::Vector2d>
                                                                  &shape_dimensions_2d_by_semantic_class) {
+        LOG(INFO) << "Reading shape dims from file " << file_name;
         std::ifstream file_obj(file_name);
         std::string line;
         bool first_line = true;
@@ -73,6 +74,10 @@ namespace file_io {
             readShapeDimensions2dBySemanticClassEntryLine(line, shape_dimensions_for_semantic_class_entry);
             shape_dimensions_2d_by_semantic_class[shape_dimensions_for_semantic_class_entry.first] =
                     shape_dimensions_for_semantic_class_entry.second;
+        }
+        if (first_line) {
+            LOG(ERROR) << "File " << file_name << " was empty. Exiting";
+            exit(1);
         }
     }
 }

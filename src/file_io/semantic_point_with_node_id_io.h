@@ -99,6 +99,7 @@ namespace semantic_segmentation {
 
     void readSemanticallyLabeledPointWithNodeIdInfoFromFile(const std::string &file_name,
                                                             std::vector<SemanticallyLabeledPointWithNodeIdInfo> &semantic_points) {
+        LOG(INFO) << "Reading semantic points with node ids from file " << file_name;
         std::ifstream file_obj(file_name);
         std::string line;
         bool first_line = true;
@@ -110,6 +111,10 @@ namespace semantic_segmentation {
             SemanticallyLabeledPointWithNodeIdInfo semantic_point;
             readSemanticallyLabeledPointWithNodeIdInfoLine(line, semantic_point);
             semantic_points.emplace_back(semantic_point);
+        }
+        if (first_line) {
+            LOG(ERROR) << "File " << file_name << " was empty. Exiting";
+            exit(1);
         }
     }
 }

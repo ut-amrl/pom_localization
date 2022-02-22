@@ -29,7 +29,7 @@ csv_suffix=.csv
 consistency_results_base_prefix=consistency_results_
 traj_est_base_prefix=traj_est_
 
-shape_dim_base_name=shape_dim_by_sematic_class_car_camry${csv_suffix}
+shape_dim_base_name=shape_dim_by_semantic_class_car_camry${csv_suffix}
 detection_sensor_rel_baselink_file_base=detection_sensor_rel_baselink${csv_suffix}
 semantic_index_to_string_file_base=semantic_index_to_string${csv_suffix}
 
