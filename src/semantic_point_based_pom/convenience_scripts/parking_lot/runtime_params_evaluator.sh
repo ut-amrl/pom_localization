@@ -110,14 +110,14 @@ rosparam set /${consistency_evaluator_namespace}/waypoint_consistency_num_trajec
 
 make
 echo Estimating trajectories
-./bin/evaluation_main --param_prefix ${first_traj_eval_namespace} &
-./bin/evaluation_main --param_prefix ${second_traj_eval_namespace} &
-./bin/evaluation_main --param_prefix ${third_traj_eval_namespace} &
-./bin/evaluation_main --param_prefix ${fourth_traj_eval_namespace} &
-./bin/evaluation_main --param_prefix ${fifth_traj_eval_namespace} &
-./bin/evaluation_main --param_prefix ${sixth_traj_eval_namespace} &
-./bin/evaluation_main --param_prefix ${seventh_traj_eval_namespace} &
-./bin/evaluation_main --param_prefix ${eighth_traj_eval_namespace} &
+./bin/semantic_point_evaluation_main --param_prefix ${first_traj_eval_namespace} &
+./bin/semantic_point_evaluation_main --param_prefix ${second_traj_eval_namespace} &
+./bin/semantic_point_evaluation_main --param_prefix ${third_traj_eval_namespace} &
+./bin/semantic_point_evaluation_main --param_prefix ${fourth_traj_eval_namespace} &
+./bin/semantic_point_evaluation_main --param_prefix ${fifth_traj_eval_namespace} &
+./bin/semantic_point_evaluation_main --param_prefix ${sixth_traj_eval_namespace} &
+./bin/semantic_point_evaluation_main --param_prefix ${seventh_traj_eval_namespace} &
+./bin/semantic_point_evaluation_main --param_prefix ${eighth_traj_eval_namespace} &
 wait
 
 echo Running consistency evaluator
