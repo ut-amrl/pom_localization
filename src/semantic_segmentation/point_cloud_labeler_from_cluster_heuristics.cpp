@@ -195,6 +195,8 @@ std::vector<std::string> parseCommaSeparatedStrings(const std::string &comma_sep
 
 int main(int argc, char **argv) {
 
+    google::ParseCommandLineFlags(&argc, &argv, false);
+
     google::InitGoogleLogging(argv[0]);
     FLAGS_logtostderr = true;
 

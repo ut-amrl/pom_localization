@@ -561,6 +561,9 @@ std::vector<std::string> parseCommaSeparatedStrings(const std::string &comma_sep
 
 int main(int argc, char **argv) {
 
+
+    google::ParseCommandLineFlags(&argc, &argv, false);
+
     // The goal of this script is to
     //     Get the labels from a semantic segmentation image
     //     Find corresponding points in the lidar

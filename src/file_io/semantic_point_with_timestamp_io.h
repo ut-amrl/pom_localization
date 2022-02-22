@@ -94,7 +94,7 @@ namespace semantic_segmentation {
 
         getline(ss, substr, ',');
         std::istringstream stream_pz(substr);
-        stream_py >> semantic_point.point_z;
+        stream_pz >> semantic_point.point_z;
 
         getline(ss, substr, ',');
         std::istringstream stream_semantic_label(substr);
