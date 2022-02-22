@@ -85,50 +85,50 @@ public:
         rosbag::Bag bag;
         bag.open(bag_file_name_, rosbag::bagmode::Read);
 
-        ros::Time last_lidar_stamp;
+        ros::Time last_included_lidar_stamp;
 
         std::vector<sensor_msgs::PointCloud2::ConstPtr> point_clouds_to_label;
 
-        std::vector<std::string> topics = {odom_topic_, point_cloud_topic_};
+        std::vector<std::string> topics = {point_cloud_topic_};
 
         rosbag::View bag_view(bag, rosbag::TopicQuery(topics));
-        bool found_first_odom_msg = false;
+        std::pair<ros::Time, ros::Time> min_and_max_odom_stamps = getMinAndMaxOdomStamps();
 
-        ros::Time last_odom_msg_stamp;
-
-        sensor_msgs::PointCloud2::ConstPtr last_cloud;
         sensor_msgs::PointCloud2::ConstPtr cloud_before_last_odom;
+        bool found_first_cloud = false;
+        ros::Time last_lidar_stamp;
 
         for (rosbag::MessageInstance const &m : bag_view) {
-            if (m.getTopic() == odom_topic_) {
-                nav_msgs::Odometry::ConstPtr msg = m.instantiate<nav_msgs::Odometry>();
-                last_odom_msg_stamp = msg->header.stamp;
-                cloud_before_last_odom = last_cloud;
-                if (!found_first_odom_msg) {
-                    found_first_odom_msg = true;
-                }
+            sensor_msgs::PointCloud2::ConstPtr msg = m.instantiate<sensor_msgs::PointCloud2>();
+            ros::Time curr_stamp = msg->header.stamp;
+            if ((curr_stamp < min_and_max_odom_stamps.first) || (curr_stamp > min_and_max_odom_stamps.second)) {
                 continue;
-            } else if (m.getTopic() == point_cloud_topic_) {
-                if (found_first_odom_msg) {
-                    sensor_msgs::PointCloud2::ConstPtr msg = m.instantiate<sensor_msgs::PointCloud2>();
-                    last_cloud = msg;
-
-                    if ((msg->header.stamp - last_lidar_stamp) < ros::Duration(min_time_between_frames_)) {
-                        continue;
-                    }
-                    point_clouds_to_label.emplace_back(msg);
-                    last_lidar_stamp = msg->header.stamp;
+            }
+            if (!found_first_cloud) {
+                point_clouds_to_label.emplace_back(msg);
+                cloud_before_last_odom = msg;
+                last_lidar_stamp = curr_stamp;
+                last_included_lidar_stamp = curr_stamp;
+                found_first_cloud = true;
+            } else {
+                if (last_lidar_stamp > curr_stamp) {
+                    LOG(ERROR) << "Out of order point clouds";
                 }
+                if (cloud_before_last_odom->header.stamp < curr_stamp) {
+                    cloud_before_last_odom = msg;
+                }
+
+                if ((curr_stamp - last_included_lidar_stamp) >= ros::Duration(min_time_between_frames_)) {
+                    point_clouds_to_label.emplace_back(msg);
+                    last_included_lidar_stamp = msg->header.stamp;
+                }
+                last_lidar_stamp = curr_stamp;
             }
         }
         bag.close();
 
-        if (last_odom_msg_stamp < point_clouds_to_label.back()->header.stamp) {
-            point_clouds_to_label.pop_back();
-        }
-
-        if (point_clouds_to_label.back()->header.stamp < last_cloud->header.stamp) {
-            point_clouds_to_label.emplace_back(last_cloud);
+        if (point_clouds_to_label.back()->header.stamp < cloud_before_last_odom->header.stamp) {
+            point_clouds_to_label.emplace_back(cloud_before_last_odom);
         }
 
         std::vector<semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo> points_with_frame_info;
@@ -141,6 +141,43 @@ public:
         }
 
         return points_with_frame_info;
+    }
+
+    std::pair<ros::Time, ros::Time> getMinAndMaxOdomStamps() {
+
+        rosbag::Bag bag;
+        bag.open(bag_file_name_, rosbag::bagmode::Read);
+
+        std::vector<std::string> topics = {odom_topic_};
+
+        rosbag::View bag_view(bag, rosbag::TopicQuery(topics));
+        bool found_first_odom_msg = false;
+
+        ros::Time last_odom_stamp;
+        ros::Time first_odom_stamp;
+
+
+        for (rosbag::MessageInstance const &m : bag_view) {
+            nav_msgs::Odometry::ConstPtr msg = m.instantiate<nav_msgs::Odometry>();
+
+            ros::Time curr_stamp = msg->header.stamp;
+            if (!found_first_odom_msg) {
+
+                found_first_odom_msg = true;
+                last_odom_stamp = curr_stamp;
+                first_odom_stamp = curr_stamp;
+                continue;
+            }
+
+            if (curr_stamp < first_odom_stamp) {
+                first_odom_stamp = curr_stamp;
+            }
+            if (curr_stamp > last_odom_stamp) {
+                last_odom_stamp = curr_stamp;
+            }
+        }
+        bag.close();
+        return std::make_pair(first_odom_stamp, last_odom_stamp);
     }
 
     std::vector<semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo>

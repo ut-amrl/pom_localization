@@ -46,7 +46,7 @@ struct timestamp_sort {
         if (timestamp1.first != timestamp2.first) {
             return timestamp1.first < timestamp2.first;
         }
-        return timestamp1.second < timestamp2.second;
+        return timestamp1.second <= timestamp2.second;
     }
 };
 
@@ -141,6 +141,16 @@ int main(int argc, char **argv) {
             semantic_points_and_waypoint_timestamps_set.insert(
                     std::make_pair(semantic_points_with_timestamp.seconds, semantic_points_with_timestamp.nano_seconds));
         }
+        // This assumes the file is read in time order
+        std::pair<uint32_t, uint32_t> first_semantic_point_timestamp = std::make_pair(semantic_points_by_timestamp.front().seconds, semantic_points_by_timestamp.front().nano_seconds);
+        std::pair<uint32_t, uint32_t> last_semantic_point_timestamp= std::make_pair(semantic_points_by_timestamp.back().seconds, semantic_points_by_timestamp.back().nano_seconds);
+
+        if (!timestamp_sort()(full_timestamps.front(), first_semantic_point_timestamp)) {
+            LOG(INFO) << "The first odom timestamp is greater than the first semantic point timestamp";
+        }
+        if (!timestamp_sort()(last_semantic_point_timestamp, full_timestamps.back())) {
+            LOG(INFO) << "Last semantic point timestamp is not less than or equal to the odom timestamp";
+        }
     }
     if (include_waypoint_times) {
         LOG(INFO) << "Getting waypoint times from file " << waypoints_by_timestamp_file_name;
@@ -150,6 +160,16 @@ int main(int argc, char **argv) {
         for (const file_io::WaypointAndTimestamp &waypoint_with_timestamp : waypoints_by_timestamp) {
             semantic_points_and_waypoint_timestamps_set.insert(
                     std::make_pair(waypoint_with_timestamp.seconds_, waypoint_with_timestamp.nano_seconds_));
+        }
+        // This assumes the file is read in time order
+        std::pair<uint32_t, uint32_t> first_waypoint_timestamp = std::make_pair(waypoints_by_timestamp.front().seconds_, waypoints_by_timestamp.front().nano_seconds_);
+        std::pair<uint32_t, uint32_t> last_waypoint_timestamp= std::make_pair(waypoints_by_timestamp.back().seconds_, waypoints_by_timestamp.back().nano_seconds_);
+
+        if (!timestamp_sort()(full_timestamps.front(), first_waypoint_timestamp)) {
+            LOG(INFO) << "The first odom timestamp is greater than the first waypoint timestamp";
+        }
+        if (!timestamp_sort()(last_waypoint_timestamp, full_timestamps.back())) {
+            LOG(INFO) << "Last waypoint timestamp is not less than or equal to the odom timestamp";
         }
     }
 
@@ -162,16 +182,15 @@ int main(int argc, char **argv) {
               << sorted_semantic_point_timestamps.front().second;
     LOG(INFO) << "Max semantic_point timestamp " << sorted_semantic_point_timestamps.back().first << ", "
               << sorted_semantic_point_timestamps.back().second;
-    for (const auto &semantic_point_timestamp : sorted_semantic_point_timestamps) {
-        LOG(INFO) << "semantic_point timestamp " << semantic_point_timestamp.first << ", " << semantic_point_timestamp.second;
-    }
     std::vector<pose::Pose2d> poses_to_use;
     std::vector<std::pair<uint32_t, uint32_t>> timestamps_to_use;
     poses_to_use.emplace_back(full_odom_frame_poses[0]);
     timestamps_to_use.emplace_back(full_timestamps[0]);
     size_t index_next_semantic_point_timestamp_to_check = 0;
     if (!sorted_semantic_point_timestamps.empty()) {
-        if (timestamp_sort()(sorted_semantic_point_timestamps[0], full_timestamps[0])) {
+        // If the first full timestamp is not less than or equal to the first sorted timestamp, need to start with the next detection/waypoint timestamp
+        if (!timestamp_sort()(full_timestamps[0], sorted_semantic_point_timestamps[0] )) {
+            LOG(INFO) << "Skipping first sorted timestamp";
             index_next_semantic_point_timestamp_to_check = 1;
         }
     }
