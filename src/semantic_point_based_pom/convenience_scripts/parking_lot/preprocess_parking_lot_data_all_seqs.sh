@@ -21,7 +21,7 @@ for i in ${!bag_time_strings[@]}; do
   echo ${bag_time_string}
   echo "Bag traj identifier"
   echo ${bag_traj_identifer}
-  ./src/semantic_point_based_pom/convenience_scripts/parking_lot/preprocess_parking_lot_data_for_seq ${clustering_config_file_base} ${bag_time_string} ${bag_traj_identifer} &
+  ./src/semantic_point_based_pom/convenience_scripts/parking_lot/preprocess_parking_lot_data_for_seq.sh ${clustering_config_file_base} ${bag_time_string} ${bag_traj_identifer} &
 done
 
 wait
