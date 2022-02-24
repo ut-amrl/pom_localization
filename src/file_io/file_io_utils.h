@@ -20,6 +20,17 @@ namespace file_io {
             }
         }
     }
+
+    std::vector<std::string> parseCommaSeparatedStrings(const std::string &str) {
+        std::vector<std::string> strs;
+        std::stringstream ss(str);
+
+        std::string substr;
+        while (getline(ss, substr, ',')) {
+            strs.emplace_back(substr);
+        }
+        return strs;
+    }
 }
 
 #endif //AUTODIFF_GP_FILE_IO_UTILS_H

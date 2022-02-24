@@ -12,6 +12,12 @@
 
 namespace semantic_point_pom {
 
+    template <typename T>
+    T AngleModSymmetric(T angle) {
+        angle -= T(M_PI) * rint(angle / T(M_PI));
+        return angle;
+    }
+
     bool compareSizesOfBins(std::pair<size_t, std::pair<int, std::pair<int, int>>> a,
                             std::pair<size_t, std::pair<int, std::pair<int, int>>> b) {
         return a.first > b.first;
@@ -60,7 +66,7 @@ namespace semantic_point_pom {
             rand_angle = 0;
         }
 
-        double rectangle_angle = math_util::AngleMod(-rand_angle + angle_to_point + theta_modifier);
+        double rectangle_angle = AngleModSymmetric(-rand_angle + angle_to_point + theta_modifier);
 
         double rect_center_x = point_to_use.x() - (point_in_rect_frame.x() * cos(rectangle_angle)) +
                                (point_in_rect_frame.y() * sin(rectangle_angle));

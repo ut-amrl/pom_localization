@@ -28,44 +28,63 @@ namespace file_io {
         double max_height_over_horiz_span;
 
         double time_between_frames;
+
+        double singular_value_threshold = 10;// Tentative -- gave it matrix that was 4 long and 1 wide and got ~10 to 1 singular values
+        double ransac_line_distance_threshold = std::numeric_limits<double>::max(); // Make default high so it's effectively off
+        int ransac_max_iterations = 1; // Make default minimal so it doesn't take up time when we don't intend to run it
+        double min_rect_fit_inlier_percent_threshold = 0; // 0 is effectively off
+        double perp_line_angle_epsilon = M_PI_2; // Effectively off
+        double max_long_side_len = std::numeric_limits<double>::max(); // Effectively off
+
+        double max_min_z = std::numeric_limits<double>::max(); // Effectively off
+        double more_conservative_ground_plane_radius = std::numeric_limits<double>::max();
+        double more_conservative_ground_plane_thickness = 0;
+
+        double min_z_span = 0; // Effectively off by default
+
+        double dedupe_point_for_line_fit_threshold = 0;
+        double inlier_threshold_after_fit = std::numeric_limits<double>::max(); // Effectively off
+        double min_avg_deviation_from_straight_line = std::numeric_limits<double>::max();
+
     };
 
     void readClusteringConfigFromLine(const std::string &line_in_file,
                                       ClusteringConfig &config) {
-        std::stringstream ss(line_in_file);
+        std::vector<std::string> substrs = parseCommaSeparatedStrings(line_in_file);
 
-        std::string substr;
-        getline(ss, substr, ',');
-        config.ground_plane_height = std::stod(substr);
+        size_t next_substr = 0;
+        config.ground_plane_height = std::stod(substrs[next_substr++]);
+        config.ground_plane_band_thickness = std::stod(substrs[next_substr++]);
+        config.cluster_tolerance = std::stod(substrs[next_substr++]);
+        config.min_cluster_size = std::stoi(substrs[next_substr++]);
+        config.max_cluster_size = std::stoi(substrs[next_substr++]);
 
-        getline(ss, substr, ',');
-        config.ground_plane_band_thickness = std::stod(substr);
+        config.max_cluster_span = std::stod(substrs[next_substr++]);
+        config.min_horiz_span = std::stod(substrs[next_substr++]);
+        config.max_z = std::stod(substrs[next_substr++]);
+        config.min_max_z = std::stod(substrs[next_substr++]);
+        config.z_merge_proximity = std::stod(substrs[next_substr++]);
 
+        config.max_height_over_horiz_span = std::stod(substrs[next_substr++]);
+        config.time_between_frames = std::stod(substrs[next_substr++]);
 
-        getline(ss, substr, ',');
-        config.cluster_tolerance = std::stod(substr);
+        if (next_substr < substrs.size()) {
+            config.singular_value_threshold = std::stod(substrs[next_substr++]);
+            config.ransac_line_distance_threshold = std::stod(substrs[next_substr++]);
+            config.ransac_max_iterations = std::stoi(substrs[next_substr++]);
 
-        getline(ss, substr, ',');
-        config.min_cluster_size = std::stoi(substr);
+            config.min_rect_fit_inlier_percent_threshold = std::stod(substrs[next_substr++]);
+            config.perp_line_angle_epsilon = std::stod(substrs[next_substr++]);
+            config.max_long_side_len = std::stod(substrs[next_substr++]);
+            config.max_min_z = std::stod(substrs[next_substr++]);
+            config.more_conservative_ground_plane_radius = std::stod(substrs[next_substr++]);
 
-        getline(ss, substr, ',');
-        config.max_cluster_size = std::stoi(substr);
-
-        getline(ss, substr, ',');
-        config.max_cluster_span = std::stod(substr);
-        getline(ss, substr, ',');
-        config.min_horiz_span = std::stod(substr);
-        getline(ss, substr, ',');
-        config.max_z = std::stod(substr);
-        getline(ss, substr, ',');
-        config.min_max_z = std::stod(substr);
-        getline(ss, substr, ',');
-        config.z_merge_proximity = std::stod(substr);
-        getline(ss, substr, ',');
-        config.max_height_over_horiz_span = std::stod(substr);
-
-        getline(ss, substr, ',');
-        config.time_between_frames = std::stod(substr);
+            config.more_conservative_ground_plane_thickness = std::stod(substrs[next_substr++]);
+            config.min_z_span = std::stod(substrs[next_substr++]);
+            config.dedupe_point_for_line_fit_threshold = std::stod(substrs[next_substr++]);
+            config.inlier_threshold_after_fit = std::stod(substrs[next_substr++]);
+            config.min_avg_deviation_from_straight_line = std::stod(substrs[next_substr++]);
+        }
     }
 
     void readClusteringConfigFromFile(const std::string &file_name,
@@ -104,6 +123,19 @@ namespace file_io {
                                                      "z_merge_proximity",
                                                      "max_height_over_horiz_span",
                                                      "time_between_frames",
+                                                     "singular_value_threshold",
+                                                     "ransac_line_distance_threshold",
+                                                     "ransac_max_iterations",
+                                                     "min_rect_fit_inlier_percent_threshold",
+                                                     "perp_line_angle_epsilon",
+                                                     "max_long_side_len",
+                                                     "max_min_z",
+                                                     "more_conservative_ground_plane_radius",
+                                                     "more_conservative_ground_plane_thickness",
+                                                     "min_z_span",
+                                                     "dedupe_point_for_line_fit_threshold",
+                                                     "inlier_threshold_after_fit",
+                                                     "min_avg_deviation_from_straight_line",
                                              }, csv_file);
         writeCommaSeparatedStringsLineToFile(
                 {
@@ -118,10 +150,24 @@ namespace file_io {
                         std::to_string(config.min_max_z),
                         std::to_string(config.z_merge_proximity),
                         std::to_string(config.max_height_over_horiz_span),
-                        std::to_string(config.time_between_frames)
+                        std::to_string(config.time_between_frames),
+                        std::to_string(config.singular_value_threshold),
+                        std::to_string(config.ransac_line_distance_threshold),
+                        std::to_string(config.ransac_max_iterations),
+                        std::to_string(config.min_rect_fit_inlier_percent_threshold),
+                        std::to_string(config.perp_line_angle_epsilon),
+                        std::to_string(config.max_long_side_len),
+                        std::to_string(config.max_min_z),
+                        std::to_string(config.more_conservative_ground_plane_radius),
+                        std::to_string(config.more_conservative_ground_plane_thickness),
+                        std::to_string(config.min_z_span),
+                        std::to_string(config.dedupe_point_for_line_fit_threshold),
+                        std::to_string(config.inlier_threshold_after_fit),
+                        std::to_string(config.min_avg_deviation_from_straight_line)
                 }, csv_file);
         csv_file.close();
     }
+
 }
 
 #endif //AUTODIFF_GP_CLUSTERING_CONFIG_IO_H
