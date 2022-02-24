@@ -13,6 +13,7 @@
 
 #include <base_lib/pose_reps.h>
 #include <gaussian_process/gp_classifier.h>
+#include <chrono>
 
 namespace visualization {
 
@@ -167,7 +168,7 @@ namespace visualization {
         }
 
         void displaySemanticPointObsFromEstTrajectory(const std::vector<pose::Pose2d> &est_trajectory,
-                                                      const std::vector<std::vector<std::vector<Eigen::Vector2d>>> &relative_semantic_points,
+                                                      const std::vector<std::unordered_map<size_t, std::vector<Eigen::Vector2d>>> &relative_semantic_points,
                                                       const std::string &obj_class,
                                                       const std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose2d>>> &relative_object_samples_for_cluster = {},
                                                       const Eigen::Vector2d &dimensions_for_samples = Eigen::Vector2d()) {
@@ -180,8 +181,8 @@ namespace visualization {
             getOrCreatePublisherForTrajTypeAndClass(ESTIMATED, obj_class, pub);
 
             displaySemanticPointObsFromTrajectory(est_trajectory, relative_semantic_points, 0.15,
-                                                kObservedFromEstCarDetectionLines, color, pub,
-                                                relative_object_samples_for_cluster, dimensions_for_samples);
+                                                  kObservedFromEstCarDetectionLines, color, pub,
+                                                  relative_object_samples_for_cluster, dimensions_for_samples);
         }
 
         void displayObjObservationsFromOdomTrajectory(const std::vector<pose::Pose3d> &odom_trajectory,
@@ -204,10 +205,10 @@ namespace visualization {
         }
 
         void displaySemanticPointObsFromOdomTrajectory(const std::vector<pose::Pose2d> &odom_trajectory,
-                                                     const std::vector<std::vector<std::vector<Eigen::Vector2d>>> &relative_semantic_points,
-                                                     const std::string &obj_class,
-                                                     const std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose2d>>> &relative_object_samples_for_cluster = {},
-                                                     const Eigen::Vector2d &dimensions_for_samples = Eigen::Vector2d()) {
+                                                       const std::vector<std::unordered_map<size_t, std::vector<Eigen::Vector2d>>> &relative_semantic_points,
+                                                       const std::string &obj_class,
+                                                       const std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose2d>>> &relative_object_samples_for_cluster = {},
+                                                       const Eigen::Vector2d &dimensions_for_samples = Eigen::Vector2d()) {
             std_msgs::ColorRGBA color;
             color.a = 0.5;
             color.b = 1.0;
@@ -218,8 +219,8 @@ namespace visualization {
             getOrCreatePublisherForTrajTypeAndClass(ODOM_ONLY, obj_class, pub);
 
             displaySemanticPointObsFromTrajectory(odom_trajectory, relative_semantic_points, 0.15,
-                                                kObservedFromOdomCarDetectionLines, color, pub,
-                                                relative_object_samples_for_cluster, dimensions_for_samples);
+                                                  kObservedFromOdomCarDetectionLines, color, pub,
+                                                  relative_object_samples_for_cluster, dimensions_for_samples);
         }
 
         void displayOdomTrajectory(const std::vector<pose::Pose3d> &odom_trajectory) {
@@ -1096,7 +1097,7 @@ namespace visualization {
         }
 
         void displaySemanticPointObsFromGtTrajectory(const std::vector<pose::Pose2d> &gt_trajectory,
-                                                     const std::vector<std::vector<std::vector<Eigen::Vector2d>>> &relative_semantic_points,
+                                                     const std::vector<std::unordered_map<size_t, std::vector<Eigen::Vector2d>>> &relative_semantic_points,
                                                      const std::string &obj_class,
                                                      const std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose2d>>> &relative_object_samples_for_cluster = {},
                                                      const Eigen::Vector2d &dimensions_for_samples = Eigen::Vector2d()) {
@@ -1415,6 +1416,8 @@ namespace visualization {
         ros::Publisher classifier_max_val_for_pos_pub_;
         ros::Publisher variance_max_val_for_pos_pub_;
 
+        std::vector<std::unordered_map<size_t, std_msgs::ColorRGBA>> sample_colors_;
+
         std::string getStringRepForTrajType(const TrajectoryType &trajectory_type) {
             switch (trajectory_type) {
                 case ODOM_ONLY:
@@ -1476,10 +1479,10 @@ namespace visualization {
             pub = sample_pubs_by_class_[obj_class];
         }
 
-        std::vector<pose::Pose3d> convert2DPosesTo3D(const std::vector<pose::Pose2d> &poses_2d) {
+        std::vector<pose::Pose3d> convert2DPosesTo3D(const std::vector<pose::Pose2d> &poses_2d, const double &z = 0) {
             std::vector<pose::Pose3d> poses_3d;
             for (const pose::Pose2d &pose_2d : poses_2d) {
-                poses_3d.emplace_back(pose::toPose3d(pose_2d));
+                poses_3d.emplace_back(pose::toPose3d(pose_2d, z));
             }
             return poses_3d;
         }
@@ -1512,6 +1515,16 @@ namespace visualization {
             marker_msg.ns = "momo_demo";
             marker_msg.action = visualization_msgs::Marker::DELETE;
 //            LOG(INFO) << "Publishing vis msg";
+            marker_pub.publish(marker_msg);
+        }
+
+        void removeAllForTopic(ros::Publisher &marker_pub) {
+            visualization_msgs::Marker marker_msg;
+
+            marker_msg.header.frame_id = kVizFrame;
+            marker_msg.header.stamp = ros::Time();
+            marker_msg.ns = "momo_demo";
+            marker_msg.action = visualization_msgs::Marker::DELETEALL;
             marker_pub.publish(marker_msg);
         }
 
@@ -1647,9 +1660,10 @@ namespace visualization {
             publishMarker(marker_msg, marker_pub);
         }
 
-        void publishObjectSample(ros::Publisher &marker_pub, pose::Pose3d &sample_pose, const std_msgs::ColorRGBA &color,
-                             const int32_t id,
-                             const Eigen::Vector2d &shape_dim) {
+        void
+        publishObjectSample(ros::Publisher &marker_pub, pose::Pose3d &sample_pose, const std_msgs::ColorRGBA &color,
+                            const int32_t id,
+                            const Eigen::Vector2d &shape_dim) {
 
             visualization_msgs::Marker marker_msg;
 
@@ -1750,35 +1764,74 @@ namespace visualization {
 //            }
         }
 
-        void publishSemanticPointDetectionsRelToRobotPoses(ros::Publisher &marker_pub,
-                                                           const std::vector<pose::Pose3d> &robot_poses,
-                                                           const std::vector<std::vector<Eigen::Vector3d>> &point_detections,
-                                                           const std_msgs::ColorRGBA &color, const int32_t marker_id) {
-            visualization_msgs::Marker marker_msg;
+        int32_t publishSemanticPointDetectionsRelToRobotPoses(ros::Publisher &marker_pub,
+                                                              const std::vector<pose::Pose3d> &robot_poses,
+                                                              const std::vector<std::unordered_map<size_t, std::vector<Eigen::Vector3d>>> &point_detections,
+                                                              const std::vector<std::unordered_map<size_t, std_msgs::ColorRGBA>> &colors,
+                                                              const std_msgs::ColorRGBA &color,
+                                                              const int32_t marker_id) {
+            if (colors.empty()) {
+                visualization_msgs::Marker marker_msg;
 
-            for (size_t i = 0; i < robot_poses.size(); i++) {
-                pose::Pose3d robot_pose = robot_poses[i];
+                for (size_t i = 0; i < robot_poses.size(); i++) {
+                    pose::Pose3d robot_pose = robot_poses[i];
 
-                for (const Eigen::Vector3d &semantic_point : point_detections[i]) {
-                    Eigen::Vector3d global_point_3d = pose::transformPoint(robot_pose, semantic_point);
+                    for (const auto &cluster_id_and_points_for_cluster : point_detections[i]) {
+                        for (const Eigen::Vector3d &semantic_point : cluster_id_and_points_for_cluster.second) {
+                            Eigen::Vector3d global_point_3d = pose::transformPoint(robot_pose, semantic_point);
 
-                    geometry_msgs::Point point_msg;
-                    point_msg.x = global_point_3d.x();
-                    point_msg.y = global_point_3d.y();
-                    point_msg.z = global_point_3d.z();
+                            geometry_msgs::Point point_msg;
+                            point_msg.x = global_point_3d.x();
+                            point_msg.y = global_point_3d.y();
+                            point_msg.z = global_point_3d.z();
 
-                    marker_msg.points.emplace_back(point_msg);
+                            marker_msg.points.emplace_back(point_msg);
+                        }
+                    }
                 }
+
+                marker_msg.pose.orientation.w = 1.0;
+                marker_msg.scale.x = 0.175;
+                marker_msg.type = visualization_msgs::Marker::SPHERE_LIST;
+
+                marker_msg.id = marker_id;
+                marker_msg.color = color;
+
+                publishMarker(marker_msg, marker_pub);
+                return marker_id + 1;
+            } else {
+                int32_t next_id = marker_id;
+                for (size_t i = 0; i < robot_poses.size(); i++) {
+                    pose::Pose3d robot_pose = robot_poses[i];
+
+
+                    for (const auto &cluster_id_and_points : point_detections[i]) {
+                        std::vector<Eigen::Vector3d> semantic_cluster_for_pose = cluster_id_and_points.second;
+
+                        visualization_msgs::Marker marker_msg;
+                        for (const Eigen::Vector3d &semantic_point_for_pose : semantic_cluster_for_pose) {
+                            Eigen::Vector3d global_point_3d = pose::transformPoint(robot_pose, semantic_point_for_pose);
+
+                            geometry_msgs::Point point_msg;
+                            point_msg.x = global_point_3d.x();
+                            point_msg.y = global_point_3d.y();
+                            point_msg.z = global_point_3d.z();
+
+                            marker_msg.points.emplace_back(point_msg);
+                        }
+                        marker_msg.pose.orientation.w = 1.0;
+                        marker_msg.scale.x = 0.175;
+                        marker_msg.type = visualization_msgs::Marker::SPHERE_LIST;
+
+                        marker_msg.id = next_id;
+                        next_id++;
+                        marker_msg.color = colors[i].at(cluster_id_and_points.first);
+
+                        publishMarker(marker_msg, marker_pub);
+                    }
+                }
+                return next_id;
             }
-
-            marker_msg.pose.orientation.w = 1.0;
-            marker_msg.scale.x = 0.175;
-            marker_msg.type = visualization_msgs::Marker::SPHERE_LIST;
-
-            marker_msg.id = marker_id;
-            marker_msg.color = color;
-
-            publishMarker(marker_msg, marker_pub);
         }
 
         void publishLinesToCarDetections(ros::Publisher &marker_pub, const std::vector<pose::Pose3d> &robot_poses,
@@ -1817,48 +1870,92 @@ namespace visualization {
             publishMarker(marker_msg, marker_pub);
         }
 
-        void publishLinesToSemanticPointDetections(ros::Publisher &marker_pub,
-                                                   const std::vector<pose::Pose3d> &robot_poses,
-                                                   const std::vector<std::vector<Eigen::Vector3d>> &semantic_points,
-                                                   const std_msgs::ColorRGBA &color, const int32_t id) {
-            visualization_msgs::Marker marker_msg;
+        int32_t publishLinesToSemanticPointDetections(ros::Publisher &marker_pub,
+                                                      const std::vector<pose::Pose3d> &robot_poses,
+                                                      const std::vector<std::unordered_map<size_t, std::vector<Eigen::Vector3d>>> &semantic_points,
+                                                      const std::vector<std::unordered_map<size_t, std_msgs::ColorRGBA>> &colors,
+                                                      const std_msgs::ColorRGBA &color, const int32_t id) {
+            if (colors.empty()) {
+                visualization_msgs::Marker marker_msg;
 
-            for (size_t i = 0; i < robot_poses.size(); i++) {
-                pose::Pose3d robot_pose = robot_poses[i];
+                for (size_t i = 0; i < robot_poses.size(); i++) {
+                    pose::Pose3d robot_pose = robot_poses[i];
 
-                geometry_msgs::Point point_1;
-                point_1.x = robot_pose.first.x();
-                point_1.y = robot_pose.first.y();
-                point_1.z = robot_pose.first.z();
+                    geometry_msgs::Point point_1;
+                    point_1.x = robot_pose.first.x();
+                    point_1.y = robot_pose.first.y();
+                    point_1.z = robot_pose.first.z();
 
-                for (const Eigen::Vector3d &semantic_point_for_pose : semantic_points[i]) {
-                    Eigen::Vector3d point_global = pose::transformPoint(robot_pose, semantic_point_for_pose);
+                    for (const auto &semantic_cluster_for_pose : semantic_points[i]) {
+                        for (const Eigen::Vector3d &semantic_point_for_pose : semantic_cluster_for_pose.second) {
+                            Eigen::Vector3d point_global = pose::transformPoint(robot_pose, semantic_point_for_pose);
 
-                    geometry_msgs::Point point_2;
-                    point_2.x = point_global.x();
-                    point_2.y = point_global.y();
-                    point_2.z = point_global.z();
+                            geometry_msgs::Point point_2;
+                            point_2.x = point_global.x();
+                            point_2.y = point_global.y();
+                            point_2.z = point_global.z();
 
-                    marker_msg.points.emplace_back(point_1);
-                    marker_msg.points.emplace_back(point_2);
+                            marker_msg.points.emplace_back(point_1);
+                            marker_msg.points.emplace_back(point_2);
+                        }
+                    }
                 }
+
+                marker_msg.pose.orientation.w = 1.0;
+                marker_msg.scale.x = 0.005;
+                marker_msg.type = visualization_msgs::Marker::LINE_LIST;
+
+                marker_msg.id = id;
+                marker_msg.color = color;
+                publishMarker(marker_msg, marker_pub);
+                return id + 1;
+            } else {
+                int32_t next_id = id;
+                for (size_t i = 0; i < robot_poses.size(); i++) {
+                    pose::Pose3d robot_pose = robot_poses[i];
+
+                    geometry_msgs::Point point_1;
+                    point_1.x = robot_pose.first.x();
+                    point_1.y = robot_pose.first.y();
+                    point_1.z = robot_pose.first.z();
+
+                    for (const auto &cluster_id_and_points : semantic_points[i]) {
+                        std::vector<Eigen::Vector3d> semantic_cluster_for_pose = cluster_id_and_points.second;
+
+                        visualization_msgs::Marker marker_msg;
+                        for (const Eigen::Vector3d &semantic_point_for_pose : semantic_cluster_for_pose) {
+                            Eigen::Vector3d point_global = pose::transformPoint(robot_pose, semantic_point_for_pose);
+
+                            geometry_msgs::Point point_2;
+                            point_2.x = point_global.x();
+                            point_2.y = point_global.y();
+                            point_2.z = point_global.z();
+
+                            marker_msg.points.emplace_back(point_1);
+                            marker_msg.points.emplace_back(point_2);
+                        }
+                        marker_msg.pose.orientation.w = 1.0;
+                        marker_msg.scale.x = 0.005;
+                        marker_msg.type = visualization_msgs::Marker::LINE_LIST;
+
+                        marker_msg.id = next_id;
+                        next_id++;
+                        marker_msg.color = colors[i].at(cluster_id_and_points.first);
+                        publishMarker(marker_msg, marker_pub);
+                    }
+                }
+                return next_id;
             }
-
-            marker_msg.pose.orientation.w = 1.0;
-            marker_msg.scale.x = 0.005;
-            marker_msg.type = visualization_msgs::Marker::LINE_LIST;
-
-            marker_msg.id = id;
-            marker_msg.color = color;
-            publishMarker(marker_msg, marker_pub);
         }
 
-        void publishSampledObjPoseRelToRobotPoses(ros::Publisher &marker_pub, const std::vector<pose::Pose3d> &robot_poses,
-                                                  const std::unordered_map<size_t, std::unordered_map<size_t, std::vector<pose::Pose3d>>> &samples,
-                                                  const std_msgs::ColorRGBA &color,
-                                            const Eigen::Vector2d &shape_dim,
-                                            const int32_t min_id,
-                                            const int32_t max_id) {
+        int32_t publishSampledObjPoseRelToRobotPoses(ros::Publisher &marker_pub,
+                                                     const std::vector<pose::Pose3d> &robot_poses,
+                                                     const std::unordered_map<size_t, std::unordered_map<size_t, std::vector<pose::Pose3d>>> &samples,
+                                                     const std_msgs::ColorRGBA &color,
+                                                     const std::vector<std::unordered_map<size_t, std_msgs::ColorRGBA>> &colors,
+                                                     const Eigen::Vector2d &shape_dim,
+                                                     const float sample_alpha,
+                                                     const int32_t min_id) {
 
             int marker_num = min_id;
             for (size_t i = 0; i < robot_poses.size(); i++) {
@@ -1866,61 +1963,98 @@ namespace visualization {
                 if (samples.find(i) != samples.end()) {
                     for (const auto &cluster_info : samples.at(i)) {
                         for (const pose::Pose3d &sample_pose_rel : cluster_info.second) {
-                            if (marker_num > max_id) {
-                                break;
-                            }
                             pose::Pose3d sample_pose = pose::combinePoses(robot_pose, sample_pose_rel);
-                            publishObjectSample(marker_pub, sample_pose, color, marker_num++, shape_dim);
+                            std_msgs::ColorRGBA use_color = color;
+                            if (!colors.empty()) {
+                                use_color = colors[i].at(cluster_info.first);
+                                use_color.a = sample_alpha;
+                            }
+                            publishObjectSample(marker_pub, sample_pose, use_color, marker_num++, shape_dim);
                         }
                     }
                 }
             }
+            return marker_num;
         }
 
         void displaySemanticPointObsFromTrajectory(const std::vector<pose::Pose2d> &trajectory,
-                                                 const std::vector<std::vector<std::vector<Eigen::Vector2d>>> &relative_semantic_points,
-                                                 const double &samples_color_a,
-                                                 const int32_t &lines_to_obs_id,
-                                                 std_msgs::ColorRGBA color,
-                                                 ros::Publisher &pub,
-                                                 const std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose2d>>> &relative_object_samples_for_cluster = {},
-                                                 const Eigen::Vector2d &dimensions_for_samples = Eigen::Vector2d()) {
+                                                   const std::vector<std::unordered_map<size_t, std::vector<Eigen::Vector2d>>> &relative_semantic_points,
+                                                   const double &samples_color_a,
+                                                   const int32_t &lines_to_obs_id,
+                                                   std_msgs::ColorRGBA color,
+                                                   ros::Publisher &pub,
+                                                   const std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose2d>>> &relative_object_samples_for_cluster = {},
+                                                   const Eigen::Vector2d &dimensions_for_samples = Eigen::Vector2d()) {
+            removeAllForTopic(pub);
+            bool randomize_color = !relative_object_samples_for_cluster.empty();
 
+            std::vector<std::unordered_map<size_t, std::vector<Eigen::Vector3d>>> relative_points_3d;
+            util_random::Random rand_gen(std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now().time_since_epoch()).count());
 
-            std::vector<std::vector<Eigen::Vector3d>> relative_points_3d;
-            for (const std::vector<std::vector<Eigen::Vector2d>> &relative_semantic_points_for_pose : relative_semantic_points) {
-                std::vector<Eigen::Vector3d> points_for_pose;
-                for (const std::vector<Eigen::Vector2d> &points_for_object : relative_semantic_points_for_pose) {
+            for (size_t node_num = 0; node_num < relative_semantic_points.size(); node_num++) {
+                std::unordered_map<size_t, std::vector<Eigen::Vector2d>> relative_semantic_points_for_pose = relative_semantic_points[node_num];
+                std::unordered_map<size_t, std::vector<Eigen::Vector3d>> points_for_pose;
+                std::unordered_map<size_t, std_msgs::ColorRGBA> colors_for_pose;
+                if (randomize_color) {
+                    while (sample_colors_.size() < (node_num + 1)) {
+                        std::unordered_map<size_t, std_msgs::ColorRGBA> empty_map;
+                        sample_colors_.emplace_back(empty_map);
+                    }
+                    colors_for_pose = sample_colors_[node_num];
+                }
+
+                for (const auto &cluster_id_and_points : relative_semantic_points_for_pose) {
+                    std::vector<Eigen::Vector2d> points_for_object = cluster_id_and_points.second;
+                    if (randomize_color) {
+                        if (colors_for_pose.find(cluster_id_and_points.first) == colors_for_pose.end()) {
+                            std_msgs::ColorRGBA color_for_obj;
+                            color_for_obj.a = color.a;
+                            color_for_obj.r = rand_gen.UniformRandom();
+                            color_for_obj.g = rand_gen.UniformRandom();
+                            color_for_obj.b = rand_gen.UniformRandom();
+                            colors_for_pose[cluster_id_and_points.first] = color_for_obj;
+                        }
+                    }
                     std::vector<Eigen::Vector3d> points_for_obj_3d = convert2DPointsTo3D(points_for_object);
-                    points_for_pose.insert(points_for_pose.end(), points_for_obj_3d.begin(), points_for_obj_3d.end());
+                    points_for_pose[cluster_id_and_points.first] = points_for_obj_3d;
                 }
                 relative_points_3d.emplace_back(points_for_pose);
+                if (randomize_color) {
+                    sample_colors_[node_num] = colors_for_pose;
+                }
             }
-
             std::vector<pose::Pose3d> trajectory_3d = convert2DPosesTo3D(trajectory);
 
-            publishLinesToSemanticPointDetections(pub, trajectory_3d, relative_points_3d, color, lines_to_obs_id);
-            publishSemanticPointDetectionsRelToRobotPoses(pub, trajectory_3d, relative_points_3d, color,
-                                                          kSemanticPointsMin);
-
+            std::vector<std::unordered_map<size_t, std_msgs::ColorRGBA>> empty_colors;
+            int32_t next_marker = publishLinesToSemanticPointDetections(pub, trajectory_3d, relative_points_3d,
+                                                                        randomize_color ? sample_colors_ : empty_colors,
+                                                                        color, lines_to_obs_id);
+            next_marker = publishSemanticPointDetectionsRelToRobotPoses(pub, trajectory_3d, relative_points_3d,
+                                                                        randomize_color ? sample_colors_ : empty_colors,
+                                                                        color, next_marker);
             if (!relative_object_samples_for_cluster.empty()) {
 
                 color.a = samples_color_a;
 
                 std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose3d>>> relative_object_samples_for_cluster_3d;
-                for (const auto &samples_for_node : relative_object_samples_for_cluster) {
+                for (const auto &samples_for_node : relative_object_samples_for_cluster) { // TODO remove this eventually
+                    if (samples_for_node.first != (trajectory.size() - 1)) {
+                        continue;
+                    }
                     for (const auto &samples_for_cluster : samples_for_node.second) {
                         relative_object_samples_for_cluster_3d[samples_for_node.first][samples_for_cluster.first] = convert2DPosesTo3D(
-                                samples_for_cluster.second);
+                                samples_for_cluster.second, -0.5);
                     }
                 }
 
                 publishSampledObjPoseRelToRobotPoses(pub, trajectory_3d,
                                                      relative_object_samples_for_cluster_3d,
                                                      color,
+                                                     randomize_color ? sample_colors_ : empty_colors,
                                                      dimensions_for_samples,
-                                                     kSemanticPointsMin + 1,
-                                                     kSemanticPointsMax);
+                                                     samples_color_a,
+                                                     next_marker);
             }
         }
     };

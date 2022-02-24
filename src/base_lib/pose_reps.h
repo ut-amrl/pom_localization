@@ -73,8 +73,8 @@ namespace pose {
         return convertAffineToPose(combined_affine);
     }
 
-    Pose3d toPose3d(const Pose2d &pose_2d) {
-        Eigen::Vector3d transl(pose_2d.first.x(), pose_2d.first.y(), 0);
+    Pose3d toPose3d(const Pose2d &pose_2d, const double &z = 0) {
+        Eigen::Vector3d transl(pose_2d.first.x(), pose_2d.first.y(), z);
         Eigen::Quaterniond rot;
         rot = Eigen::AngleAxisd(pose_2d.second, Eigen::Vector3d::UnitZ());
         return std::make_pair(transl, rot);

@@ -66,7 +66,7 @@ namespace semantic_point_pom {
             rand_angle = 0;
         }
 
-        double rectangle_angle = AngleModSymmetric(-rand_angle + angle_to_point + theta_modifier);
+        double rectangle_angle = math_util::AngleMod(-rand_angle + angle_to_point + theta_modifier);
 
         double rect_center_x = point_to_use.x() - (point_in_rect_frame.x() * cos(rectangle_angle)) +
                                (point_in_rect_frame.y() * sin(rectangle_angle));
@@ -106,7 +106,8 @@ namespace semantic_point_pom {
         for (const std::pair<size_t, pose::Pose2d> &candidate : unfiltered_candidate_rects) {
             int truncated_x = candidate.second.first.x() / position_bin_size;
             int truncated_y = candidate.second.first.y() / position_bin_size;
-            int truncated_theta = candidate.second.second / orientation_bin_size;
+            // We should bin so that things that are 180 degrees from each other are in the same bin
+            int truncated_theta = AngleModSymmetric(candidate.second.second) / orientation_bin_size;
 
             std::pair<std::unordered_set<size_t>, std::vector<pose::Pose2d>> map_entry_for_candidate = std::make_pair(
                     (std::unordered_set<size_t>) {candidate.first}, (std::vector<pose::Pose2d>) {candidate.second});

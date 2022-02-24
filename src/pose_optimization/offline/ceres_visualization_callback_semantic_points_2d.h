@@ -18,7 +18,7 @@ namespace offline_optimization {
                         pose_graph::MovableObservationSemanticPoints<2>>> &pose_graph,
                 const std::shared_ptr<visualization::VisualizationManager> &vis_manager,
                 const int32_t &num_poses,
-                const std::unordered_map<std::string, std::vector<std::vector<std::vector<Eigen::Vector2d>>>> &observed_semantic_points_by_class,
+                const std::unordered_map<std::string, std::vector<std::unordered_map<size_t, std::vector<Eigen::Vector2d>>>> &observed_semantic_points_by_class,
                 const std::unordered_map<std::string, std::unordered_map<pose_graph::NodeId, std::unordered_map<size_t, std::vector<pose::Pose2d>>>> &rectangle_samples,
                 const std::unordered_map<std::string, Eigen::Vector2d> &shape_dimensions_by_class) :
                 pose_graph_(pose_graph),
@@ -61,7 +61,7 @@ namespace offline_optimization {
 
         int32_t num_poses_;
 
-        std::unordered_map<std::string, std::vector<std::vector<std::vector<Eigen::Vector2d>>>> observed_semantic_points_by_class_;
+        std::unordered_map<std::string, std::vector<std::unordered_map<size_t, std::vector<Eigen::Vector2d>>>> observed_semantic_points_by_class_;
 
         std::unordered_map<std::string, std::unordered_map<pose_graph::NodeId, std::unordered_map<size_t, std::vector<pose::Pose2d>>>> rectangle_samples_;
 
