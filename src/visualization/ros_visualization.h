@@ -47,22 +47,7 @@ namespace visualization {
 
             parking_spot_3d_pub_ = node_handle_.advertise<visualization_msgs::Marker>(prefix + "parking_spots_3d",
                                                                                       10000);
-            LOG(INFO) << "Vis manager 1";
-            ros::Duration(2).sleep();
-            LOG(INFO) << "Vis manager 2";
-//            for (int id = 0; id < kRobotEstPosesMax; id++) {
-//                LOG(INFO) << "Vis manager 2a";
-//                removeMarker(id, gt_marker_pub_);
-//                removeMarker(id, other_marker_pub_);
-//                removeMarker(id, est_marker_pub_);
-//                removeMarker(id, odom_marker_pub_);
-//                LOG(INFO) << "Vis manager 2b";
-//                ros::Duration(0.0001).sleep();
-//                LOG(INFO) << "Vis manager 2c";
-//            }
-            LOG(INFO) << "Vis manager 3";
-            ros::Duration(1).sleep();
-            LOG(INFO) << "Vis manager 4";
+
 
             for (int i = -5; i <= 6; i++) {
                 std::string angle_name;
@@ -84,9 +69,7 @@ namespace visualization {
                 robot_pose_pub_for_angle_mult_[i] = node_handle_.advertise<nav_msgs::OccupancyGrid>(
                         prefix + robot_pose_topic_name, 2);
             }
-            LOG(INFO) << "Vis manager 5";
             ros::Duration(2).sleep();
-            LOG(INFO) << "Vis manager 6";
             // TODO consider removing all existing markers trajectory topics
         }
 
@@ -171,7 +154,8 @@ namespace visualization {
                                                       const std::vector<std::unordered_map<size_t, std::vector<Eigen::Vector2d>>> &relative_semantic_points,
                                                       const std::string &obj_class,
                                                       const std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose2d>>> &relative_object_samples_for_cluster = {},
-                                                      const Eigen::Vector2d &dimensions_for_samples = Eigen::Vector2d()) {
+                                                      const Eigen::Vector2d &dimensions_for_samples = Eigen::Vector2d(),
+                                                      const bool &display_obs_from_all_nodes = false) {
             std_msgs::ColorRGBA color;
             color.a = 0.5;
             color.r = 1.0;
@@ -180,9 +164,9 @@ namespace visualization {
             ros::Publisher pub;
             getOrCreatePublisherForTrajTypeAndClass(ESTIMATED, obj_class, pub);
 
-            displaySemanticPointObsFromTrajectory(est_trajectory, relative_semantic_points, 0.15,
+            displaySemanticPointObsFromTrajectory(est_trajectory, relative_semantic_points, 0.05,
                                                   kObservedFromEstCarDetectionLines, color, pub,
-                                                  relative_object_samples_for_cluster, dimensions_for_samples);
+                                                  relative_object_samples_for_cluster, dimensions_for_samples, display_obs_from_all_nodes);
         }
 
         void displayObjObservationsFromOdomTrajectory(const std::vector<pose::Pose3d> &odom_trajectory,
@@ -1448,12 +1432,12 @@ namespace visualization {
                                                                                                       kObservationPubQueueSize);
                 pubs_for_traj_type_[obj_class] = new_pub_for_class;
                 obs_marker_pubs_by_class_by_traj_type_[trajectory_type] = pubs_for_traj_type_;
-                ros::Duration(2).sleep();
+                ros::Duration(0.5).sleep();
                 for (int id = 0; id < kRobotEstPosesMax; id++) {
                     removeMarker(id, new_pub_for_class);
                     ros::Duration(0.0001).sleep();
                 }
-                ros::Duration(1).sleep();
+                ros::Duration(0.5).sleep();
                 // TODO consider removing all existing markers on this topic
             }
 
@@ -1467,12 +1451,12 @@ namespace visualization {
                 ros::Publisher new_pub_for_class = node_handle_.advertise<visualization_msgs::Marker>(topic_name,
                                                                                                       50000);
                 sample_pubs_by_class_[obj_class] = new_pub_for_class;
-                ros::Duration(2).sleep();
+                ros::Duration(0.5).sleep();
                 for (int id = 0; id < kRobotEstPosesMax; id++) {
                     removeMarker(id, new_pub_for_class);
                     ros::Duration(0.0001).sleep();
                 }
-                ros::Duration(1).sleep();
+                ros::Duration(0.5).sleep();
                 // TODO consider removing all existing markers on this topic
             }
 
@@ -1984,7 +1968,8 @@ namespace visualization {
                                                    std_msgs::ColorRGBA color,
                                                    ros::Publisher &pub,
                                                    const std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose2d>>> &relative_object_samples_for_cluster = {},
-                                                   const Eigen::Vector2d &dimensions_for_samples = Eigen::Vector2d()) {
+                                                   const Eigen::Vector2d &dimensions_for_samples = Eigen::Vector2d(),
+                                                   const bool &display_samples_from_all_nodes = false) {
             removeAllForTopic(pub);
             bool randomize_color = !relative_object_samples_for_cluster.empty();
 
@@ -2039,8 +2024,10 @@ namespace visualization {
 
                 std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose3d>>> relative_object_samples_for_cluster_3d;
                 for (const auto &samples_for_node : relative_object_samples_for_cluster) { // TODO remove this eventually
-                    if (samples_for_node.first != (trajectory.size() - 1)) {
-                        continue;
+                    if (!display_samples_from_all_nodes) {
+                        if (samples_for_node.first != (trajectory.size() - 1)) {
+                            continue;
+                        }
                     }
                     for (const auto &samples_for_cluster : samples_for_node.second) {
                         relative_object_samples_for_cluster_3d[samples_for_node.first][samples_for_cluster.first] = convert2DPosesTo3D(

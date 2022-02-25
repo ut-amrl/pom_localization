@@ -34,14 +34,32 @@ namespace semantic_segmentation {
         uint64_t node_id;
 
         /**
-         * Identifier for the cluster.
+         * Identifier for the cluster. (Reflects merging of timestamps corresponding to the same node).
          */
         uint32_t cluster_label;
+
+        uint32_t orig_cluster_label;
+
+        /**
+         * Seconds component of the timestamp of the frame that the semantic label was taken from.
+         *
+         * TODO should this be the camera frame or the lidar frame. Probably image? Easier to interpolate 3d points
+         * than image.
+         */
+        uint32_t seconds;
+
+        /**
+         * Seconds component of the timestamp of the frame that the semantic label was taken from.
+         *
+         * TODO should this be the camera frame or the lidar frame. Probably image? Easier to interpolate 3d points
+         * than image.
+         */
+        uint32_t nano_seconds;
     };
 
     void writeSemanticallyLabeledPointWithNodeIdInfoHeaderToFile(std::ofstream &file_stream) {
         file_io::writeCommaSeparatedStringsLineToFile(
-                {"point_x", "point_y", "point_z", "semantic_label", "node_id", "cluster_label"}, file_stream);
+                {"point_x", "point_y", "point_z", "semantic_label", "node_id", "cluster_label, orig_cluster_label", "seconds", "nano_seconds"}, file_stream);
     }
 
 
@@ -53,7 +71,10 @@ namespace semantic_segmentation {
                                                        std::to_string(semantic_point.point_z),
                                                        std::to_string(semantic_point.semantic_label),
                                                        std::to_string(semantic_point.node_id),
-                                                       std::to_string(semantic_point.cluster_label)}, file_stream);
+                                                       std::to_string(semantic_point.cluster_label),
+                                                       std::to_string(semantic_point.orig_cluster_label),
+                                                       std::to_string(semantic_point.seconds),
+                                                       std::to_string(semantic_point.nano_seconds)}, file_stream);
     }
 
     void writeSemanticallyLabeledPointWithNodeIdInfosToFile(const std::string &file_name,
@@ -95,6 +116,18 @@ namespace semantic_segmentation {
         getline(ss, substr, ',');
         std::istringstream stream_cluster_label(substr);
         stream_cluster_label >> semantic_point.cluster_label;
+
+        getline(ss, substr, ',');
+        std::istringstream stream_orig_cluster_label(substr);
+        stream_orig_cluster_label >> semantic_point.orig_cluster_label;
+
+        getline(ss, substr, ',');
+        std::istringstream stream_seconds(substr);
+        stream_seconds >> semantic_point.seconds;
+
+        getline(ss, substr, ',');
+        std::istringstream stream_nsec(substr);
+        stream_nsec >> semantic_point.nano_seconds;
     }
 
     void readSemanticallyLabeledPointWithNodeIdInfoFromFile(const std::string &file_name,
