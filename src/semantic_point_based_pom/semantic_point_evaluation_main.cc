@@ -280,6 +280,9 @@ std::vector<pose_graph::MovableObservationSemanticPointsFactor2d> getMovableObse
     for (const auto &points_for_node : points_by_node_and_cluster) {
         uint64_t node_id = points_for_node.first;
         for (const auto &points_for_cluster : points_for_node.second) {
+            if (points_for_cluster.second.size() <= 5) { // TODO make configurable
+                continue;
+            }
             unsigned short semantic_index = points_for_cluster.second.front().semantic_label;
             if (semantic_index_to_string_map.find(semantic_index) == semantic_index_to_string_map.end()) {
                 LOG(WARNING) << "Skipping observations with cluster id " << points_for_cluster.first << " and node id "

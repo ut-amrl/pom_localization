@@ -118,6 +118,9 @@ namespace offline_optimization {
 //            nodes_to_optimize.insert(0);
             for (pose_graph::NodeId next_pose_to_optimize = 1;
                  next_pose_to_optimize <= max_node_id; next_pose_to_optimize++) {
+                if (!ros::ok()) {
+                    exit(1);
+                }
 
 
                 std::unordered_set<pose_graph::NodeId> nodes_to_optimize;

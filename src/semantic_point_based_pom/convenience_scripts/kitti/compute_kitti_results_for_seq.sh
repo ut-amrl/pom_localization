@@ -92,11 +92,11 @@ done
 
 
 echo Estimating trajectories
-./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_0_100} & # TODO pipe output to file
-./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_20_80} & # TODO pipe output to file
-./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_50_50} & # TODO pipe output to file
-./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_80_20} & # TODO pipe output to file
-./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_100plus_0} & # TODO pipe output to file
+./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_0_100} 2>&1 | tee -a $HOME/log_output/pom_kitti_${ros_prefix_0_100}.txt &
+./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_20_80} 2>&1 | tee -a $HOME/log_output/pom_kitti_${ros_prefix_20_80}.txt &
+./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_50_50} 2>&1 | tee -a $HOME/log_output/pom_kitti_${ros_prefix_50_50}.txt &
+./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_80_20} 2>&1 | tee -a $HOME/log_output/pom_kitti_${ros_prefix_80_20}.txt &
+./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_100plus_0}  2>&1 | tee -a $HOME/log_output/pom_kitti_${ros_prefix_100plus_0}.txt &
 #./bin/semantic_point_evaluation_main --param_prefix ${ros_prefix_100plus_0} --run_gpc_viz --skip_optimization & # TODO pipe output to file
 wait
 
@@ -113,5 +113,5 @@ rosparam set /${results_computation_namespace}/fifty_percent_misaligned_est_traj
 rosparam set /${results_computation_namespace}/twenty_percent_misaligned_est_traj_file "${output_dir}${out_file_base_80_20}"
 rosparam set /${results_computation_namespace}/aligned_est_traj_file "${output_dir}${out_file_base_100plus_0}"
 
-make && ./bin/compute_kitti_results --run_viz --param_prefix ${results_computation_namespace}
+make && ./bin/compute_kitti_results --run_viz --param_prefix ${results_computation_namespace} 2>&1 | tee -a $HOME/log_output/pom_kitti_${results_computation_namespace}.txt &
 

@@ -12,6 +12,8 @@
 
 namespace semantic_point_pom {
 
+    const size_t kMaxPointsForSample = 2000;
+
     template<typename T>
     T AngleModSymmetric(T angle) {
         angle -= T(M_PI) * rint(angle / T(M_PI));
@@ -291,7 +293,7 @@ namespace semantic_point_pom {
         return pose::createPose2d(rect_center_x, rect_center_y, theta_rect);
     }
 
-    std::vector<pose::Pose2d> generateConsistentSamplesTwoPoint(const std::vector<Eigen::Vector2d> &points_for_object,
+    std::vector<pose::Pose2d> generateConsistentSamplesTwoPoint(const std::vector<Eigen::Vector2d> &full_points_for_object,
                                                                 const size_t &num_samples_to_generate,
                                                                 const uint64_t &samples_per_point,
                                                                 const double &position_bin_size,
@@ -308,23 +310,53 @@ namespace semantic_point_pom {
                                                                         const double &,
                                                                         util_random::Random &)> point_proposer = generateLineSegMidpointOnRectPropLen,
                                                                 const bool &sample_prop_to_bin_count = false,
-                                                                const bool &sample_prop_to_squared_bin_rep = false) {
+                                                                const bool &sample_prop_to_squared_bin_rep = false,
+                                                                const size_t &max_points_to_use = kMaxPointsForSample) {
 //        std::vector<std::pair<std::pair<size_t, size_t>, pose::Pose2d>> unfiltered_candidate_rects;
         std::vector<std::pair<size_t, pose::Pose2d>> unfiltered_candidate_rects;
 
         std::unordered_map<int, std::unordered_map<int,
                 std::unordered_map<int, std::pair<std::unordered_set<size_t>, std::vector<pose::Pose2d>>>>> binned_candidates;
 
+        std::vector<Eigen::Vector2d> points_for_object;
+        if (full_points_for_object.size() > max_points_to_use) {
+            LOG(INFO) << "Max points exceeded " << full_points_for_object.size() << "vs " << max_points_to_use;
+            std::sample(full_points_for_object.begin(), full_points_for_object.end(), std::back_inserter(points_for_object), max_points_to_use, std::default_random_engine());
+        } else {
+            points_for_object = full_points_for_object;
+        }
+
         std::vector<std::vector<size_t>> neighbors;
         neighbors.resize(points_for_object.size());
 
+        std::vector<std::pair<size_t, double>> closest_to_point_idx_and_norm;
+        for (size_t p1_idx = 0; p1_idx < points_for_object.size(); p1_idx++) {
+            size_t init_closest_idx = (p1_idx + 1) % points_for_object.size();
+            double init_closest_norm = (points_for_object[p1_idx] - points_for_object[init_closest_idx]).norm();
+            closest_to_point_idx_and_norm.emplace_back(std::make_pair(init_closest_idx, init_closest_norm));
+        }
         for (size_t p1_idx = 0; p1_idx < points_for_object.size(); p1_idx++) {
             Eigen::Vector2d p1 = points_for_object[p1_idx];
+            double closest_idx_p1_norm = closest_to_point_idx_and_norm[p1_idx].second;
             for (size_t p2_idx = p1_idx + 1; p2_idx < points_for_object.size(); p2_idx++) {
+                double closest_idx_p2_norm = closest_to_point_idx_and_norm[p2_idx].second;
+                double norm = (p1 - points_for_object[p2_idx]).norm();
                 if ((p1 - points_for_object[p2_idx]).norm() <= 0.5) { // TODO make configurable
                     neighbors[p1_idx].emplace_back(p2_idx);
                     neighbors[p2_idx].emplace_back(p1_idx);
                 }
+                if (closest_idx_p1_norm > norm) {
+                    closest_to_point_idx_and_norm[p1_idx] = std::make_pair(p2_idx, norm);
+                }
+                if (closest_idx_p2_norm > norm) {
+                    closest_to_point_idx_and_norm[p2_idx] = std::make_pair(p1_idx, norm);
+                }
+            }
+        }
+        for (size_t p1_idx = 0; p1_idx < points_for_object.size(); p1_idx++) {
+            if (neighbors[p1_idx].empty()) {
+                LOG(INFO) << "Initially no neighbors for p1. Using closest point as only neighbor";
+                neighbors[p1_idx].emplace_back(closest_to_point_idx_and_norm[p1_idx].first);
             }
         }
 
