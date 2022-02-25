@@ -220,7 +220,7 @@ void runOptimizationVisualization(const std::shared_ptr<visualization::Visualiza
                 double odom_transl = (unoptimized_trajectory[node_id].first -
                                       unoptimized_trajectory[node_id + 1].first).norm();
                 if (odom_transl == 0) {
-                    LOG(INFO) << "Zero odom transl between nodes";
+                    LOG(INFO) << "Zero odom transl between nodes " << node_id << " and " << node_id + 1;
                     exit(1);
                 }
                 double est_transl = (node_poses_list[node_id].first - node_poses_list[node_id + 1].first).norm();

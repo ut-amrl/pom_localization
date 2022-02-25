@@ -28,7 +28,7 @@ const std::string kWaypointsByTimestampsFile = "waypoints_by_timestamps_file";
 const double kMaxPoseIncThresholdTransl = 1.0;
 const double kMaxPoseIncThresholdRot = 0.25; // TODO?
 
-const double kPoseEquivTolerance = 1e2;
+const double kPoseEquivTolerance = 1e-3;
 
 struct pair_hash {
     template<class T1, class T2>
@@ -88,7 +88,8 @@ int main(int argc, char **argv) {
     }
 
     if (!n.getParam(param_prefix + kNodeIdAndTimestampOutputFileParam, node_id_and_timestamp_file_name)) {
-        LOG(INFO) << "No parameter value set for parameter with name " << param_prefix + kNodeIdAndTimestampOutputFileParam;
+        LOG(INFO) << "No parameter value set for parameter with name "
+                  << param_prefix + kNodeIdAndTimestampOutputFileParam;
         exit(1);
     }
 
@@ -135,15 +136,19 @@ int main(int argc, char **argv) {
     if (include_semantic_point_times) {
         LOG(INFO) << "Getting timestamps from file " << semantic_point_file_name;
         std::vector<semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo> semantic_points_by_timestamp;
-        semantic_segmentation::readSemanticallyLabeledPointWithTimestampInfoFromFile(semantic_point_file_name, semantic_points_by_timestamp);
+        semantic_segmentation::readSemanticallyLabeledPointWithTimestampInfoFromFile(semantic_point_file_name,
+                                                                                     semantic_points_by_timestamp);
 
         for (const semantic_segmentation::SemanticallyLabeledPointWithTimestampInfo &semantic_points_with_timestamp : semantic_points_by_timestamp) {
             semantic_points_and_waypoint_timestamps_set.insert(
-                    std::make_pair(semantic_points_with_timestamp.seconds, semantic_points_with_timestamp.nano_seconds));
+                    std::make_pair(semantic_points_with_timestamp.seconds,
+                                   semantic_points_with_timestamp.nano_seconds));
         }
         // This assumes the file is read in time order
-        std::pair<uint32_t, uint32_t> first_semantic_point_timestamp = std::make_pair(semantic_points_by_timestamp.front().seconds, semantic_points_by_timestamp.front().nano_seconds);
-        std::pair<uint32_t, uint32_t> last_semantic_point_timestamp= std::make_pair(semantic_points_by_timestamp.back().seconds, semantic_points_by_timestamp.back().nano_seconds);
+        std::pair<uint32_t, uint32_t> first_semantic_point_timestamp = std::make_pair(
+                semantic_points_by_timestamp.front().seconds, semantic_points_by_timestamp.front().nano_seconds);
+        std::pair<uint32_t, uint32_t> last_semantic_point_timestamp = std::make_pair(
+                semantic_points_by_timestamp.back().seconds, semantic_points_by_timestamp.back().nano_seconds);
 
         if (!timestamp_sort()(full_timestamps.front(), first_semantic_point_timestamp)) {
             LOG(INFO) << "The first odom timestamp is greater than the first semantic point timestamp";
@@ -162,8 +167,10 @@ int main(int argc, char **argv) {
                     std::make_pair(waypoint_with_timestamp.seconds_, waypoint_with_timestamp.nano_seconds_));
         }
         // This assumes the file is read in time order
-        std::pair<uint32_t, uint32_t> first_waypoint_timestamp = std::make_pair(waypoints_by_timestamp.front().seconds_, waypoints_by_timestamp.front().nano_seconds_);
-        std::pair<uint32_t, uint32_t> last_waypoint_timestamp= std::make_pair(waypoints_by_timestamp.back().seconds_, waypoints_by_timestamp.back().nano_seconds_);
+        std::pair<uint32_t, uint32_t> first_waypoint_timestamp = std::make_pair(waypoints_by_timestamp.front().seconds_,
+                                                                                waypoints_by_timestamp.front().nano_seconds_);
+        std::pair<uint32_t, uint32_t> last_waypoint_timestamp = std::make_pair(waypoints_by_timestamp.back().seconds_,
+                                                                               waypoints_by_timestamp.back().nano_seconds_);
 
         if (!timestamp_sort()(full_timestamps.front(), first_waypoint_timestamp)) {
             LOG(INFO) << "The first odom timestamp is greater than the first waypoint timestamp";
@@ -174,8 +181,9 @@ int main(int argc, char **argv) {
     }
 
     std::vector<std::pair<uint32_t, uint32_t>> sorted_semantic_point_timestamps;
-    sorted_semantic_point_timestamps.insert(sorted_semantic_point_timestamps.end(), semantic_points_and_waypoint_timestamps_set.begin(),
-                                 semantic_points_and_waypoint_timestamps_set.end());
+    sorted_semantic_point_timestamps.insert(sorted_semantic_point_timestamps.end(),
+                                            semantic_points_and_waypoint_timestamps_set.begin(),
+                                            semantic_points_and_waypoint_timestamps_set.end());
     std::sort(sorted_semantic_point_timestamps.begin(), sorted_semantic_point_timestamps.end(), timestamp_sort());
 
     LOG(INFO) << "Min semantic_point timestamp " << sorted_semantic_point_timestamps.front().first << ", "
@@ -189,7 +197,7 @@ int main(int argc, char **argv) {
     size_t index_next_semantic_point_timestamp_to_check = 0;
     if (!sorted_semantic_point_timestamps.empty()) {
         // If the first full timestamp is not less than or equal to the first sorted timestamp, need to start with the next detection/waypoint timestamp
-        if (!timestamp_sort()(full_timestamps[0], sorted_semantic_point_timestamps[0] )) {
+        if (!timestamp_sort()(full_timestamps[0], sorted_semantic_point_timestamps[0])) {
             LOG(INFO) << "Skipping first sorted timestamp";
             index_next_semantic_point_timestamp_to_check = 1;
         }
@@ -233,8 +241,7 @@ int main(int argc, char **argv) {
     }
     pose::Pose2d last_pose_in_used_list = poses_to_use.back();
     pose::Pose2d last_pose = full_odom_frame_poses.back();
-    pose::Pose2d last_pose_diff = pose::getPoseOfObj1RelToObj2(last_pose, last_pose_in_used_list);
-    if ((last_pose_diff.first.norm() > kPoseEquivTolerance) || (last_pose_diff.second > kPoseEquivTolerance)) {
+    if (!pose::posesAlmostSame(last_pose, last_pose_in_used_list, kPoseEquivTolerance, kPoseEquivTolerance)) {
         poses_to_use.emplace_back(last_pose);
     }
 
@@ -255,7 +262,9 @@ int main(int argc, char **argv) {
     nodes_with_timestamps.emplace_back(first_node);
     deduped_poses_rel_to_origin.emplace_back(poses_rel_to_origin[0]);
     for (size_t i = 1; i < poses_rel_to_origin.size(); i++) {
-        if (!pose::posesSame(poses_rel_to_origin[i - 1], poses_rel_to_origin[i])) {
+//        if (!pose::posesSame(poses_rel_to_origin[i - 1], poses_rel_to_origin[i])) {
+        if (!pose::posesAlmostSame(poses_rel_to_origin[i - 1], poses_rel_to_origin[i], kPoseEquivTolerance,
+                                  kPoseEquivTolerance)) {
             deduped_poses_rel_to_origin.emplace_back(poses_rel_to_origin[i]);
         }
 
@@ -280,6 +289,7 @@ int main(int argc, char **argv) {
 
         trajectory_nodes.emplace_back(trajectory_node_2d);
     }
+    LOG(INFO) << "Num nodes " << trajectory_nodes.size();
 
     // Output poses
     LOG(INFO) << "Outputting trajectory nodes to " << odom_out_file_name;

@@ -21,6 +21,15 @@ namespace pose {
         return ((rel_pose.first.norm() == 0) && (rel_pose.second == 0));
     }
 
+    bool posesAlmostSame(const pose::Pose2d &p1, const pose::Pose2d &p2, const double &transl_tol, const double &angle_tol) {
+        pose::Pose2d rel_pose = pose::getPoseOfObj1RelToObj2(p1, p2);
+
+        if (rel_pose.first.norm() > transl_tol) {
+            return false;
+        }
+        return abs(rel_pose.second) <= angle_tol;
+    }
+
     pose::Pose2d interpolatePoses(const std::pair<Timestamp, pose::Pose2d> &pose_1,
                                   const std::pair<Timestamp, pose::Pose2d> &pose_2, const Timestamp &target_time) {
 
