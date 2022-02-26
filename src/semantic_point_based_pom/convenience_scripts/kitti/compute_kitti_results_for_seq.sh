@@ -26,7 +26,7 @@ runtime_params_config_file_base_name=${runtime_params_config_file_base}.txt
 rectangle_sampler_config_file_base_name=${rectangle_sampler_config_file_base}.csv
 
 # Common to all
-config_specific_suffix=${runtime_params_config_file_base}_${rectangle_sampler_config_file_base}_${sequence_num}
+config_specific_suffix=${runtime_params_config_file_base}_${rectangle_sampler_config_file_base}_seq_${sequence_num}
 odom_traj_est_file_name=${input_dir}lego_loam_2d_traj_est_${sequence_num}.txt
 gt_trajectory_file_name=${input_dir}planar_approx_poses_${sequence_num}.txt
 runtime_params_config_file_name=${input_dir}${runtime_params_config_file_base_name}
