@@ -125,8 +125,10 @@ namespace offline_optimization {
 
                 std::unordered_set<pose_graph::NodeId> nodes_to_optimize;
                 pose_graph::NodeId start_node_to_optimize;
-                if (((next_pose_to_optimize % problem_params.cost_function_params_.full_optimization_interval_) == 0) ||
-                    (next_pose_to_optimize == max_node_id)) {
+                bool refine_full = (
+                        (next_pose_to_optimize % problem_params.cost_function_params_.full_optimization_interval_) ==
+                        0);
+                if (refine_full || (next_pose_to_optimize == max_node_id)) {
                     start_node_to_optimize = 0;
                 } else {
                     if ((next_pose_to_optimize) >=
@@ -204,7 +206,8 @@ namespace offline_optimization {
                 }
 
                 // Set up callback for visualization
-                optimizer.SolveOptimizationProblem(&problem, ceres_callbacks, next_pose_to_optimize == max_node_id);
+                optimizer.SolveOptimizationProblem(&problem, ceres_callbacks, problem_params.optimizer_params_,
+                                                   refine_full, next_pose_to_optimize == max_node_id);
 
                 // Run any per-pose post-solving visualization
                 visualization_callback(next_pose_to_optimize, pose_graph,

@@ -12,6 +12,15 @@ namespace pose_optimization {
      */
     struct OptimizerParameters {
 
+        double extra_extra_refinement_max_iter = 1000;
+        double extra_refinement_max_iter = 500;
+        double normal_max_iter = 300;
+
+        double extra_extra_refinement_function_tolerance = 1e-12;
+        double extra_refinement_function_tolerance = 1e-10;
+        double normal_function_tolerance = 1e-7;
+
+        bool allow_non_monotonic_steps = true;
     };
 
     /**

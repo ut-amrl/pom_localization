@@ -1370,6 +1370,8 @@ namespace visualization {
 
         const double kWaypoint2DHeight = 0.2;
 
+        const size_t kMaxSemanticPointsPerCluster = 300;
+
 
         /**
          * Node handle.
@@ -2000,6 +2002,12 @@ namespace visualization {
                             color_for_obj.b = rand_gen.UniformRandom();
                             colors_for_pose[cluster_id_and_points.first] = color_for_obj;
                         }
+                    }
+                    std::vector<Eigen::Vector2d> points_to_plot;
+                    if (points_for_object.size() > kMaxSemanticPointsPerCluster) {
+                        std::sample(points_for_object.begin(), points_for_object.end(), std::back_inserter(points_to_plot), kMaxSemanticPointsPerCluster, std::default_random_engine());
+                    } else {
+                        points_to_plot = points_for_object;
                     }
                     std::vector<Eigen::Vector3d> points_for_obj_3d = convert2DPointsTo3D(points_for_object);
                     points_for_pose[cluster_id_and_points.first] = points_for_obj_3d;

@@ -9,7 +9,7 @@ clustering_config_file_base=$1
 bag_time_string=$2
 bag_traj_identifer=$3
 
-namespace=setup_lot53_${bag_traj_identifer}_traj
+namespace=setup_lot53_${bag_traj_identifer}_traj_${clustering_config_file_base}
 
 # Constants
 nodes_and_timestamps_file_prefix=nodes_and_timestamps_

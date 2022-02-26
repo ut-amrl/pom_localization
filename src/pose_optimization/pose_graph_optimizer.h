@@ -162,7 +162,8 @@ namespace pose_optimization {
                                                                       cost_function_params);
                     if (cost_function == nullptr) {
                         // TODO maybe we should just let this cause a failure?
-                        LOG(WARNING) << "Could not create cost functor for factor at node " << factor.second.observed_at_node_;
+                        LOG(WARNING) << "Could not create cost functor for factor at node "
+                                     << factor.second.observed_at_node_;
                         continue;
                     }
 
@@ -316,26 +317,33 @@ namespace pose_optimization {
 
         }
 
-        bool SolveOptimizationProblem(ceres::Problem *problem, std::vector<ceres::IterationCallback *> callbacks, const bool &extra_refinement) {
+        bool SolveOptimizationProblem(ceres::Problem *problem, std::vector<ceres::IterationCallback *> callbacks,
+                                      const pose_optimization::OptimizerParameters &opt_params,
+                                      const bool &extra_refinement, const bool &extra_extra_refinement) {
             CHECK(problem != NULL);
             ceres::Solver::Options options;
 //            options.max_num_iterations = 100000;
 
 //            options.max_num_iterations = 1000;
-            if (extra_refinement) {
-                options.max_num_iterations = 1000;
+            if (extra_extra_refinement) {
+                options.max_num_iterations = opt_params.extra_extra_refinement_max_iter;
+            } else if (extra_refinement) {
+                options.max_num_iterations = opt_params.extra_refinement_max_iter;
             } else {
-                options.max_num_iterations = 150;
+                options.max_num_iterations = opt_params.normal_max_iter;
             }
+
+//            options.max_num_iterations = 0;
             options.minimizer_progress_to_stdout = true;
-            if (extra_refinement) {
-                options.function_tolerance = 1e-15;
+            if (extra_extra_refinement) {
+                options.function_tolerance = opt_params.extra_extra_refinement_function_tolerance;
+            } else if (extra_refinement) {
+                options.function_tolerance = opt_params.extra_refinement_function_tolerance;
+            } else {
+                options.function_tolerance = opt_params.normal_function_tolerance;
             }
-//            options.function_tolerance = 1e-10;
-//            options.function_tolerance = 1e-20;
+            options.use_nonmonotonic_steps = opt_params.allow_non_monotonic_steps;
             options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-//            options.gradient_tolerance = 1e-15;
-//            options.parameter_tolerance = 1e-20;
             options.callbacks = callbacks;
             if (!callbacks.empty()) {
                 options.update_state_every_iteration = true;
@@ -347,9 +355,10 @@ namespace pose_optimization {
             ceres::Solve(options, problem, &summary);
             std::cout << summary.FullReport() << '\n';
 
-            if ((summary.termination_type == ceres::TerminationType::FAILURE) || (summary.termination_type == ceres::TerminationType::USER_FAILURE)) {
+            if ((summary.termination_type == ceres::TerminationType::FAILURE) ||
+                (summary.termination_type == ceres::TerminationType::USER_FAILURE)) {
                 LOG(ERROR) << "Ceres optimization failed";
-                exit(1);
+//                exit(1);
             }
 
             return summary.IsSolutionUsable();

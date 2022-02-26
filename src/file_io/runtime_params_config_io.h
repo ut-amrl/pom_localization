@@ -104,6 +104,7 @@ namespace file_io {
         config.odom_k4_ = data[16];
         config.odom_k5_ = data[17];
         config.odom_k6_ = data[18];
+        LOG(INFO) << "Odom entries " << config.odom_k1_ << ", " << config.odom_k2_ << ", " << config.odom_k3_ << ", " << config.odom_k4_ << ", " << config.odom_k5_ << ", " << config.odom_k6_;
     }
 
     void readRuntimeParamsConfigFromFile(const std::string &file_name,

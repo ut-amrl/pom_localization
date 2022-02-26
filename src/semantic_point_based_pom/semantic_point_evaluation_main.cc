@@ -28,6 +28,7 @@ DEFINE_string(param_prefix, "", "param_prefix");
 DEFINE_bool(run_gpc_viz, false, "Run GPC viz");
 DEFINE_bool(skip_optimization, false, "Skip optimization");
 DEFINE_bool(debug_samples, false, "Debug samples");
+DEFINE_bool(kitti, true, "True if for kitti, false if for parking lot");
 
 const std::string kPastSamplesFilesParamName = "past_samples_files";
 
@@ -53,7 +54,7 @@ const std::string kSemanticPointObjectSamplerConfigFileParamName = "semantic_poi
 //const double kMinOdomVar = pow(std::numeric_limits<double>::min(), 0.03);
 const double kMinOdomVar = pow(std::numeric_limits<double>::min(), 0.3);
 
-pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams(const file_io::RuntimeParamsConfig &config) {
+pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams(const file_io::RuntimeParamsConfig &config, const bool &kitti) {
     pose_optimization::PoseOptimizationParameters pose_opt_params;
     pose_optimization::CostFunctionParameters cost_function_params;
 
@@ -80,7 +81,31 @@ pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams(const 
     cost_function_params.default_obj_probability_input_variance_for_var_ =
             config.default_obj_probability_input_variance_for_var_;
 
+    if (kitti) {
+        LOG(INFO) << "Using kitti optimization parameters";
+        pose_opt_params.optimizer_params_.extra_extra_refinement_max_iter = 150;
+        pose_opt_params.optimizer_params_.extra_refinement_max_iter = 150;
+        pose_opt_params.optimizer_params_.normal_max_iter = 150;
+
+        pose_opt_params.optimizer_params_.extra_extra_refinement_function_tolerance = 1e-6;
+        pose_opt_params.optimizer_params_.extra_refinement_function_tolerance = 1e-6;
+        pose_opt_params.optimizer_params_.normal_function_tolerance = 1e-6;
+        pose_opt_params.optimizer_params_.allow_non_monotonic_steps = false;
+    } else {
+        LOG(INFO) << "Using parking lot optimization parameters";
+        pose_opt_params.optimizer_params_.extra_extra_refinement_max_iter = 1000;
+        pose_opt_params.optimizer_params_.extra_refinement_max_iter = 500;
+        pose_opt_params.optimizer_params_.normal_max_iter = 300;
+
+        pose_opt_params.optimizer_params_.extra_extra_refinement_function_tolerance = 1e-12;
+        pose_opt_params.optimizer_params_.extra_refinement_function_tolerance = 1e-10;
+        pose_opt_params.optimizer_params_.normal_function_tolerance = 1e-7;
+        // TODO may want to turn this off... havent actually tested it but seems like it would help
+        pose_opt_params.optimizer_params_.allow_non_monotonic_steps = true;
+    }
+
     pose_opt_params.cost_function_params_ = cost_function_params;
+
     return pose_opt_params;
 }
 
@@ -449,7 +474,7 @@ getTrajectoryEstimate(const std::vector<pose::Pose2d> &odom_est_trajectory,
                                                     shape_dimensions_by_semantic_class);
             };
 
-    pose_optimization::PoseOptimizationParameters pose_opt_params = setupPoseOptimizationParams(runtime_params_config);
+    pose_optimization::PoseOptimizationParameters pose_opt_params = setupPoseOptimizationParams(runtime_params_config, FLAGS_kitti);
 
     file_io::SemanticPointObjectSamplerConfig semantic_point_object_sampler_config;
     file_io::readSemanticPointObjectSamplerConfigFromFile(semantic_point_object_sampler_config_file,

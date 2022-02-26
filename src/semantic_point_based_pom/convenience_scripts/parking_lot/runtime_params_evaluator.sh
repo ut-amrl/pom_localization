@@ -35,16 +35,16 @@ semantic_index_to_string_file_base=semantic_index_to_string${csv_suffix}
 
 
 # Intermediate variables
-first_traj_eval_namespace=evaluation_first_traj_${runtime_cfg_base_name}
-second_traj_eval_namespace=evaluation_second_traj_${runtime_cfg_base_name}
-third_traj_eval_namespace=evaluation_third_traj_${runtime_cfg_base_name}
-fourth_traj_eval_namespace=evaluation_fourth_traj_${runtime_cfg_base_name}
-fifth_traj_eval_namespace=evaluation_fifth_traj_${runtime_cfg_base_name}
-sixth_traj_eval_namespace=evaluation_sixth_traj_${runtime_cfg_base_name}
-seventh_traj_eval_namespace=evaluation_seventh_traj_${runtime_cfg_base_name}
-eighth_traj_eval_namespace=evaluation_eighth_traj_${runtime_cfg_base_name}
+first_traj_eval_namespace=evaluation_first_traj_${runtime_cfg_base_name}_${clustering_config_file_base}_${rectangle_sampler_config_file_base}
+second_traj_eval_namespace=evaluation_second_traj_${runtime_cfg_base_name}_${clustering_config_file_base}_${rectangle_sampler_config_file_base}
+third_traj_eval_namespace=evaluation_third_traj_${runtime_cfg_base_name}_${clustering_config_file_base}_${rectangle_sampler_config_file_base}
+fourth_traj_eval_namespace=evaluation_fourth_traj_${runtime_cfg_base_name}_${clustering_config_file_base}_${rectangle_sampler_config_file_base}
+fifth_traj_eval_namespace=evaluation_fifth_traj_${runtime_cfg_base_name}_${clustering_config_file_base}_${rectangle_sampler_config_file_base}
+sixth_traj_eval_namespace=evaluation_sixth_traj_${runtime_cfg_base_name}_${clustering_config_file_base}_${rectangle_sampler_config_file_base}
+seventh_traj_eval_namespace=evaluation_seventh_traj_${runtime_cfg_base_name}_${clustering_config_file_base}_${rectangle_sampler_config_file_base}
+eighth_traj_eval_namespace=evaluation_eighth_traj_${runtime_cfg_base_name}_${clustering_config_file_base}_${rectangle_sampler_config_file_base}
 
-consistency_evaluator_namespace=consistency_${runtime_cfg_base_name}
+consistency_evaluator_namespace=consistency_${runtime_cfg_base_name}_${clustering_config_file_base}_${rectangle_sampler_config_file_base}
 
 
 clustering_config_base_prefix=config_${clustering_config_file_base}_
@@ -110,16 +110,16 @@ rosparam set /${consistency_evaluator_namespace}/waypoint_consistency_num_trajec
 
 make
 echo Estimating trajectories
-./bin/semantic_point_evaluation_main --param_prefix ${first_traj_eval_namespace} &
-./bin/semantic_point_evaluation_main --param_prefix ${second_traj_eval_namespace} &
-./bin/semantic_point_evaluation_main --param_prefix ${third_traj_eval_namespace} &
-./bin/semantic_point_evaluation_main --param_prefix ${fourth_traj_eval_namespace} &
-./bin/semantic_point_evaluation_main --param_prefix ${fifth_traj_eval_namespace} &
-./bin/semantic_point_evaluation_main --param_prefix ${sixth_traj_eval_namespace} &
-./bin/semantic_point_evaluation_main --param_prefix ${seventh_traj_eval_namespace} &
-./bin/semantic_point_evaluation_main --param_prefix ${eighth_traj_eval_namespace} &
+./bin/semantic_point_evaluation_main --nokitti --param_prefix ${first_traj_eval_namespace} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${first_traj_eval_namespace}.txt &
+./bin/semantic_point_evaluation_main --nokitti --param_prefix ${second_traj_eval_namespace} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${second_traj_eval_namespace}.txt &
+./bin/semantic_point_evaluation_main --nokitti --param_prefix ${third_traj_eval_namespace} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${third_traj_eval_namespace}.txt &
+./bin/semantic_point_evaluation_main --nokitti --param_prefix ${fourth_traj_eval_namespace} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${fourth_traj_eval_namespace}.txt &
+./bin/semantic_point_evaluation_main --nokitti --param_prefix ${fifth_traj_eval_namespace} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${fifth_traj_eval_namespace}.txt &
+./bin/semantic_point_evaluation_main --nokitti --param_prefix ${sixth_traj_eval_namespace} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${sixth_traj_eval_namespace}.txt &
+./bin/semantic_point_evaluation_main --nokitti --param_prefix ${seventh_traj_eval_namespace} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${seventh_traj_eval_namespace}.txt &
+./bin/semantic_point_evaluation_main --nokitti --param_prefix ${eighth_traj_eval_namespace} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${eighth_traj_eval_namespace}.txt &
 wait
 
 echo Running consistency evaluator
-./bin/compute_waypoint_consistency_results --param_prefix ${consistency_evaluator_namespace}
+./bin/compute_waypoint_consistency_results --param_prefix ${consistency_evaluator_namespace} | tee -a $HOME/log_output/pom_parking_lot_log_${consistency_evaluator_namespace}.txt
 
