@@ -8,7 +8,9 @@ MESSAGE(STATUS "Arch: ${CMAKE_SYSTEM_PROCESSOR}")
 
 #SET(CMAKE_CXX_FLAGS "-std=c++11 -Wall")
 # TODO add back -Werror once I figure out how to downgrade specific warnings from error just to warning (have some deprecation in dependencies)
-SET(CMAKE_CXX_FLAGS "-std=c++17 -lstdc++fs -Wall -Wno-deprecated -Wno-unused-function -Wno-unused-variable -O2")
+#SET(CMAKE_CXX_FLAGS "-std=c++17 -fopenmp -lstdc++fs -Wall -Wno-deprecated -Wno-unused-function -Wno-unused-variable -O2")
+SET(CMAKE_CXX_FLAGS "-std=c++17  -lstdc++fs -Wall -Wno-deprecated -Wno-unused-function -Wno-unused-variable -O2")
+
 
 IF(${CMAKE_BUILD_TYPE} MATCHES "Release")
   MESSAGE(STATUS "Additional Flags for Release mode")
@@ -56,86 +58,86 @@ ADD_SUBDIRECTORY(src/shared)
 INCLUDE_DIRECTORIES(src)
 
 
-#ROSBUILD_ADD_EXECUTABLE(autodiff_gp
-#                        src/autodiff_gp_main.cc)
-#TARGET_LINK_LIBRARIES(autodiff_gp ${libs})
+##ROSBUILD_ADD_EXECUTABLE(autodiff_gp
+##                        src/autodiff_gp_main.cc)
+##TARGET_LINK_LIBRARIES(autodiff_gp ${libs})
+##
+##ROSBUILD_ADD_EXECUTABLE(momo_pose_optimization src/pose_optimization/pose_optimization_main.cc)
+##TARGET_LINK_LIBRARIES(momo_pose_optimization ${libs})
+##
+##ROSBUILD_ADD_EXECUTABLE(momo_pose_optimization_test src/synthetic_problem/movable_pose_optimization_test_main.cc)
+##TARGET_LINK_LIBRARIES(momo_pose_optimization_test ${libs})
 #
-#ROSBUILD_ADD_EXECUTABLE(momo_pose_optimization src/pose_optimization/pose_optimization_main.cc)
-#TARGET_LINK_LIBRARIES(momo_pose_optimization ${libs})
+##ROSBUILD_ADD_EXECUTABLE(read_h3d_point_cloud src/h3d_dataset/read_h3d_point_cloud.cc)
+##TARGET_LINK_LIBRARIES(read_h3d_point_cloud ${libs} ${PCL_LIBRARIES} stdc++fs)
+##
+##ROSBUILD_ADD_EXECUTABLE(run_on_h3d_detections src/h3d_dataset/run_on_h3d_detections.cc)
+##TARGET_LINK_LIBRARIES(run_on_h3d_detections ${libs} ${PCL_LIBRARIES} stdc++fs)
 #
-#ROSBUILD_ADD_EXECUTABLE(momo_pose_optimization_test src/synthetic_problem/movable_pose_optimization_test_main.cc)
-#TARGET_LINK_LIBRARIES(momo_pose_optimization_test ${libs})
-
-#ROSBUILD_ADD_EXECUTABLE(read_h3d_point_cloud src/h3d_dataset/read_h3d_point_cloud.cc)
-#TARGET_LINK_LIBRARIES(read_h3d_point_cloud ${libs} ${PCL_LIBRARIES} stdc++fs)
+#ROSBUILD_ADD_EXECUTABLE(evaluation_main src/evaluation/evaluation_main.cc)
+#TARGET_LINK_LIBRARIES(evaluation_main ${libs} stdc++fs)
 #
-#ROSBUILD_ADD_EXECUTABLE(run_on_h3d_detections src/h3d_dataset/run_on_h3d_detections.cc)
-#TARGET_LINK_LIBRARIES(run_on_h3d_detections ${libs} ${PCL_LIBRARIES} stdc++fs)
-
-ROSBUILD_ADD_EXECUTABLE(evaluation_main src/evaluation/evaluation_main.cc)
-TARGET_LINK_LIBRARIES(evaluation_main ${libs} stdc++fs)
-
-#ROSBUILD_ADD_EXECUTABLE(output_first_gps_entries src/h3d_dataset/output_first_gps_entries.cc)
-#TARGET_LINK_LIBRARIES(output_first_gps_entries ${libs} stdc++fs)
-
-ROSBUILD_ADD_EXECUTABLE(parking_spot_plotter src/evaluation/parking_spot_3d_plotter.cc)
-TARGET_LINK_LIBRARIES(parking_spot_plotter ${libs} stdc++fs)
-
-ROSBUILD_ADD_EXECUTABLE(wheel_odom_extractor src/evaluation/wheel_odom_rosbag_extraction.cc)
-TARGET_LINK_LIBRARIES(wheel_odom_extractor ${libs} stdc++fs)
-
-#ROSBUILD_ADD_EXECUTABLE(kitti_to_trajectory_2d src/evaluation/kitti_to_trajectory_2d.cc)
-#TARGET_LINK_LIBRARIES(kitti_to_trajectory_2d ${libs} stdc++fs)
-
-#ROSBUILD_ADD_EXECUTABLE(lidarodom_to_trajectory_2d src/evaluation/lidar_odom_to_trajectory_2d.cc)
-#TARGET_LINK_LIBRARIES(lidarodom_to_trajectory_2d ${libs} stdc++fs)
-
+##ROSBUILD_ADD_EXECUTABLE(output_first_gps_entries src/h3d_dataset/output_first_gps_entries.cc)
+##TARGET_LINK_LIBRARIES(output_first_gps_entries ${libs} stdc++fs)
+#
+#ROSBUILD_ADD_EXECUTABLE(parking_spot_plotter src/evaluation/parking_spot_3d_plotter.cc)
+#TARGET_LINK_LIBRARIES(parking_spot_plotter ${libs} stdc++fs)
+#
+#ROSBUILD_ADD_EXECUTABLE(wheel_odom_extractor src/evaluation/wheel_odom_rosbag_extraction.cc)
+#TARGET_LINK_LIBRARIES(wheel_odom_extractor ${libs} stdc++fs)
+#
+##ROSBUILD_ADD_EXECUTABLE(kitti_to_trajectory_2d src/evaluation/kitti_to_trajectory_2d.cc)
+##TARGET_LINK_LIBRARIES(kitti_to_trajectory_2d ${libs} stdc++fs)
+#
+##ROSBUILD_ADD_EXECUTABLE(lidarodom_to_trajectory_2d src/evaluation/lidar_odom_to_trajectory_2d.cc)
+##TARGET_LINK_LIBRARIES(lidarodom_to_trajectory_2d ${libs} stdc++fs)
+#
 ROSBUILD_ADD_EXECUTABLE(lidarodom_to_trajectory_2d_with_timestamps src/evaluation/lidar_odom_to_trajectory_2d_with_timestamps.cc)
 TARGET_LINK_LIBRARIES(lidarodom_to_trajectory_2d_with_timestamps ${libs} stdc++fs)
-
-ROSBUILD_ADD_EXECUTABLE(create_distribution_from_global_obj_poses src/evaluation/create_distribution_from_global_obj_poses.cc)
-TARGET_LINK_LIBRARIES(create_distribution_from_global_obj_poses ${libs} stdc++fs)
-
-ROSBUILD_ADD_EXECUTABLE(distribution_gen_config_writer src/evaluation/distribution_generation_config_writer.cc)
-TARGET_LINK_LIBRARIES(distribution_gen_config_writer ${libs} stdc++fs)
-
-ROSBUILD_ADD_EXECUTABLE(create_distribution_from_global_obj_poses_multiple_config src/evaluation/create_distribution_from_global_obj_poses_multiple_car_selection_profiles.cc)
-TARGET_LINK_LIBRARIES(create_distribution_from_global_obj_poses_multiple_config ${libs} stdc++fs)
-
-ROSBUILD_ADD_EXECUTABLE(distribution_gen_config_writer_multiple_config src/evaluation/distribution_generation_config_writer_multiple_placement_profile.cc)
-TARGET_LINK_LIBRARIES(distribution_gen_config_writer_multiple_config ${libs} stdc++fs)
-
+#
+#ROSBUILD_ADD_EXECUTABLE(create_distribution_from_global_obj_poses src/evaluation/create_distribution_from_global_obj_poses.cc)
+#TARGET_LINK_LIBRARIES(create_distribution_from_global_obj_poses ${libs} stdc++fs)
+#
+#ROSBUILD_ADD_EXECUTABLE(distribution_gen_config_writer src/evaluation/distribution_generation_config_writer.cc)
+#TARGET_LINK_LIBRARIES(distribution_gen_config_writer ${libs} stdc++fs)
+#
+#ROSBUILD_ADD_EXECUTABLE(create_distribution_from_global_obj_poses_multiple_config src/evaluation/create_distribution_from_global_obj_poses_multiple_car_selection_profiles.cc)
+#TARGET_LINK_LIBRARIES(create_distribution_from_global_obj_poses_multiple_config ${libs} stdc++fs)
+#
+#ROSBUILD_ADD_EXECUTABLE(distribution_gen_config_writer_multiple_config src/evaluation/distribution_generation_config_writer_multiple_placement_profile.cc)
+#TARGET_LINK_LIBRARIES(distribution_gen_config_writer_multiple_config ${libs} stdc++fs)
+#
 ROSBUILD_ADD_EXECUTABLE(interpolate_waypoints src/evaluation/interpolate_waypoint_nodes_in_existing_traj.cc)
 TARGET_LINK_LIBRARIES(interpolate_waypoints ${libs} stdc++fs)
-
-
-#ROSBUILD_ADD_EXECUTABLE(local_detections_creator src/evaluation/create_local_detections_from_global_detections.cc)
-#TARGET_LINK_LIBRARIES(local_detections_creator ${libs} stdc++fs)
-
-ROSBUILD_ADD_EXECUTABLE(convert_object_detections_from_yaml src/evaluation/convert_object_detections_from_yaml.cc)
-TARGET_LINK_LIBRARIES(convert_object_detections_from_yaml ${libs} stdc++fs yaml-cpp)
-
-ROSBUILD_ADD_EXECUTABLE(plot_results src/evaluation/plot_results.cc)
-TARGET_LINK_LIBRARIES(plot_results ${libs} stdc++fs)
+#
+#
+##ROSBUILD_ADD_EXECUTABLE(local_detections_creator src/evaluation/create_local_detections_from_global_detections.cc)
+##TARGET_LINK_LIBRARIES(local_detections_creator ${libs} stdc++fs)
+#
+#ROSBUILD_ADD_EXECUTABLE(convert_object_detections_from_yaml src/evaluation/convert_object_detections_from_yaml.cc)
+#TARGET_LINK_LIBRARIES(convert_object_detections_from_yaml ${libs} stdc++fs yaml-cpp)
+#
+#ROSBUILD_ADD_EXECUTABLE(plot_results src/evaluation/plot_results.cc)
+#TARGET_LINK_LIBRARIES(plot_results ${libs} stdc++fs)
 
 ROSBUILD_ADD_EXECUTABLE(compute_kitti_results src/evaluation/compute_kitti_results.cc)
 TARGET_LINK_LIBRARIES(compute_kitti_results ${libs} stdc++fs)
 
 ROSBUILD_ADD_EXECUTABLE(compute_waypoint_consistency_results src/evaluation/compute_waypoint_consistency_results.cc)
 TARGET_LINK_LIBRARIES(compute_waypoint_consistency_results ${libs} stdc++fs)
-
-ROSBUILD_ADD_EXECUTABLE(find_node_ids_for_objs_with_timestamps src/evaluation/find_node_ids_for_objs_and_waypoints_with_timestamps.cc)
-TARGET_LINK_LIBRARIES(find_node_ids_for_objs_with_timestamps ${libs} stdc++fs)
-
-ROSBUILD_ADD_EXECUTABLE(runtime_params_config_writer src/evaluation/runtime_params_config_writer.cc)
-TARGET_LINK_LIBRARIES(runtime_params_config_writer ${libs} stdc++fs)
 #
+#ROSBUILD_ADD_EXECUTABLE(find_node_ids_for_objs_with_timestamps src/evaluation/find_node_ids_for_objs_and_waypoints_with_timestamps.cc)
+#TARGET_LINK_LIBRARIES(find_node_ids_for_objs_with_timestamps ${libs} stdc++fs)
 #
-#ROSBUILD_ADD_EXECUTABLE(fake_pom_plotter src/evaluation/fake_pom_plotter.cc)
-#TARGET_LINK_LIBRARIES(fake_pom_plotter ${libs} stdc++fs)
-#
-ROSBUILD_ADD_EXECUTABLE(point_cloud_semantic_labeler_from_image src/semantic_segmentation/point_cloud_semantic_labeler_from_image.cpp)
-TARGET_LINK_LIBRARIES(point_cloud_semantic_labeler_from_image ${libs} stdc++fs ${PCL_LIBRARIES})
+#ROSBUILD_ADD_EXECUTABLE(runtime_params_config_writer src/evaluation/runtime_params_config_writer.cc)
+#TARGET_LINK_LIBRARIES(runtime_params_config_writer ${libs} stdc++fs)
+##
+##
+##ROSBUILD_ADD_EXECUTABLE(fake_pom_plotter src/evaluation/fake_pom_plotter.cc)
+##TARGET_LINK_LIBRARIES(fake_pom_plotter ${libs} stdc++fs)
+##
+#ROSBUILD_ADD_EXECUTABLE(point_cloud_semantic_labeler_from_image src/semantic_segmentation/point_cloud_semantic_labeler_from_image.cpp)
+#TARGET_LINK_LIBRARIES(point_cloud_semantic_labeler_from_image ${libs} stdc++fs ${PCL_LIBRARIES})
 
 
 ROSBUILD_ADD_EXECUTABLE(point_cloud_labeler_from_cluster_heuristics src/semantic_segmentation/point_cloud_labeler_from_cluster_heuristics.cpp)
@@ -143,6 +145,9 @@ TARGET_LINK_LIBRARIES(point_cloud_labeler_from_cluster_heuristics ${libs} stdc++
 
 ROSBUILD_ADD_EXECUTABLE(semantic_point_evaluation_main src/semantic_point_based_pom/semantic_point_evaluation_main.cc)
 TARGET_LINK_LIBRARIES(semantic_point_evaluation_main ${libs} stdc++fs)
+
+ROSBUILD_ADD_EXECUTABLE(past_sample_publisher src/semantic_point_based_pom/past_sample_publisher.cc)
+TARGET_LINK_LIBRARIES(past_sample_publisher ${libs} stdc++fs)
 
 ROSBUILD_ADD_EXECUTABLE(find_node_ids_for_semantic_points_and_waypoints_with_timestamps src/semantic_point_based_pom/find_node_ids_for_semantic_points_and_waypoints_with_timestamps.cc)
 TARGET_LINK_LIBRARIES(find_node_ids_for_semantic_points_and_waypoints_with_timestamps ${libs} stdc++fs)

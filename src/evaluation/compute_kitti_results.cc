@@ -5,13 +5,9 @@
 #include <ros/ros.h>
 
 #include <iostream>
-#include <iomanip>
 #include <ctime>
 
 #include <file_io/past_sample_io.h>
-#include <pose_optimization/offline/offline_problem_runner.h>
-#include <pose_optimization/utils/pose_graph_creation_utils.h>
-#include <pose_optimization/offline/ceres_visualization_callback_2d.h>
 
 #include <file_io/trajectory_2d_io.h>
 

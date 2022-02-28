@@ -52,9 +52,11 @@ const std::string kSemanticPointObjectSamplerConfigFileParamName = "semantic_poi
 
 //const double kMinOdomVar = pow(std::numeric_limits<double>::min(), 0.0003);
 //const double kMinOdomVar = pow(std::numeric_limits<double>::min(), 0.03);
-const double kMinOdomVar = pow(std::numeric_limits<double>::min(), 0.3);
+//const double kMinOdomVar = pow(std::numeric_limits<double>::min(), 0.3);
+const double kMinOdomVar = 1e-4;
 
-pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams(const file_io::RuntimeParamsConfig &config, const bool &kitti) {
+pose_optimization::PoseOptimizationParameters
+setupPoseOptimizationParams(const file_io::RuntimeParamsConfig &config, const bool &kitti) {
     pose_optimization::PoseOptimizationParameters pose_opt_params;
     pose_optimization::CostFunctionParameters cost_function_params;
 
@@ -81,6 +83,8 @@ pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams(const 
     cost_function_params.default_obj_probability_input_variance_for_var_ =
             config.default_obj_probability_input_variance_for_var_;
 
+    cost_function_params.num_samples_per_movable_obj_observation_ = config.max_obj_pose_samples;
+
     if (kitti) {
         LOG(INFO) << "Using kitti optimization parameters";
         pose_opt_params.optimizer_params_.extra_extra_refinement_max_iter = 150;
@@ -93,13 +97,17 @@ pose_optimization::PoseOptimizationParameters setupPoseOptimizationParams(const 
         pose_opt_params.optimizer_params_.allow_non_monotonic_steps = false;
     } else {
         LOG(INFO) << "Using parking lot optimization parameters";
-        pose_opt_params.optimizer_params_.extra_extra_refinement_max_iter = 1000;
-        pose_opt_params.optimizer_params_.extra_refinement_max_iter = 500;
-        pose_opt_params.optimizer_params_.normal_max_iter = 300;
+        pose_opt_params.optimizer_params_.extra_extra_refinement_max_iter = 500;
+        pose_opt_params.optimizer_params_.extra_refinement_max_iter = 300;
+        pose_opt_params.optimizer_params_.normal_max_iter = 200;
+//        pose_opt_params.optimizer_params_.extra_extra_refinement_max_iter = 0;
+//        pose_opt_params.optimizer_params_.extra_refinement_max_iter = 0;
+//        pose_opt_params.optimizer_params_.normal_max_iter = 0;
 
-        pose_opt_params.optimizer_params_.extra_extra_refinement_function_tolerance = 1e-12;
-        pose_opt_params.optimizer_params_.extra_refinement_function_tolerance = 1e-10;
-        pose_opt_params.optimizer_params_.normal_function_tolerance = 1e-7;
+        pose_opt_params.optimizer_params_.extra_extra_refinement_function_tolerance = 1e-8;
+        pose_opt_params.optimizer_params_.extra_refinement_function_tolerance = 1e-7;
+        pose_opt_params.optimizer_params_.normal_function_tolerance = 1e-6;
+
         // TODO may want to turn this off... havent actually tested it but seems like it would help
         pose_opt_params.optimizer_params_.allow_non_monotonic_steps = true;
     }
@@ -226,7 +234,8 @@ void runOptimizationVisualization(const std::shared_ptr<visualization::Visualiza
                 vis_manager->displaySemanticPointObsFromEstTrajectory(node_poses_list, noisy_obj_observations,
                                                                       semantic_class,
                                                                       rectangle_samples_for_class,
-                                                                      shape_dimensions_by_class.at(semantic_class));
+                                                                      shape_dimensions_by_class.at(semantic_class),
+                                                                      false, true);
                 if (!ground_truth_trajectory.empty()) {
                     vis_manager->displaySemanticPointObsFromGtTrajectory(ground_truth_trajectory,
                                                                          noisy_obj_observations,
@@ -244,10 +253,10 @@ void runOptimizationVisualization(const std::shared_ptr<visualization::Visualiza
             for (pose_graph::NodeId node_id = 0; node_id < max_node_id; node_id++) {
                 double odom_transl = (unoptimized_trajectory[node_id].first -
                                       unoptimized_trajectory[node_id + 1].first).norm();
-                if (odom_transl == 0) {
-                    LOG(INFO) << "Zero odom transl between nodes " << node_id << " and " << node_id + 1;
-                    exit(1);
-                }
+//                if (odom_transl == 0) {
+//                    LOG(INFO) << "Zero odom transl between nodes " << node_id << " and " << node_id + 1;
+//                    exit(1);
+//                }
                 double est_transl = (node_poses_list[node_id].first - node_poses_list[node_id + 1].first).norm();
                 cumulative_odom_distance += odom_transl;
                 cumulative_est_distance += est_transl;
@@ -366,11 +375,15 @@ createOdomFactorsFromInitOdomEst(const std::vector<pose::Pose2d> &init_traj_est,
         Eigen::Matrix<double, 3, 3> odom_cov_mat = Eigen::Matrix<double, 3, 3>::Zero();
 
         double norm = rel_pose.first.norm();
+        Eigen::Matrix<double, 3, 3> orig_odom_cov_mat = Eigen::Matrix<double, 3, 3>::Zero();
 
-        odom_cov_mat(0, 0) = std::max(pow(k1 * norm + k2 * abs(rel_pose.second), 2), kMinOdomVar);
-        odom_cov_mat(1, 1) = std::max(pow(k3 * norm + k4 * abs(rel_pose.second), 2), kMinOdomVar);
-        odom_cov_mat(2, 2) = std::max(pow(k5 * norm + k6 * abs(rel_pose.second), 2), kMinOdomVar);
+        orig_odom_cov_mat(0, 0) = pow(k1 * norm + k2 * abs(rel_pose.second), 2);
+        orig_odom_cov_mat(1, 1) = pow(k3 * norm + k4 * abs(rel_pose.second), 2);
+        orig_odom_cov_mat(2, 2) = pow(k5 * norm + k6 * abs(rel_pose.second), 2);
 
+        odom_cov_mat(0, 0) = std::max(orig_odom_cov_mat(0, 0), kMinOdomVar);
+        odom_cov_mat(1, 1) = std::max(orig_odom_cov_mat(1, 1), kMinOdomVar);
+        odom_cov_mat(2, 2) = std::max(orig_odom_cov_mat(2, 2), kMinOdomVar);
 
         Eigen::Matrix<double, 3, 3> odom_sqrt_information_mat = odom_cov_mat.inverse().sqrt();
         odom_factor.sqrt_information_ = odom_sqrt_information_mat;
@@ -474,7 +487,8 @@ getTrajectoryEstimate(const std::vector<pose::Pose2d> &odom_est_trajectory,
                                                     shape_dimensions_by_semantic_class);
             };
 
-    pose_optimization::PoseOptimizationParameters pose_opt_params = setupPoseOptimizationParams(runtime_params_config, FLAGS_kitti);
+    pose_optimization::PoseOptimizationParameters pose_opt_params = setupPoseOptimizationParams(runtime_params_config,
+                                                                                                FLAGS_kitti);
 
     file_io::SemanticPointObjectSamplerConfig semantic_point_object_sampler_config;
     file_io::readSemanticPointObjectSamplerConfigFromFile(semantic_point_object_sampler_config_file,
@@ -761,32 +775,38 @@ void plotRectangleSamplesForCluster(const pose_graph::MovableObservationSemantic
 
     LOG(INFO) << "Plotting";
     vis_manager->displaySemanticPointObsFromEstTrajectory({pose::createPose2d(0, 0, 0),
-                                                           pose::createPose2d(0, 10, 0),
-                                                           pose::createPose2d(0, 20, 0),
-                                                           pose::createPose2d(0, 30, 0),
-                                                           pose::createPose2d(0, 40, 0),
-                                                           pose::createPose2d(0, 50, 0),
-                                                           pose::createPose2d(-10, 40, 0),
-                                                           pose::createPose2d(-10, 50, 0)},
-                                                          {{{factor.observation_.cluster_num_, points_rel_baselink}},
-                                                           {{factor.observation_.cluster_num_, points_rel_baselink}},
-                                                           {{factor.observation_.cluster_num_, points_rel_baselink}},
-                                                           {{factor.observation_.cluster_num_, points_rel_baselink}},
-                                                           {{factor.observation_.cluster_num_, points_rel_baselink}},
-                                                           {{factor.observation_.cluster_num_, points_rel_baselink}},
-                                                           {{factor.observation_.cluster_num_, points_rel_baselink}},
-                                                           {{factor.observation_.cluster_num_, points_rel_baselink}}},
+//                                                           pose::createPose2d(0, 10, 0),
+//                                                           pose::createPose2d(0, 20, 0),
+//                                                           pose::createPose2d(0, 30, 0),
+//                                                           pose::createPose2d(0, 40, 0),
+//                                                           pose::createPose2d(0, 50, 0),
+//                                                           pose::createPose2d(-10, 40, 0),
+//                                                           pose::createPose2d(-10, 50, 0)
+                                                           },
+                                                          {{{factor.observation_.cluster_num_, points_rel_baselink}}
+//                                                          ,
+//                                                           {{factor.observation_.cluster_num_, points_rel_baselink}},
+//                                                           {{factor.observation_.cluster_num_, points_rel_baselink}},
+//                                                           {{factor.observation_.cluster_num_, points_rel_baselink}},
+//                                                           {{factor.observation_.cluster_num_, points_rel_baselink}},
+//                                                           {{factor.observation_.cluster_num_, points_rel_baselink}},
+//                                                           {{factor.observation_.cluster_num_, points_rel_baselink}},
+//                                                           {{factor.observation_.cluster_num_, points_rel_baselink}}
+                                                           },
                                                           factor.observation_.semantic_class_,
-                                                          {{0, {{factor.observation_.cluster_num_, poses_rel_baselink_prop_side}}},
-                                                           {1, {{factor.observation_.cluster_num_, poses_rel_baselink_prop_perim}}},
-                                                           {2, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_len}}},
-                                                           {3, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_side}}},
-                                                           {4, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_len_prop_bin_count}}},
-                                                           {5, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_side_prop_bin_count}}},
-                                                           {6, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_len_prop_sq_bin_count}}},
-                                                           {7, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_side_prop_sq_bin_count}}}},
+                                                          {
+//        {7, {{factor.observation_.cluster_num_, poses_rel_baselink_prop_side}}}
+//        },
+//                                                           {6, {{factor.observation_.cluster_num_, poses_rel_baselink_prop_perim}}},
+//                                                           {5, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_len}}},
+//                                                           {4, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_side}}},
+//                                                           {3, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_len_prop_bin_count}}},
+//                                                           {2, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_side_prop_bin_count}}},
+//                                                           {1, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_len_prop_sq_bin_count}}},
+                                                           {0, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_side_prop_sq_bin_count}}}
+                                                           },
                                                           Eigen::Vector2d(shape_dimensions_x, shape_dimensions_y),
-                                                          true);
+                                                          true, true);
     LOG(INFO) << "Node " << factor.observed_at_node_ << " cluster id " << factor.observation_.cluster_num_;
 
 //    double p1_polar_rad = random_generator.UniformRandom(2, 4);
@@ -828,7 +848,7 @@ void debugSamples(const std::vector<pose_graph::MovableObservationSemanticPoints
 
     std::vector<pose_graph::MovableObservationSemanticPointsFactor2d> shuffle_factors = factors;
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    std::shuffle(shuffle_factors.begin(), shuffle_factors.end(), std::default_random_engine(seed));
+//    std::shuffle(shuffle_factors.begin(), shuffle_factors.end(), std::default_random_engine(seed));
 
     for (const pose_graph::MovableObservationSemanticPointsFactor2d &factor : shuffle_factors) {
         if (!ros::ok()) {

@@ -11,6 +11,21 @@ semantic_point_config_dir=${base_dir}semantic_point_config/
 clustering_config_file_base=$1
 runtime_cfg_base_name=$2
 rectangle_sampler_config_file_base=$3
+traj_indicator=$4
+run_gpc_viz_arg="--norun_gpc_viz"
+debug_samples_arg="--nodebug_samples"
+
+if [ $# -eq 5 ] ;
+then
+  echo "Running GPC viz"
+  run_gpc_viz_arg="--run_gpc_viz"
+fi
+
+if [ $# -eq 6 ] ;
+then
+  echo "Running Debug samples"
+  debug_samples_arg="--debug_samples"
+fi
 
 # Constants
 first_traj_date=2021-05-29-15-28-32
@@ -59,13 +74,12 @@ semantic_index_to_string_file_name=${semantic_point_config_dir}${semantic_index_
 shape_dimensions_by_semantic_class_file_name=${semantic_point_config_dir}${shape_dim_base_name}
 semantic_point_object_sampler_config_file_name=${semantic_point_config_dir}${rectangle_sampler_config_file_base}${csv_suffix}
 
-traj_out_common_prefix=${output_dir}${traj_est_base_prefix}
+traj_out_common_prefix=${output_dir}${traj_est_base_prefix}${runtime_cfg_base_name}_${clustering_config_file_base}_${rectangle_sampler_config_file_base}_
 
 # These should line up with preprocess_parking_lot_data_for_seq
 odom_traj_est_common_prefix=${semantic_point_generated_dir}${odom_out_prefix}
 waypoints_by_node_common_prefix=${semantic_point_generated_dir}${waypoints_by_node_prefix}
 semantic_points_by_node_common_prefix=${semantic_point_generated_dir}${semantic_points_by_node_prefix}
-
 
 namespaces=(${first_traj_eval_namespace} ${second_traj_eval_namespace} ${third_traj_eval_namespace} ${fourth_traj_eval_namespace} ${fifth_traj_eval_namespace} ${sixth_traj_eval_namespace} ${seventh_traj_eval_namespace} ${eighth_traj_eval_namespace})
 bag_time_strings=(${first_traj_date} ${second_traj_date} ${third_traj_date} ${fourth_traj_date} ${fifth_traj_date} ${sixth_traj_date} ${seventh_traj_date} ${eighth_traj_date})
@@ -110,16 +124,39 @@ rosparam set /${consistency_evaluator_namespace}/waypoint_consistency_num_trajec
 
 make
 echo Estimating trajectories
-./bin/semantic_point_evaluation_main --nokitti --param_prefix ${first_traj_eval_namespace} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${first_traj_eval_namespace}.txt &
-./bin/semantic_point_evaluation_main --nokitti --param_prefix ${second_traj_eval_namespace} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${second_traj_eval_namespace}.txt &
-./bin/semantic_point_evaluation_main --nokitti --param_prefix ${third_traj_eval_namespace} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${third_traj_eval_namespace}.txt &
-./bin/semantic_point_evaluation_main --nokitti --param_prefix ${fourth_traj_eval_namespace} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${fourth_traj_eval_namespace}.txt &
-./bin/semantic_point_evaluation_main --nokitti --param_prefix ${fifth_traj_eval_namespace} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${fifth_traj_eval_namespace}.txt &
-./bin/semantic_point_evaluation_main --nokitti --param_prefix ${sixth_traj_eval_namespace} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${sixth_traj_eval_namespace}.txt &
-./bin/semantic_point_evaluation_main --nokitti --param_prefix ${seventh_traj_eval_namespace} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${seventh_traj_eval_namespace}.txt &
-./bin/semantic_point_evaluation_main --nokitti --param_prefix ${eighth_traj_eval_namespace} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${eighth_traj_eval_namespace}.txt &
+if [ $# -eq 3 ] || [ ${traj_indicator} = "all" ] ;
+then
+  exec_namespaces=(${first_traj_eval_namespace} ${second_traj_eval_namespace} ${third_traj_eval_namespace} ${fourth_traj_eval_namespace} ${fifth_traj_eval_namespace} ${sixth_traj_eval_namespace} ${seventh_traj_eval_namespace} ${eighth_traj_eval_namespace})
+elif [ ${traj_indicator} = "first" ] ; then
+  exec_namespaces=(${first_traj_eval_namespace})
+elif [ ${traj_indicator} = "second" ] ; then
+  exec_namespaces=(${second_traj_eval_namespace})
+elif [ ${traj_indicator} = "third" ] ; then
+  exec_namespaces=(${third_traj_eval_namespace})
+elif [ ${traj_indicator} = "fourth" ] ; then
+  exec_namespaces=(${fourth_traj_eval_namespace})
+elif [ ${traj_indicator} = "fifth" ] ; then
+  exec_namespaces=(${fifth_traj_eval_namespace})
+elif [ ${traj_indicator} = "sixth" ] ; then
+  exec_namespaces=(${sixth_traj_eval_namespace})
+elif [ ${traj_indicator} = "seventh" ] ; then
+  exec_namespaces=(${seventh_traj_eval_namespace})
+elif [ ${traj_indicator} = "eighth" ] ; then
+  exec_namespaces=(${eighth_traj_eval_namespace})
+else
+  exec_namespaces=(${first_traj_eval_namespace} ${second_traj_eval_namespace} ${third_traj_eval_namespace} ${fourth_traj_eval_namespace} ${fifth_traj_eval_namespace} ${sixth_traj_eval_namespace} ${seventh_traj_eval_namespace} ${eighth_traj_eval_namespace})
+fi
+
+echo "Running for namespaces ${exec_namespaces}"
+echo "${debug_samples_arg}"
+
+for i in ${!exec_namespaces[@]}; do
+  curr_namespace=${exec_namespaces[$i]}
+  echo "Running for ${curr_namespace}"
+  ./bin/semantic_point_evaluation_main --nokitti ${run_gpc_viz_arg} --param_prefix ${curr_namespace} ${debug_samples_arg} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${curr_namespace}.txt &
+done
 wait
 
 echo Running consistency evaluator
-./bin/compute_waypoint_consistency_results --param_prefix ${consistency_evaluator_namespace} | tee -a $HOME/log_output/pom_parking_lot_log_${consistency_evaluator_namespace}.txt
+./bin/compute_waypoint_consistency_results --param_prefix ${consistency_evaluator_namespace} 2>&1 | tee -a $HOME/log_output/pom_parking_lot_log_${consistency_evaluator_namespace}.txt
 

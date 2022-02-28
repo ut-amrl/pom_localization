@@ -1,7 +1,7 @@
 #!/bin/bash
 
 base_dir=$HOME/rosbags/momo_eval/lot53_bags/
-output_dir=${base_dir}output/
+output_dir=${base_dir}output/backup_drive/
 runtime_cfgs_dir=${base_dir}runtime_configs/
 generated_dir=${base_dir}generated/
 lego_loam_no_imu_out_dir=${base_dir}lego_loam_no_imu/output/
@@ -97,7 +97,7 @@ rosparam set /${consistency_evaluator_namespace}/comparison_approach_2/trajector
 rosparam set /${consistency_evaluator_namespace}/comparison_approach_2/trajectory_7/waypoint_to_node_id_file "${enml_out_dir}waypoints_by_node_${eighth_traj_date}.csv"
 
 echo Running consistency evaluator
-python src/evaluation/plot_waypoint_consistency_results.py --param_prefix ${consistency_evaluator_namespace}
+#python src/evaluation/plot_waypoint_consistency_results.py --param_prefix ${consistency_evaluator_namespace}
 
 rosparam set /${consistency_evaluator_namespace}/results_file "${output_dir}consistency_${runtime_cfg_base_name}_8.csv"
 make && ./bin/compute_waypoint_consistency_results --param_prefix ${consistency_evaluator_namespace}

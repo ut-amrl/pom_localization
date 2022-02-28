@@ -413,6 +413,7 @@ namespace semantic_point_pom {
             binned_candidates[truncated_x][truncated_y][truncated_theta] = map_entry_for_candidate;
         }
 
+        LOG(INFO) << "Checking bin thresholds";
         uint64_t bins_over_threshold = 0;
         std::vector<std::pair<size_t, std::pair<int, std::pair<int, int>>>> size_with_bins;
         std::vector<pose::Pose2d> refined_candidates;

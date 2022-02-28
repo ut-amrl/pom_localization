@@ -243,6 +243,7 @@ namespace gp_regression {
 
             Eigen::Matrix<double, 1, Eigen::Dynamic> kde_based_var = Eigen::Matrix<double, 1, Eigen::Dynamic>::Constant(1,
                                                                                                                     x.cols(), min_val_);
+//# pragma omp parallel for
             for (int i = 0; i < num_datapoints_; i++) {
                 Eigen::Matrix<double, N, 1> input_i = inputs_.col(i).cast<double>();
                 for (int j = 0; j < x.cols(); j++) {
@@ -333,6 +334,8 @@ namespace gp_regression {
 //            }
             Eigen::Matrix<ceres::Jet<double, JetDim>, 1, Eigen::Dynamic> kde_based_var = Eigen::Matrix<ceres::Jet<double, JetDim>, 1, Eigen::Dynamic>::Constant(
                     1, x.cols(), ceres::Jet<double, JetDim>(min_val_));
+
+//# pragma \omp parallel for
             for (int i = 0; i < num_datapoints_; i++) {
                 Eigen::Matrix<ceres::Jet<double, JetDim>, N, 1> input_i = inputs_.col(
                         i).cast<ceres::Jet<double, JetDim>>();

@@ -155,7 +155,8 @@ namespace visualization {
                                                       const std::string &obj_class,
                                                       const std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose2d>>> &relative_object_samples_for_cluster = {},
                                                       const Eigen::Vector2d &dimensions_for_samples = Eigen::Vector2d(),
-                                                      const bool &display_obs_from_all_nodes = false) {
+                                                      const bool &display_samples_from_all_nodes = false,
+                                                      const bool &remove_all_markers_first = false) {
             std_msgs::ColorRGBA color;
             color.a = 0.5;
             color.r = 1.0;
@@ -166,7 +167,8 @@ namespace visualization {
 
             displaySemanticPointObsFromTrajectory(est_trajectory, relative_semantic_points, 0.05,
                                                   kObservedFromEstCarDetectionLines, color, pub,
-                                                  relative_object_samples_for_cluster, dimensions_for_samples, display_obs_from_all_nodes);
+                                                  relative_object_samples_for_cluster, dimensions_for_samples,
+                                                  display_samples_from_all_nodes, remove_all_markers_first);
         }
 
         void displayObjObservationsFromOdomTrajectory(const std::vector<pose::Pose3d> &odom_trajectory,
@@ -353,6 +355,9 @@ namespace visualization {
             LOG(INFO) << "Got underlying gp regessor";
 
             for (int y_val = y_min_unscaled; y_val <= y_max_unscaled; y_val++) {
+                if (!ros::ok()) {
+                    exit(1);
+                }
                 for (int x_val = x_min_unscaled; x_val <= x_max_unscaled; x_val++) {
 
                     long data_index = (best_occ_grid.info.width * (y_val - y_min_unscaled)) + x_val -
@@ -718,6 +723,9 @@ namespace visualization {
             LOG(INFO) << "Got underlying gp regessor";
 
             for (int y_val = y_min_unscaled; y_val <= y_max_unscaled; y_val++) {
+                if (!ros::ok()) {
+                    exit(1);
+                }
                 for (int x_val = x_min_unscaled; x_val <= x_max_unscaled; x_val++) {
 
                     long data_index = (best_occ_grid.info.width * (y_val - y_min_unscaled)) + x_val -
@@ -1114,6 +1122,7 @@ namespace visualization {
             triangle_corner_2.y = 0.05;
             geometry_msgs::Point triangle_corner_3;
             triangle_corner_3.x = 0.1;
+            double z = 0.5;
 
             for (size_t i = 0; i < sample_poses_and_values.size(); i++) {
                 std::pair<pose::Pose2d, double> pose_and_value = sample_poses_and_values.at(i);
@@ -1125,23 +1134,27 @@ namespace visualization {
                 double sample_orientation = pose_and_value.first.second;
                 double sin_orientation = sin(sample_orientation);
                 double cos_orientation = cos(sample_orientation);
+
                 geometry_msgs::Point p1;
                 p1.x = sample_position.x() + (triangle_corner_1.x * cos_orientation) -
                        (sin_orientation * triangle_corner_1.y);
                 p1.y = sample_position.y() + (triangle_corner_1.x * sin_orientation) +
                        (triangle_corner_1.y * cos_orientation);
+                p1.z = z;
 
                 geometry_msgs::Point p2;
                 p2.x = sample_position.x() + (triangle_corner_2.x * cos_orientation) -
                        (triangle_corner_2.y * sin_orientation);
                 p2.y = sample_position.y() + (triangle_corner_2.x * sin_orientation) +
                        (triangle_corner_2.y * cos_orientation);
+                p2.z = z;
 
                 geometry_msgs::Point p3;
                 p3.x = sample_position.x() + (triangle_corner_3.x * cos_orientation) -
                        (triangle_corner_3.y * sin_orientation);
                 p3.y = sample_position.y() + (triangle_corner_3.x * sin_orientation) +
                        (triangle_corner_3.y * cos_orientation);
+                p3.z = z;
 
                 for (int j = 0; j < 6; j++) {
                     marker_msg.colors.emplace_back(color);
@@ -1971,8 +1984,11 @@ namespace visualization {
                                                    ros::Publisher &pub,
                                                    const std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose2d>>> &relative_object_samples_for_cluster = {},
                                                    const Eigen::Vector2d &dimensions_for_samples = Eigen::Vector2d(),
-                                                   const bool &display_samples_from_all_nodes = false) {
-            removeAllForTopic(pub);
+                                                   const bool &display_samples_from_all_nodes = false,
+                                                   const bool &remove_all_first = false) {
+            if (remove_all_first) {
+                removeAllForTopic(pub);
+            }
             bool randomize_color = !relative_object_samples_for_cluster.empty();
 
             std::vector<std::unordered_map<size_t, std::vector<Eigen::Vector3d>>> relative_points_3d;
@@ -2005,7 +2021,9 @@ namespace visualization {
                     }
                     std::vector<Eigen::Vector2d> points_to_plot;
                     if (points_for_object.size() > kMaxSemanticPointsPerCluster) {
-                        std::sample(points_for_object.begin(), points_for_object.end(), std::back_inserter(points_to_plot), kMaxSemanticPointsPerCluster, std::default_random_engine());
+                        std::sample(points_for_object.begin(), points_for_object.end(),
+                                    std::back_inserter(points_to_plot), kMaxSemanticPointsPerCluster,
+                                    std::default_random_engine());
                     } else {
                         points_to_plot = points_for_object;
                     }

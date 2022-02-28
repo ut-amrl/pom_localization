@@ -50,6 +50,7 @@ namespace file_io {
         double odom_k5_;
         double odom_k6_;
 
+        size_t max_obj_pose_samples = 25;
     };
 
     void readRuntimeParamsConfigFromLine(const std::string &line_in_file,
@@ -60,6 +61,7 @@ namespace file_io {
         while (ss.good()) {
             std::string substr;
             getline(ss, substr, ',');
+            LOG(INFO) << substr;
             if (loop_count == 0) {
                 std::istringstream stream(substr);
                 stream >> config.max_gpc_samples_;
@@ -72,6 +74,9 @@ namespace file_io {
             } else if (loop_count == 3) {
                 std::istringstream stream(substr);
                 stream >> config.pose_sample_ratio_;
+            } else if (loop_count == 23) {
+                std::istringstream stream(substr);
+                stream >> config.max_obj_pose_samples;
             } else {
                 data.push_back(std::stod(substr));
             }
@@ -104,7 +109,15 @@ namespace file_io {
         config.odom_k4_ = data[16];
         config.odom_k5_ = data[17];
         config.odom_k6_ = data[18];
-        LOG(INFO) << "Odom entries " << config.odom_k1_ << ", " << config.odom_k2_ << ", " << config.odom_k3_ << ", " << config.odom_k4_ << ", " << config.odom_k5_ << ", " << config.odom_k6_;
+
+
+        LOG(INFO) << "Mean pos kernel len " << config.mean_position_kernel_len_ << ", pos kernel var "
+                  << config.mean_position_kernel_var_;
+        LOG(INFO) << "Mean orientation kernel len " << config.mean_orientation_kernel_len_ << ", pos kernel var "
+                  << config.mean_orientation_kernel_var_;
+        LOG(INFO) << "Odom entries " << config.odom_k1_ << ", " << config.odom_k2_ << ", " << config.odom_k3_
+                  << ", " << config.odom_k4_ << ", " << config.odom_k5_ << ", " << config.odom_k6_;
+        LOG(INFO) << "Max observation samples " << config.max_obj_pose_samples;
     }
 
     void readRuntimeParamsConfigFromFile(const std::string &file_name,
@@ -140,7 +153,7 @@ namespace file_io {
                         "var_position_kernel_len", "var_orientation_kernel_len", "var_position_kernel_var",
                         "var_orientation_kernel_var", "default_obj_probability_input_variance_for_var",
                         "detection_variance_transl_x", "detection_variance_transl_y", "detection_variance_theta",
-                        "odom_k1", "odom_k2", "odom_k3", "odom_k4", "odom_k5", "odom_k6"}, csv_file);
+                        "odom_k1", "odom_k2", "odom_k3", "odom_k4", "odom_k5", "odom_k6", "max_obj_pose_samples"}, csv_file);
         writeCommaSeparatedStringsLineToFile(
                 {
                         std::to_string(config.max_gpc_samples_),
@@ -162,7 +175,8 @@ namespace file_io {
                         std::to_string(config.detection_variance_theta_), std::to_string(config.odom_k1_),
                         std::to_string(config.odom_k2_), std::to_string(config.odom_k3_),
                         std::to_string(config.odom_k4_), std::to_string(config.odom_k5_),
-                        std::to_string(config.odom_k6_)}, csv_file);
+                        std::to_string(config.odom_k6_),
+                        std::to_string(config.max_obj_pose_samples)}, csv_file);
         csv_file.close();
     }
 }
