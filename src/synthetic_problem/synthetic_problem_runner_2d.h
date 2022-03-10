@@ -21,14 +21,15 @@ namespace synthetic_problem {
     public:
 
 
-        typedef offline_optimization::OfflineProblemData<2, double, 3, 2, double> OfflineProblemDataType;
+        typedef offline_optimization::OfflineProblemData<2, double, 3, 2, double, pose_graph::MovableObservationObjectPose<2, double, 3>> OfflineProblemDataType;
 
         SyntheticProblemRunner2d(const std::shared_ptr<visualization::VisualizationManager> vis_manager,
-                                 bool run_visualization) : vis_manager_(vis_manager), run_visualization_(run_visualization) {}
+                                 bool run_visualization) : vis_manager_(vis_manager),
+                                                           run_visualization_(run_visualization) {}
 
         void runOptimizationVisualization(
                 const pose_graph::NodeId &max_node_id,
-                const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>> &pose_graph,
+                const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3, pose_graph::MovableObservationObjectPose<2, double, 3>>> &pose_graph,
                 const offline_optimization::VisualizationTypeEnum &vis_stage,
                 const std::vector<pose::Pose2d> &ground_truth_trajectory,
                 const std::vector<pose::Pose2d> &unoptimized_trajectory,
@@ -46,7 +47,6 @@ namespace synthetic_problem {
                         }
 
 
-
                         vis_manager_->displayTrueTrajectory(ground_truth_trajectory);
                         vis_manager_->displayOdomTrajectory(unoptimized_trajectory);
 
@@ -54,26 +54,29 @@ namespace synthetic_problem {
                         vis_manager_->displayTrueObjPoses(ground_truth_obj_poses, kCarClass);
 
                         for (const auto &noisy_obs_with_type : noisy_obj_observations_by_type) {
-                            vis_manager_->displayObjObservationsFromGtTrajectory(ground_truth_trajectory, noisy_obs_with_type.second,
-                                                                     noisy_obs_with_type.first);
-                            vis_manager_->displayObjObservationsFromOdomTrajectory(unoptimized_trajectory,
+                            vis_manager_->displayObjObservationsFromGtTrajectory(ground_truth_trajectory,
                                                                                  noisy_obs_with_type.second,
                                                                                  noisy_obs_with_type.first);
+                            vis_manager_->displayObjObservationsFromOdomTrajectory(unoptimized_trajectory,
+                                                                                   noisy_obs_with_type.second,
+                                                                                   noisy_obs_with_type.first);
                         }
                         {
                             // TODO make this not specific to car class
                             std::vector<pose::Pose2d> poses_global_frame;
                             for (size_t node = 0; node < ground_truth_trajectory.size(); node++) {
                                 pose::Pose2d robot_pose = ground_truth_trajectory[node];
-                                for (const pose::Pose2d &obj_pose : noisy_obj_observations_by_type.at(kCarClass)[node]) {
+                                for (const pose::Pose2d &obj_pose : noisy_obj_observations_by_type.at(
+                                        kCarClass)[node]) {
                                     poses_global_frame.emplace_back(pose::combinePoses(robot_pose, obj_pose));
                                 }
                             }
 
                             std::pair<Eigen::Vector2d, Eigen::Vector2d> min_max_points_to_display =
-                                    visualization::VisualizationManager::getMinMaxCornersForDistributionVisualization(poses_global_frame);
+                                    visualization::VisualizationManager::getMinMaxCornersForDistributionVisualization(
+                                            poses_global_frame);
 
-                            vis_manager_->displayMaxGpRegressorOutput(pose_graph->getMovableObjGpc(kCarClass),0.3,
+                            vis_manager_->displayMaxGpRegressorOutput(pose_graph->getMovableObjGpc(kCarClass), 0.3,
                                                                       min_max_points_to_display.first.x(),
                                                                       min_max_points_to_display.second.x(),
                                                                       min_max_points_to_display.first.y(),
@@ -99,8 +102,9 @@ namespace synthetic_problem {
                         vis_manager_->displayEstTrajectory(node_poses_list);
 
                         for (const auto &noisy_obs_with_type : noisy_obj_observations_by_type) {
-                            vis_manager_->displayObjObservationsFromEstTrajectory(node_poses_list, noisy_obs_with_type.second,
-                                                                                noisy_obs_with_type.first);
+                            vis_manager_->displayObjObservationsFromEstTrajectory(node_poses_list,
+                                                                                  noisy_obs_with_type.second,
+                                                                                  noisy_obs_with_type.first);
                         }
 
                         vis_manager_->displayTrueTrajectory(ground_truth_trajectory);
@@ -110,7 +114,8 @@ namespace synthetic_problem {
                         vis_manager_->displayTrueObjPoses(ground_truth_obj_poses, kCarClass);
 
                         for (const auto &noisy_obs_with_type : noisy_obj_observations_by_type) {
-                            vis_manager_->displayObjObservationsFromGtTrajectory(ground_truth_trajectory, noisy_obs_with_type.second,
+                            vis_manager_->displayObjObservationsFromGtTrajectory(ground_truth_trajectory,
+                                                                                 noisy_obs_with_type.second,
                                                                                  noisy_obs_with_type.first);
                             vis_manager_->displayObjObservationsFromOdomTrajectory(unoptimized_trajectory,
                                                                                    noisy_obs_with_type.second,
@@ -130,7 +135,7 @@ namespace synthetic_problem {
 
         std::shared_ptr<ceres::IterationCallback> createCeresIterationCallback(
                 const pose_graph::NodeId &node_id,
-                const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3>> &pose_graph,
+                const std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3, pose_graph::MovableObservationObjectPose<2, double, 3>>> &pose_graph,
                 const std::unordered_map<std::string, std::vector<std::vector<pose::Pose2d>>> noisy_observations_by_class) {
             if (run_visualization_) {
                 return std::make_shared<offline_optimization::CeresVisualizationCallback2d>(
@@ -140,14 +145,15 @@ namespace synthetic_problem {
             }
         }
 
-        std::unordered_map<pose_graph::NodeId, pose::Pose2d> runSyntheticProblem(const std::vector<pose::Pose2d> &ground_truth_trajectory,
-                const std::vector<pose::Pose2d> &noisy_odometry, // TODO remove?
-                const std::unordered_map<std::string, std::vector<pose::Pose2d>> &object_gt_poses,
-                const std::unordered_map<std::string, std::vector<std::vector<pose_optimization::ObjectDetectionRelRobot<pose::Pose2d , 3>>>> &movable_object_detections,
-                const std::unordered_map<std::string, std::vector<std::pair<pose::Pose2d, double>>> &past_movable_object_poses,
-                const SyntheticProblemNoiseConfig2d &noise_config,
-                const pose_optimization::PoseOptimizationParameters &pose_optimization_params,
-                util_random::Random &random_generator) {
+        std::unordered_map<pose_graph::NodeId, pose::Pose2d>
+        runSyntheticProblem(const std::vector<pose::Pose2d> &ground_truth_trajectory,
+                            const std::vector<pose::Pose2d> &noisy_odometry, // TODO remove?
+                            const std::unordered_map<std::string, std::vector<pose::Pose2d>> &object_gt_poses,
+                            const std::unordered_map<std::string, std::vector<std::vector<pose_optimization::ObjectDetectionRelRobot<pose::Pose2d, 3>>>> &movable_object_detections,
+                            const std::unordered_map<std::string, std::vector<std::pair<pose::Pose2d, double>>> &past_movable_object_poses,
+                            const SyntheticProblemNoiseConfig2d &noise_config,
+                            const pose_optimization::PoseOptimizationParameters &pose_optimization_params,
+                            util_random::Random &random_generator) {
 
             OfflineProblemDataType offline_problem_data;
 
@@ -195,10 +201,10 @@ namespace synthetic_problem {
                 pose::Pose2d odom_for_initial_node_pose = odom_to_next_pos;
                 if (noise_config.add_additional_initial_noise_) {
                     odom_for_initial_node_pose = pose::addRelativeGaussianNoise(odom_to_next_pos,
-                                                                  noise_config.init_pose_gaussian_noise_x_,
-                                                                  noise_config.init_pose_gaussian_noise_y_,
-                                                                  noise_config.init_pose_gaussian_noise_yaw_,
-                                                                  random_generator);
+                                                                                noise_config.init_pose_gaussian_noise_x_,
+                                                                                noise_config.init_pose_gaussian_noise_y_,
+                                                                                noise_config.init_pose_gaussian_noise_yaw_,
+                                                                                random_generator);
                 }
                 pose::Pose2d new_pose = pose::combinePoses(prev_pose, odom_for_initial_node_pose);
                 initial_node_positions.emplace_back(new_pose);
@@ -218,8 +224,9 @@ namespace synthetic_problem {
                 noisy_observations[observations_for_type.first] = {};
                 for (pose_graph::NodeId node_num = 0; node_num < observations_for_type.second.size(); node_num++) {
                     std::vector<pose::Pose2d> detections_at_node = {};
-                    for (const pose_optimization::ObjectDetectionRelRobot<pose::Pose2d , 3> &observation : observations_for_type.second.at(node_num)) {
-                        pose_graph::MovableObservation<2, double, 3> pg_observation;
+                    for (const pose_optimization::ObjectDetectionRelRobot<pose::Pose2d, 3> &observation : observations_for_type.second.at(
+                            node_num)) {
+                        pose_graph::MovableObservationObjectPose<2, double, 3> pg_observation;
                         detections_at_node.emplace_back(observation.pose_);
                         pg_observation.semantic_class_ = observations_for_type.first;
                         pg_observation.observation_transl_ = observation.pose_.first;
@@ -230,7 +237,8 @@ namespace synthetic_problem {
                         movable_obs_cov_mat(2, 2) = observation.object_pose_variance_(2);
                         pg_observation.observation_covariance_ = movable_obs_cov_mat;
 
-                        pose_graph::MovableObservationFactor<2, double, 3> factor(node_num, pg_observation);
+                        pose_graph::MovableObservationFactor<pose_graph::MovableObservationObjectPose<2, double, 3>> factor(
+                                node_num, pg_observation);
                         offline_problem_data.movable_observation_factors_.emplace_back(factor);
                     }
                     noisy_observations[observations_for_type.first].emplace_back(detections_at_node);
@@ -249,10 +257,10 @@ namespace synthetic_problem {
                 }
             }
 
-            offline_optimization::OfflinePoseOptimizer<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3> offline_optimizer;
+            offline_optimization::OfflinePoseOptimizer<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3, pose_graph::MovableObservationObjectPose<2, double, 3>> offline_optimizer;
             return offline_optimizer.runOfflineOptimization(
                     offline_problem_data, pose_optimization_params,
-                    pose_graph::utils::createFully2dPoseGraphFromParams,
+                    pose_graph::utils::createFully2dPoseGraphObjectPoseDetectionsFromParams,
                     std::bind(&SyntheticProblemRunner2d::createCeresIterationCallback, this, std::placeholders::_1,
                               std::placeholders::_2, noisy_observations),
                     std::bind(&SyntheticProblemRunner2d::runOptimizationVisualization, this,

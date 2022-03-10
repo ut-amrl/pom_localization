@@ -9,6 +9,7 @@
 
 #include <pose_optimization/offline/offline_problem_data.h>
 #include <pose_optimization/pose_graph_optimizer.h>
+#include <ros/ros.h>
 
 namespace offline_optimization {
 

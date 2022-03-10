@@ -100,9 +100,6 @@ setupPoseOptimizationParams(const file_io::RuntimeParamsConfig &config, const bo
         pose_opt_params.optimizer_params_.extra_extra_refinement_max_iter = 500;
         pose_opt_params.optimizer_params_.extra_refinement_max_iter = 300;
         pose_opt_params.optimizer_params_.normal_max_iter = 200;
-//        pose_opt_params.optimizer_params_.extra_extra_refinement_max_iter = 0;
-//        pose_opt_params.optimizer_params_.extra_refinement_max_iter = 0;
-//        pose_opt_params.optimizer_params_.normal_max_iter = 0;
 
         pose_opt_params.optimizer_params_.extra_extra_refinement_function_tolerance = 1e-8;
         pose_opt_params.optimizer_params_.extra_refinement_function_tolerance = 1e-7;
@@ -253,10 +250,6 @@ void runOptimizationVisualization(const std::shared_ptr<visualization::Visualiza
             for (pose_graph::NodeId node_id = 0; node_id < max_node_id; node_id++) {
                 double odom_transl = (unoptimized_trajectory[node_id].first -
                                       unoptimized_trajectory[node_id + 1].first).norm();
-//                if (odom_transl == 0) {
-//                    LOG(INFO) << "Zero odom transl between nodes " << node_id << " and " << node_id + 1;
-//                    exit(1);
-//                }
                 double est_transl = (node_poses_list[node_id].first - node_poses_list[node_id + 1].first).norm();
                 cumulative_odom_distance += odom_transl;
                 cumulative_est_distance += est_transl;
@@ -604,14 +597,16 @@ void plotRectangleSamplesForCluster(const pose_graph::MovableObservationSemantic
     std::vector<pose::Pose2d> poses_two_point_prop_side_prop_sq_bin_count = semantic_point_pom::generateConsistentSamplesTwoPoint(
             factor.observation_.object_points_,
             num_samples_to_generate,
-            semantic_point_object_sampler_config.samples_per_point,
+//            semantic_point_object_sampler_config.samples_per_point,
+100,
             semantic_point_object_sampler_config.position_bin_size,
             semantic_point_object_sampler_config.orientation_bin_size,
             shape_dimensions_x,
             shape_dimensions_y,
             semantic_point_object_sampler_config.point_std_dev,
             semantic_point_object_sampler_config.min_points_repped_in_bin,
-            semantic_point_object_sampler_config.minimum_bins,
+//            semantic_point_object_sampler_config.minimum_bins,
+3,
             random_generator,
             semantic_point_pom::generateLineSegMidpointOnRectPropSide,
             false, true);
@@ -625,15 +620,18 @@ void plotRectangleSamplesForCluster(const pose_graph::MovableObservationSemantic
     LOG(INFO) << "Generating proposals from two points prop len";
     std::vector<pose::Pose2d> poses_two_point_prop_len_prop_sq_bin_count = semantic_point_pom::generateConsistentSamplesTwoPoint(
             factor.observation_.object_points_,
+//            num_samples_to_generate,
             num_samples_to_generate,
-            semantic_point_object_sampler_config.samples_per_point,
+//            semantic_point_object_sampler_config.samples_per_point,
+100,
             semantic_point_object_sampler_config.position_bin_size,
             semantic_point_object_sampler_config.orientation_bin_size,
             shape_dimensions_x,
             shape_dimensions_y,
             semantic_point_object_sampler_config.point_std_dev,
             semantic_point_object_sampler_config.min_points_repped_in_bin,
-            semantic_point_object_sampler_config.minimum_bins,
+//            semantic_point_object_sampler_config.minimum_bins,
+3,
             random_generator,
             semantic_point_pom::generateLineSegMidpointOnRectPropLen, false, true);
 
@@ -643,131 +641,131 @@ void plotRectangleSamplesForCluster(const pose_graph::MovableObservationSemantic
                 pose::combinePoses(detections_sensor_rel_baselink, pose_rel_sensor));
     }
 
-    LOG(INFO) << "Generating proposals from two points prop side";
-    std::vector<pose::Pose2d> poses_two_point_prop_side_prop_bin_count = semantic_point_pom::generateConsistentSamplesTwoPoint(
-            factor.observation_.object_points_,
-            num_samples_to_generate,
-            semantic_point_object_sampler_config.samples_per_point,
-            semantic_point_object_sampler_config.position_bin_size,
-            semantic_point_object_sampler_config.orientation_bin_size,
-            shape_dimensions_x,
-            shape_dimensions_y,
-            semantic_point_object_sampler_config.point_std_dev,
-            semantic_point_object_sampler_config.min_points_repped_in_bin,
-            semantic_point_object_sampler_config.minimum_bins,
-            random_generator,
-            semantic_point_pom::generateLineSegMidpointOnRectPropSide,
-            true);
-
-    std::vector<pose::Pose2d> poses_rel_baselink_two_point_prop_side_prop_bin_count;
-    for (const pose::Pose2d &pose_rel_sensor : poses_two_point_prop_side_prop_bin_count) {
-        poses_rel_baselink_two_point_prop_side_prop_bin_count.emplace_back(
-                pose::combinePoses(detections_sensor_rel_baselink, pose_rel_sensor));
-    }
-
-    LOG(INFO) << "Generating proposals from two points prop len";
-    std::vector<pose::Pose2d> poses_two_point_prop_len_prop_bin_count = semantic_point_pom::generateConsistentSamplesTwoPoint(
-            factor.observation_.object_points_,
-            num_samples_to_generate,
-            semantic_point_object_sampler_config.samples_per_point,
-            semantic_point_object_sampler_config.position_bin_size,
-            semantic_point_object_sampler_config.orientation_bin_size,
-            shape_dimensions_x,
-            shape_dimensions_y,
-            semantic_point_object_sampler_config.point_std_dev,
-            semantic_point_object_sampler_config.min_points_repped_in_bin,
-            semantic_point_object_sampler_config.minimum_bins,
-            random_generator,
-            semantic_point_pom::generateLineSegMidpointOnRectPropLen, true);
-
-    std::vector<pose::Pose2d> poses_rel_baselink_two_point_prop_len_prop_bin_count;
-    for (const pose::Pose2d &pose_rel_sensor : poses_two_point_prop_len_prop_bin_count) {
-        poses_rel_baselink_two_point_prop_len_prop_bin_count.emplace_back(
-                pose::combinePoses(detections_sensor_rel_baselink, pose_rel_sensor));
-    }
-
-    LOG(INFO) << "Generating proposals from two points prop side";
-    std::vector<pose::Pose2d> poses_two_point_prop_side = semantic_point_pom::generateConsistentSamplesTwoPoint(
-            factor.observation_.object_points_,
-            num_samples_to_generate,
-            semantic_point_object_sampler_config.samples_per_point,
-            semantic_point_object_sampler_config.position_bin_size,
-            semantic_point_object_sampler_config.orientation_bin_size,
-            shape_dimensions_x,
-            shape_dimensions_y,
-            semantic_point_object_sampler_config.point_std_dev,
-            semantic_point_object_sampler_config.min_points_repped_in_bin,
-            semantic_point_object_sampler_config.minimum_bins,
-            random_generator,
-            semantic_point_pom::generateLineSegMidpointOnRectPropSide);
-
-    std::vector<pose::Pose2d> poses_rel_baselink_two_point_prop_side;
-    for (const pose::Pose2d &pose_rel_sensor : poses_two_point_prop_side) {
-        poses_rel_baselink_two_point_prop_side.emplace_back(
-                pose::combinePoses(detections_sensor_rel_baselink, pose_rel_sensor));
-    }
-
-    LOG(INFO) << "Generating proposals from two points prop len";
-    std::vector<pose::Pose2d> poses_two_point_prop_len = semantic_point_pom::generateConsistentSamplesTwoPoint(
-            factor.observation_.object_points_,
-            num_samples_to_generate,
-            semantic_point_object_sampler_config.samples_per_point,
-            semantic_point_object_sampler_config.position_bin_size,
-            semantic_point_object_sampler_config.orientation_bin_size,
-            shape_dimensions_x,
-            shape_dimensions_y,
-            semantic_point_object_sampler_config.point_std_dev,
-            semantic_point_object_sampler_config.min_points_repped_in_bin,
-            semantic_point_object_sampler_config.minimum_bins,
-            random_generator,
-            semantic_point_pom::generateLineSegMidpointOnRectPropLen);
-
-    std::vector<pose::Pose2d> poses_rel_baselink_two_point_prop_len;
-    for (const pose::Pose2d &pose_rel_sensor : poses_two_point_prop_len) {
-        poses_rel_baselink_two_point_prop_len.emplace_back(
-                pose::combinePoses(detections_sensor_rel_baselink, pose_rel_sensor));
-    }
-
-    LOG(INFO) << "Generating proposals from one point prop perim";
-    std::vector<pose::Pose2d> poses_prop_perim = semantic_point_pom::generateConsistentSamples(
-            factor.observation_.object_points_,
-            num_samples_to_generate,
-            semantic_point_object_sampler_config.samples_per_point,
-            semantic_point_object_sampler_config.position_bin_size,
-            semantic_point_object_sampler_config.orientation_bin_size,
-            shape_dimensions_x,
-            shape_dimensions_y,
-            semantic_point_object_sampler_config.point_std_dev,
-            semantic_point_object_sampler_config.min_points_repped_in_bin,
-            semantic_point_object_sampler_config.minimum_bins,
-            random_generator,
-            semantic_point_pom::samplePointsProportionalToSide);
-
-    std::vector<pose::Pose2d> poses_rel_baselink_prop_perim;
-    for (const pose::Pose2d &pose_rel_sensor : poses_prop_perim) {
-        poses_rel_baselink_prop_perim.emplace_back(pose::combinePoses(detections_sensor_rel_baselink, pose_rel_sensor));
-    }
-
-    LOG(INFO) << "Generating proposals from one point prop side";
-    std::vector<pose::Pose2d> poses_prop_side = semantic_point_pom::generateConsistentSamples(
-            factor.observation_.object_points_,
-            num_samples_to_generate,
-            semantic_point_object_sampler_config.samples_per_point,
-            semantic_point_object_sampler_config.position_bin_size,
-            semantic_point_object_sampler_config.orientation_bin_size,
-            shape_dimensions_x,
-            shape_dimensions_y,
-            semantic_point_object_sampler_config.point_std_dev,
-            semantic_point_object_sampler_config.min_points_repped_in_bin,
-            semantic_point_object_sampler_config.minimum_bins,
-            random_generator,
-            semantic_point_pom::samplePointsProportionalToSide);
-
-    std::vector<pose::Pose2d> poses_rel_baselink_prop_side;
-    for (const pose::Pose2d &pose_rel_sensor : poses_prop_side) {
-        poses_rel_baselink_prop_side.emplace_back(pose::combinePoses(detections_sensor_rel_baselink, pose_rel_sensor));
-    }
-
+//    LOG(INFO) << "Generating proposals from two points prop side";
+//    std::vector<pose::Pose2d> poses_two_point_prop_side_prop_bin_count = semantic_point_pom::generateConsistentSamplesTwoPoint(
+//            factor.observation_.object_points_,
+//            num_samples_to_generate,
+//            semantic_point_object_sampler_config.samples_per_point,
+//            semantic_point_object_sampler_config.position_bin_size,
+//            semantic_point_object_sampler_config.orientation_bin_size,
+//            shape_dimensions_x,
+//            shape_dimensions_y,
+//            semantic_point_object_sampler_config.point_std_dev,
+//            semantic_point_object_sampler_config.min_points_repped_in_bin,
+//            semantic_point_object_sampler_config.minimum_bins,
+//            random_generator,
+//            semantic_point_pom::generateLineSegMidpointOnRectPropSide,
+//            true);
+//
+//    std::vector<pose::Pose2d> poses_rel_baselink_two_point_prop_side_prop_bin_count;
+//    for (const pose::Pose2d &pose_rel_sensor : poses_two_point_prop_side_prop_bin_count) {
+//        poses_rel_baselink_two_point_prop_side_prop_bin_count.emplace_back(
+//                pose::combinePoses(detections_sensor_rel_baselink, pose_rel_sensor));
+//    }
+//
+//    LOG(INFO) << "Generating proposals from two points prop len";
+//    std::vector<pose::Pose2d> poses_two_point_prop_len_prop_bin_count = semantic_point_pom::generateConsistentSamplesTwoPoint(
+//            factor.observation_.object_points_,
+//            num_samples_to_generate,
+//            semantic_point_object_sampler_config.samples_per_point,
+//            semantic_point_object_sampler_config.position_bin_size,
+//            semantic_point_object_sampler_config.orientation_bin_size,
+//            shape_dimensions_x,
+//            shape_dimensions_y,
+//            semantic_point_object_sampler_config.point_std_dev,
+//            semantic_point_object_sampler_config.min_points_repped_in_bin,
+//            semantic_point_object_sampler_config.minimum_bins,
+//            random_generator,
+//            semantic_point_pom::generateLineSegMidpointOnRectPropLen, true);
+//
+//    std::vector<pose::Pose2d> poses_rel_baselink_two_point_prop_len_prop_bin_count;
+//    for (const pose::Pose2d &pose_rel_sensor : poses_two_point_prop_len_prop_bin_count) {
+//        poses_rel_baselink_two_point_prop_len_prop_bin_count.emplace_back(
+//                pose::combinePoses(detections_sensor_rel_baselink, pose_rel_sensor));
+//    }
+//
+//    LOG(INFO) << "Generating proposals from two points prop side";
+//    std::vector<pose::Pose2d> poses_two_point_prop_side = semantic_point_pom::generateConsistentSamplesTwoPoint(
+//            factor.observation_.object_points_,
+//            num_samples_to_generate,
+//            semantic_point_object_sampler_config.samples_per_point,
+//            semantic_point_object_sampler_config.position_bin_size,
+//            semantic_point_object_sampler_config.orientation_bin_size,
+//            shape_dimensions_x,
+//            shape_dimensions_y,
+//            semantic_point_object_sampler_config.point_std_dev,
+//            semantic_point_object_sampler_config.min_points_repped_in_bin,
+//            semantic_point_object_sampler_config.minimum_bins,
+//            random_generator,
+//            semantic_point_pom::generateLineSegMidpointOnRectPropSide);
+//
+//    std::vector<pose::Pose2d> poses_rel_baselink_two_point_prop_side;
+//    for (const pose::Pose2d &pose_rel_sensor : poses_two_point_prop_side) {
+//        poses_rel_baselink_two_point_prop_side.emplace_back(
+//                pose::combinePoses(detections_sensor_rel_baselink, pose_rel_sensor));
+//    }
+//
+//    LOG(INFO) << "Generating proposals from two points prop len";
+//    std::vector<pose::Pose2d> poses_two_point_prop_len = semantic_point_pom::generateConsistentSamplesTwoPoint(
+//            factor.observation_.object_points_,
+//            num_samples_to_generate,
+//            semantic_point_object_sampler_config.samples_per_point,
+//            semantic_point_object_sampler_config.position_bin_size,
+//            semantic_point_object_sampler_config.orientation_bin_size,
+//            shape_dimensions_x,
+//            shape_dimensions_y,
+//            semantic_point_object_sampler_config.point_std_dev,
+//            semantic_point_object_sampler_config.min_points_repped_in_bin,
+//            semantic_point_object_sampler_config.minimum_bins,
+//            random_generator,
+//            semantic_point_pom::generateLineSegMidpointOnRectPropLen);
+//
+//    std::vector<pose::Pose2d> poses_rel_baselink_two_point_prop_len;
+//    for (const pose::Pose2d &pose_rel_sensor : poses_two_point_prop_len) {
+//        poses_rel_baselink_two_point_prop_len.emplace_back(
+//                pose::combinePoses(detections_sensor_rel_baselink, pose_rel_sensor));
+//    }
+//
+//    LOG(INFO) << "Generating proposals from one point prop perim";
+//    std::vector<pose::Pose2d> poses_prop_perim = semantic_point_pom::generateConsistentSamples(
+//            factor.observation_.object_points_,
+//            num_samples_to_generate,
+//            semantic_point_object_sampler_config.samples_per_point,
+//            semantic_point_object_sampler_config.position_bin_size,
+//            semantic_point_object_sampler_config.orientation_bin_size,
+//            shape_dimensions_x,
+//            shape_dimensions_y,
+//            semantic_point_object_sampler_config.point_std_dev,
+//            semantic_point_object_sampler_config.min_points_repped_in_bin,
+//            semantic_point_object_sampler_config.minimum_bins,
+//            random_generator,
+//            semantic_point_pom::samplePointsProportionalToSide);
+//
+//    std::vector<pose::Pose2d> poses_rel_baselink_prop_perim;
+//    for (const pose::Pose2d &pose_rel_sensor : poses_prop_perim) {
+//        poses_rel_baselink_prop_perim.emplace_back(pose::combinePoses(detections_sensor_rel_baselink, pose_rel_sensor));
+//    }
+//
+//    LOG(INFO) << "Generating proposals from one point prop side";
+//    std::vector<pose::Pose2d> poses_prop_side = semantic_point_pom::generateConsistentSamples(
+//            factor.observation_.object_points_,
+//            num_samples_to_generate,
+//            semantic_point_object_sampler_config.samples_per_point,
+//            semantic_point_object_sampler_config.position_bin_size,
+//            semantic_point_object_sampler_config.orientation_bin_size,
+//            shape_dimensions_x,
+//            shape_dimensions_y,
+//            semantic_point_object_sampler_config.point_std_dev,
+//            semantic_point_object_sampler_config.min_points_repped_in_bin,
+//            semantic_point_object_sampler_config.minimum_bins,
+//            random_generator,
+//            semantic_point_pom::samplePointsProportionalToSide);
+//
+//    std::vector<pose::Pose2d> poses_rel_baselink_prop_side;
+//    for (const pose::Pose2d &pose_rel_sensor : poses_prop_side) {
+//        poses_rel_baselink_prop_side.emplace_back(pose::combinePoses(detections_sensor_rel_baselink, pose_rel_sensor));
+//    }
+//
     std::vector<Eigen::Vector2d> points_rel_baselink;
     for (const Eigen::Vector2d &point_rel_sensor : factor.observation_.object_points_) {
         points_rel_baselink.emplace_back(transformPoint(detections_sensor_rel_baselink, point_rel_sensor));
@@ -775,7 +773,7 @@ void plotRectangleSamplesForCluster(const pose_graph::MovableObservationSemantic
 
     LOG(INFO) << "Plotting";
     vis_manager->displaySemanticPointObsFromEstTrajectory({pose::createPose2d(0, 0, 0),
-//                                                           pose::createPose2d(0, 10, 0),
+                                                           pose::createPose2d(0, 20, 0),
 //                                                           pose::createPose2d(0, 20, 0),
 //                                                           pose::createPose2d(0, 30, 0),
 //                                                           pose::createPose2d(0, 40, 0),
@@ -784,8 +782,9 @@ void plotRectangleSamplesForCluster(const pose_graph::MovableObservationSemantic
 //                                                           pose::createPose2d(-10, 50, 0)
                                                            },
                                                           {{{factor.observation_.cluster_num_, points_rel_baselink}}
-//                                                          ,
-//                                                           {{factor.observation_.cluster_num_, points_rel_baselink}},
+                                                          ,
+                                                           {{factor.observation_.cluster_num_, points_rel_baselink}}
+//                                                           ,
 //                                                           {{factor.observation_.cluster_num_, points_rel_baselink}},
 //                                                           {{factor.observation_.cluster_num_, points_rel_baselink}},
 //                                                           {{factor.observation_.cluster_num_, points_rel_baselink}},
@@ -802,7 +801,7 @@ void plotRectangleSamplesForCluster(const pose_graph::MovableObservationSemantic
 //                                                           {4, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_side}}},
 //                                                           {3, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_len_prop_bin_count}}},
 //                                                           {2, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_side_prop_bin_count}}},
-//                                                           {1, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_len_prop_sq_bin_count}}},
+                                                           {1, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_len_prop_sq_bin_count}}},
                                                            {0, {{factor.observation_.cluster_num_, poses_rel_baselink_two_point_prop_side_prop_sq_bin_count}}}
                                                            },
                                                           Eigen::Vector2d(shape_dimensions_x, shape_dimensions_y),
@@ -848,7 +847,7 @@ void debugSamples(const std::vector<pose_graph::MovableObservationSemanticPoints
 
     std::vector<pose_graph::MovableObservationSemanticPointsFactor2d> shuffle_factors = factors;
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-//    std::shuffle(shuffle_factors.begin(), shuffle_factors.end(), std::default_random_engine(seed));
+    std::shuffle(shuffle_factors.begin(), shuffle_factors.end(), std::default_random_engine(seed));
 
     for (const pose_graph::MovableObservationSemanticPointsFactor2d &factor : shuffle_factors) {
         if (!ros::ok()) {
@@ -1034,12 +1033,14 @@ int main(int argc, char **argv) {
 //                                   random_generator);
 
     if (FLAGS_debug_samples) {
+        LOG(INFO) << "Debug samples! " << param_prefix;
         debugSamples(movable_observation_factors,
                      detections_sensor_rel_baselink,
                      shape_dimensions_by_semantic_class_file,
                      semantic_point_object_sampler_config_file,
                      manager,
-                     50, // TODO read this from cfg
+//                     50, // TODO read this from cfg
+15,
                      random_generator);
         exit(1);
     }

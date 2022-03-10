@@ -126,8 +126,8 @@ namespace pose {
         return pose;
     }
 
-    Eigen::Vector3d toPoint3d(const Eigen::Vector2d &point2d) {
-        return Eigen::Vector3d(point2d.x(), point2d.y(), 0);
+    Eigen::Vector3d toPoint3d(const Eigen::Vector2d &point2d, const double &z=0) {
+        return Eigen::Vector3d(point2d.x(), point2d.y(), z);
     }
 
 /**

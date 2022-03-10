@@ -846,21 +846,49 @@ void GPCTest() {
     std::shared_ptr<gp_kernel::Pose2dKernel> mean_pose_2d_kernel = std::make_shared<gp_kernel::Pose2dKernel>(mean_position_kernel, mean_orientation_kernel);
     std::shared_ptr<gp_kernel::Pose2dKernel> var_pose_2d_kernel = std::make_shared<gp_kernel::Pose2dKernel>(var_position_kernel, var_orientation_kernel);
 
+
+    std::shared_ptr<CumulativeFunctionTimer> jet_mat_mult_timer_ = std::make_shared<CumulativeFunctionTimer>("Jet mat mult");
+    std::shared_ptr<CumulativeFunctionTimer> jet_kernel_eval_timer_ = std::make_shared<CumulativeFunctionTimer>("Jet kernel eval");
+    std::shared_ptr<CumulativeFunctionTimer> jet_overall_timer_ = std::make_shared<CumulativeFunctionTimer>("Jet overall");
+    std::shared_ptr<CumulativeFunctionTimer> double_mat_mult_timer_ = std::make_shared<CumulativeFunctionTimer>("Double mat mult");
+    std::shared_ptr<CumulativeFunctionTimer> double_kernel_eval_timer_ = std::make_shared<CumulativeFunctionTimer>("Double kernel eval");
+    std::shared_ptr<CumulativeFunctionTimer> double_overall_timer_ = std::make_shared<CumulativeFunctionTimer>("Double overall");
+
+    std::shared_ptr<CumulativeFunctionTimer> jet_gpc_timer_ = std::make_shared<CumulativeFunctionTimer>("Jet gpc");
+    std::shared_ptr<CumulativeFunctionTimer> double_gpc_timer_ = std::make_shared<CumulativeFunctionTimer>("Double gpc");
+
+    std::shared_ptr<CumulativeFunctionTimer> jet_cost_functor_timer_ = std::make_shared<CumulativeFunctionTimer>("Jet cost functor");
+    std::shared_ptr<CumulativeFunctionTimer> double_cost_functor_timer_ = std::make_shared<CumulativeFunctionTimer>("Double cost functor");
+
     std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc =
             std::make_shared<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
                     larger_inputs, larger_outputs,
                     prior_mean, input_variance_for_mean,
                     input_variance_for_var, mean_pose_2d_kernel,
-                    var_pose_2d_kernel);
+                    var_pose_2d_kernel,
+                    jet_mat_mult_timer_,
+                    jet_kernel_eval_timer_,
+                    jet_overall_timer_,
+                    double_mat_mult_timer_,
+                    double_kernel_eval_timer_,
+                    double_overall_timer_,
+                    jet_gpc_timer_,
+                    double_gpc_timer_);
 
     std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc_smaller_samples =
             std::make_shared<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>>(
                     smaller_inputs, smaller_outputs,
                     prior_mean, input_variance_for_mean,
                     input_variance_for_var, mean_pose_2d_kernel,
-                    var_pose_2d_kernel);
-
-
+                    var_pose_2d_kernel,
+                    jet_mat_mult_timer_,
+                    jet_kernel_eval_timer_,
+                    jet_overall_timer_,
+                    double_mat_mult_timer_,
+                    double_kernel_eval_timer_,
+                    double_overall_timer_,
+                    jet_gpc_timer_,
+                    double_gpc_timer_);
 
     gp_kernel::GaussianKernel<2> var_position_kernel_2(var_pos_kernel_len,
                                                      var_pos_kernel_var_2);
@@ -875,7 +903,15 @@ void GPCTest() {
                     larger_inputs, larger_outputs,
                     prior_mean, input_variance_for_mean,
                     input_var_for_var_2, mean_pose_2d_kernel,
-                    var_pose_2d_kernel_2);
+                    var_pose_2d_kernel_2,
+                    jet_mat_mult_timer_,
+                    jet_kernel_eval_timer_,
+                    jet_overall_timer_,
+                    double_mat_mult_timer_,
+                    double_kernel_eval_timer_,
+                    double_overall_timer_,
+                    jet_gpc_timer_,
+                    double_gpc_timer_);
 
     LOG(INFO) << "Creating GP params 2, smaller data set";
     std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc_smaller_samples_params_2 =
@@ -883,7 +919,15 @@ void GPCTest() {
                     smaller_inputs, smaller_outputs,
                     prior_mean, input_variance_for_mean,
                     input_var_for_var_2, mean_pose_2d_kernel,
-                    var_pose_2d_kernel_2);
+                    var_pose_2d_kernel_2,
+                    jet_mat_mult_timer_,
+                    jet_kernel_eval_timer_,
+                    jet_overall_timer_,
+                    double_mat_mult_timer_,
+                    double_kernel_eval_timer_,
+                    double_overall_timer_,
+                    jet_gpc_timer_,
+                    double_gpc_timer_);
 
     gp_kernel::GaussianKernel<2> var_position_kernel_3(var_pos_kernel_len,
                                                        var_pos_kernel_var_3);
@@ -898,7 +942,15 @@ void GPCTest() {
                     larger_inputs, larger_outputs,
                     prior_mean, input_variance_for_mean,
                     input_var_for_var_3, mean_pose_2d_kernel,
-                    var_pose_2d_kernel_3);
+                    var_pose_2d_kernel_3,
+                    jet_mat_mult_timer_,
+                    jet_kernel_eval_timer_,
+                    jet_overall_timer_,
+                    double_mat_mult_timer_,
+                    double_kernel_eval_timer_,
+                    double_overall_timer_,
+                    jet_gpc_timer_,
+                    double_gpc_timer_);
 
     LOG(INFO) << "Creating GP params 3, smaller data set";
     std::shared_ptr<gp_regression::GaussianProcessClassifier<3, gp_kernel::Pose2dKernel>> gpc_smaller_samples_params_3 =
@@ -906,7 +958,15 @@ void GPCTest() {
                     smaller_inputs, smaller_outputs,
                     prior_mean, input_variance_for_mean,
                     input_var_for_var_3, mean_pose_2d_kernel,
-                    var_pose_2d_kernel_3);
+                    var_pose_2d_kernel_3,
+                    jet_mat_mult_timer_,
+                    jet_kernel_eval_timer_,
+                    jet_overall_timer_,
+                    double_mat_mult_timer_,
+                    double_kernel_eval_timer_,
+                    double_overall_timer_,
+                    jet_gpc_timer_,
+                    double_gpc_timer_);
 
     Eigen::Matrix<double, 3, Eigen::Dynamic> query_input(3, 1);
     query_input << 0.5, 0.5, M_PI;

@@ -165,7 +165,7 @@ namespace visualization {
             ros::Publisher pub;
             getOrCreatePublisherForTrajTypeAndClass(ESTIMATED, obj_class, pub);
 
-            displaySemanticPointObsFromTrajectory(est_trajectory, relative_semantic_points, 0.05,
+            displaySemanticPointObsFromTrajectory(est_trajectory, relative_semantic_points, 0.15,
                                                   kObservedFromEstCarDetectionLines, color, pub,
                                                   relative_object_samples_for_cluster, dimensions_for_samples,
                                                   display_samples_from_all_nodes, remove_all_markers_first);
@@ -1122,7 +1122,7 @@ namespace visualization {
             triangle_corner_2.y = 0.05;
             geometry_msgs::Point triangle_corner_3;
             triangle_corner_3.x = 0.1;
-            double z = 0.5;
+            double z = kPastSampleDisplayHeight;
 
             for (size_t i = 0; i < sample_poses_and_values.size(); i++) {
                 std::pair<pose::Pose2d, double> pose_and_value = sample_poses_and_values.at(i);
@@ -1197,6 +1197,38 @@ namespace visualization {
             publishObjDetectionsRelToRobotPoses(pub, convert2DPosesTo3D(est_trajectory),
                                                 relative_car_poses_3d, color,
                                                 kObservedFromEstCarDetectionsMin, kObservedFromEstCarDetectionsMax);
+        }
+
+        void displayObjObservationsFromEstTrajectories(const std::vector<std::vector<pose::Pose2d>> &est_trajectories,
+                                                       const std::vector<std::vector<std::vector<pose::Pose2d>>> &relative_car_poses,
+                                                       const std::string &obj_class) {
+            std_msgs::ColorRGBA color;
+            color.a = 0.05;
+            color.r = 1.0;
+            color.g = 0.7;
+
+            ros::Publisher pub;
+            getOrCreatePublisherForTrajTypeAndClass(ESTIMATED, obj_class, pub);
+
+
+            std::vector<pose::Pose2d> trajectories_concat;
+            for (const std::vector<pose::Pose2d> &est_traj : est_trajectories) {
+                trajectories_concat.insert(trajectories_concat.end(), est_traj.begin(), est_traj.end());
+            }
+
+            std::vector<std::vector<pose::Pose3d>> relative_car_poses_3d;
+            for (const std::vector<std::vector<pose::Pose2d>> &poses_for_traj : relative_car_poses) {
+                for (const std::vector<pose::Pose2d> &relative_car_pose_list : poses_for_traj) {
+                    relative_car_poses_3d.emplace_back(convert2DPosesTo3D(relative_car_pose_list));
+                }
+            }
+
+//            publishLinesToCarDetections(pub, convert2DPosesTo3D(est_trajectory),
+//                                        relative_car_poses_3d, color, kObservedFromEstCarDetectionLines);
+            publishObjDetectionsRelToRobotPoses(pub, convert2DPosesTo3D(trajectories_concat),
+                                                relative_car_poses_3d, color,
+                                                kObservedFromEstCarDetectionsMin, kObservedFromEstCarDetectionsMax,
+                                                true);
         }
 
         void displayObjObservationsFromOdomTrajectory(const std::vector<pose::Pose2d> &odom_trajectory,
@@ -1328,12 +1360,13 @@ namespace visualization {
             std::vector<std_msgs::ColorRGBA> colors;
             for (size_t i = 0; i < trajectory_poses.size(); i++) {
                 std_msgs::ColorRGBA color = base_color;
-                color.b = ((double) i) / (trajectory_poses.size() - 1);
+                if (trajectory_poses.size() > 1) {
+                    color.b = ((double) i) / (trajectory_poses.size() - 1);
+                }
                 colors.emplace_back(color);
 
                 trajectory_poses_3d.emplace_back(convert2DPosesTo3D(trajectory_poses[i]));
             }
-
             publishTrajectories(est_marker_pub_, colors, trajectory_poses_3d, kEstTrajectoryId, kRobotEstPosesMin,
                                 kRobotEstPosesMax);
         }
@@ -1347,12 +1380,15 @@ namespace visualization {
         const uint32_t kObservationPubQueueSize = 100000;
 
         const double kTrajectoryScaleX = 0.05;
+//        const double kTrajectoryScaleX = 0.2;
 
         const int32_t kEstTrajectoryId = 1;
 
         const int32_t kOdomTrajectoryId = 2;
 
         const int32_t kGtTrajectoryId = 3;
+
+        const double kPastSampleDisplayHeight = 0.5;
 
         const int32_t kObservedFromGtCarDetectionLines = 4;
         const int32_t kObservedFromOdomCarDetectionLines = 5;
@@ -1384,6 +1420,9 @@ namespace visualization {
         const double kWaypoint2DHeight = 0.2;
 
         const size_t kMaxSemanticPointsPerCluster = 300;
+
+        const double kCarDimX = 4.89;
+        const double kCarDimY = 1.84;
 
 
         /**
@@ -1486,10 +1525,10 @@ namespace visualization {
             return poses_3d;
         }
 
-        std::vector<Eigen::Vector3d> convert2DPointsTo3D(const std::vector<Eigen::Vector2d> &points_2d) {
+        std::vector<Eigen::Vector3d> convert2DPointsTo3D(const std::vector<Eigen::Vector2d> &points_2d, const double &z=0) {
             std::vector<Eigen::Vector3d> points_3d;
             for (const Eigen::Vector2d &point_2d : points_2d) {
-                points_3d.emplace_back(pose::toPoint3d(point_2d));
+                points_3d.emplace_back(pose::toPoint3d(point_2d, z));
             }
             return points_3d;
         }
@@ -1611,8 +1650,11 @@ namespace visualization {
             marker_msg.scale.z = 0.15;
 
             if (bigger) {
-                marker_msg.scale.x = 0.8;
-                marker_msg.scale.y = 0.6;
+//                marker_msg.scale.x = 0.8;
+//                marker_msg.scale.y = 0.6;
+
+                marker_msg.scale.x = 1.2;
+                marker_msg.scale.y = 0.9;
                 marker_msg.scale.z = 0.3;
             }
 
@@ -1640,6 +1682,8 @@ namespace visualization {
 
             marker_msg.scale.x = 0.5;
             marker_msg.scale.y = 0.3;
+//            marker_msg.scale.x = kCarDimX;
+//            marker_msg.scale.y = kCarDimY;
             marker_msg.scale.z = 0.15;
 
             marker_msg.pose.position.x = car_pose.first.x();
@@ -1739,13 +1783,74 @@ namespace visualization {
             publishMarker(marker_msg_2, marker_pub);
         }
 
+        void drawRectangles(const std::vector<pose::Pose3d> &rectangle_poses, const double &rect_x_dim, const double &rect_y_dim, const int32_t marker_id, const std_msgs::ColorRGBA &color,
+                            ros::Publisher &marker_pub) {
+            visualization_msgs::Marker marker_msg;
+            Eigen::Vector3d obj_det_corner_1(rect_x_dim / 2, rect_y_dim / 2, 0);
+            Eigen::Vector3d obj_det_corner_2(rect_x_dim / 2, -rect_y_dim / 2, 0);
+            Eigen::Vector3d obj_det_corner_3(-rect_x_dim / 2, -rect_y_dim / 2, 0);
+            Eigen::Vector3d obj_det_corner_4(-rect_x_dim / 2, rect_y_dim / 2, 0);
+
+            for (const pose::Pose3d &rectangle_pose : rectangle_poses) {
+                Eigen::Vector3d transformed_corner_1 = pose::transformPoint(rectangle_pose, obj_det_corner_1);
+                Eigen::Vector3d transformed_corner_2 = pose::transformPoint(rectangle_pose, obj_det_corner_2);
+                Eigen::Vector3d transformed_corner_3 = pose::transformPoint(rectangle_pose, obj_det_corner_3);
+                Eigen::Vector3d transformed_corner_4 = pose::transformPoint(rectangle_pose, obj_det_corner_4);
+
+                geometry_msgs::Point point_1;
+                point_1.x = transformed_corner_1.x();
+                point_1.y = transformed_corner_1.y();
+                point_1.z = transformed_corner_1.z();
+
+                geometry_msgs::Point point_2;
+                point_2.x = transformed_corner_2.x();
+                point_2.y = transformed_corner_2.y();
+                point_2.z = transformed_corner_2.z();
+
+                geometry_msgs::Point point_3;
+                point_3.x = transformed_corner_3.x();
+                point_3.y = transformed_corner_3.y();
+                point_3.z = transformed_corner_3.z();
+
+                geometry_msgs::Point point_4;
+                point_4.x = transformed_corner_4.x();
+                point_4.y = transformed_corner_4.y();
+                point_4.z = transformed_corner_4.z();
+
+                marker_msg.points.emplace_back(point_1);
+                marker_msg.points.emplace_back(point_2);
+
+                marker_msg.points.emplace_back(point_2);
+                marker_msg.points.emplace_back(point_3);
+
+                marker_msg.points.emplace_back(point_3);
+                marker_msg.points.emplace_back(point_4);
+
+                marker_msg.points.emplace_back(point_4);
+                marker_msg.points.emplace_back(point_1);
+            }
+
+            marker_msg.pose.orientation.w = 1.0;
+            marker_msg.scale.x = 0.15;
+            marker_msg.type = visualization_msgs::Marker::LINE_LIST;
+
+            marker_msg.id = marker_id;
+            marker_msg.color = color;
+            publishMarker(marker_msg, marker_pub);
+        }
+
         void
         publishObjDetectionsRelToRobotPoses(ros::Publisher &marker_pub, const std::vector<pose::Pose3d> &robot_poses,
                                             const std::vector<std::vector<pose::Pose3d>> &car_detections,
                                             const std_msgs::ColorRGBA &color, const int32_t min_id,
-                                            const int32_t max_id) {
+                                            const int32_t max_id,
+                                            const bool &draw_obj_borders = false) {
+
+            visualization_msgs::Marker marker_msg;
 
             int marker_num = min_id;
+
+            std::vector<pose::Pose3d> rectangle_poses;
             for (size_t i = 0; i < robot_poses.size(); i++) {
                 pose::Pose3d robot_pose = robot_poses[i];
                 for (const pose::Pose3d &car_detection : car_detections[i]) {
@@ -1754,7 +1859,17 @@ namespace visualization {
                     }
                     pose::Pose3d car_pose = pose::combinePoses(robot_pose, car_detection);
                     publishCarPoses(marker_pub, car_pose, color, marker_num++);
+
+                    if (draw_obj_borders) {
+                        rectangle_poses.emplace_back(car_pose);
+                    }
                 }
+            }
+
+            if (draw_obj_borders) {
+                std_msgs::ColorRGBA rect_color = color;
+                rect_color.a = std::min((float) 1.0, color.a * 3);
+                drawRectangles(rectangle_poses, kCarDimX, kCarDimY, marker_num, rect_color, marker_pub);
             }
 
 
@@ -1956,22 +2071,36 @@ namespace visualization {
                                                      const float sample_alpha,
                                                      const int32_t min_id) {
 
+            bool same_color = colors.empty();
+            std::vector<pose::Pose3d> rectangle_poses;
             int marker_num = min_id;
             for (size_t i = 0; i < robot_poses.size(); i++) {
                 pose::Pose3d robot_pose = robot_poses[i];
                 if (samples.find(i) != samples.end()) {
                     for (const auto &cluster_info : samples.at(i)) {
+                        std_msgs::ColorRGBA use_color = color;
+                        if (!same_color) {
+                            use_color = colors[i].at(cluster_info.first);
+                            use_color.a = sample_alpha;
+                        }
                         for (const pose::Pose3d &sample_pose_rel : cluster_info.second) {
                             pose::Pose3d sample_pose = pose::combinePoses(robot_pose, sample_pose_rel);
-                            std_msgs::ColorRGBA use_color = color;
-                            if (!colors.empty()) {
-                                use_color = colors[i].at(cluster_info.first);
-                                use_color.a = sample_alpha;
-                            }
+                            rectangle_poses.emplace_back(sample_pose);
                             publishObjectSample(marker_pub, sample_pose, use_color, marker_num++, shape_dim);
+                        }
+                        if (!same_color) {
+                            std_msgs::ColorRGBA rect_color = use_color;
+                            rect_color.a = std::min((float) 1.0, rect_color.a * 3);
+                            drawRectangles(rectangle_poses, shape_dim.x(), shape_dim.y(), marker_num++, rect_color, marker_pub);
+                            rectangle_poses.clear();
                         }
                     }
                 }
+            }
+            if (same_color) {
+                std_msgs::ColorRGBA rect_color = color;
+                rect_color.a = std::min((float) 1.0, rect_color.a * 3);
+                drawRectangles(rectangle_poses, shape_dim.x(), shape_dim.y(),  marker_num++, rect_color, marker_pub);
             }
             return marker_num;
         }
@@ -1980,7 +2109,7 @@ namespace visualization {
                                                    const std::vector<std::unordered_map<size_t, std::vector<Eigen::Vector2d>>> &relative_semantic_points,
                                                    const double &samples_color_a,
                                                    const int32_t &lines_to_obs_id,
-                                                   std_msgs::ColorRGBA color,
+                                                   const std_msgs::ColorRGBA &color,
                                                    ros::Publisher &pub,
                                                    const std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose2d>>> &relative_object_samples_for_cluster = {},
                                                    const Eigen::Vector2d &dimensions_for_samples = Eigen::Vector2d(),
@@ -1992,6 +2121,7 @@ namespace visualization {
             bool randomize_color = !relative_object_samples_for_cluster.empty();
 
             std::vector<std::unordered_map<size_t, std::vector<Eigen::Vector3d>>> relative_points_3d;
+            std::vector<std::unordered_map<size_t, std::vector<Eigen::Vector3d>>> relative_points_3d_for_lines;
             util_random::Random rand_gen(std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now().time_since_epoch()).count());
 
@@ -2027,26 +2157,49 @@ namespace visualization {
                     } else {
                         points_to_plot = points_for_object;
                     }
-                    std::vector<Eigen::Vector3d> points_for_obj_3d = convert2DPointsTo3D(points_for_object);
+                    std::vector<Eigen::Vector3d> points_for_obj_3d = convert2DPointsTo3D(points_for_object, 0.5);
                     points_for_pose[cluster_id_and_points.first] = points_for_obj_3d;
                 }
+
                 relative_points_3d.emplace_back(points_for_pose);
+                relative_points_3d_for_lines.emplace_back(points_for_pose);
+
                 if (randomize_color) {
                     sample_colors_[node_num] = colors_for_pose;
                 }
             }
             std::vector<pose::Pose3d> trajectory_3d = convert2DPosesTo3D(trajectory);
+            int32_t next_marker = lines_to_obs_id;
+
+//            std_msgs::ColorRGBA points_color;
+////            points_color.r = 159.0 / 255;
+////            points_color.g = 35.0 / 255;
+//////            points_color.b = 110.0 / 255;
+////            points_color.r = 29.0 / 255;
+////            points_color.g = 124.0 / 255;
+////            points_color.b = 124.0 / 255;
+//            points_color.r = 24.0 / 255;
+//            points_color.g = 102.0 / 255;
+//            points_color.b = 102.0 / 255;
+//            points_color.a = 0.7;
+//
+//            std_msgs::ColorRGBA lines_color;
+//            lines_color.r = 145.0 / 255;
+//            lines_color.g = 198.0 / 255;
+//            lines_color.b = 198.0 / 255;
+//            lines_color.a = 0.4;
 
             std::vector<std::unordered_map<size_t, std_msgs::ColorRGBA>> empty_colors;
-            int32_t next_marker = publishLinesToSemanticPointDetections(pub, trajectory_3d, relative_points_3d,
+            next_marker = publishLinesToSemanticPointDetections(pub, trajectory_3d, relative_points_3d_for_lines,
                                                                         randomize_color ? sample_colors_ : empty_colors,
-                                                                        color, lines_to_obs_id);
+                                                                        color, next_marker);
+//                                                                {}, lines_color, next_marker);
             next_marker = publishSemanticPointDetectionsRelToRobotPoses(pub, trajectory_3d, relative_points_3d,
                                                                         randomize_color ? sample_colors_ : empty_colors,
                                                                         color, next_marker);
+//                                                                        {}, points_color,
+//                                                                        next_marker);
             if (!relative_object_samples_for_cluster.empty()) {
-
-                color.a = samples_color_a;
 
                 std::unordered_map<uint64_t, std::unordered_map<size_t, std::vector<pose::Pose3d>>> relative_object_samples_for_cluster_3d;
                 for (const auto &samples_for_node : relative_object_samples_for_cluster) { // TODO remove this eventually
@@ -2061,10 +2214,28 @@ namespace visualization {
                     }
                 }
 
+                std_msgs::ColorRGBA more_transparent_color = color;
+                more_transparent_color.a = samples_color_a;
+
+//                std_msgs::ColorRGBA pretty_color;
+////                pretty_color.r = 251.0 / 255;
+////                pretty_color.b = 110.0 / 255;
+////                pretty_color.g = 25.0 / 255;
+////                pretty_color.r = 58.0 / 255;
+////                pretty_color.b = 247.0 / 255;
+////                pretty_color.g = 247.0 / 255;
+//
+//                pretty_color.r = 31.0 / 255;
+//                pretty_color.b = 213.0 / 255;
+//                pretty_color.g = 213.0 / 255;
+//                pretty_color.a = samples_color_a;
+
                 publishSampledObjPoseRelToRobotPoses(pub, trajectory_3d,
                                                      relative_object_samples_for_cluster_3d,
-                                                     color,
+                                                     more_transparent_color,
                                                      randomize_color ? sample_colors_ : empty_colors,
+//                                                     pretty_color,
+//                                                     {},
                                                      dimensions_for_samples,
                                                      samples_color_a,
                                                      next_marker);

@@ -33,7 +33,6 @@ setupPoseOptimizationParams(const file_io::RuntimeParamsConfig &config, const bo
     cost_function_params.num_nodes_in_optimization_window_ = config.num_nodes_in_optimization_window_;
     cost_function_params.max_gpc_samples_ = config.max_gpc_samples_;
 
-
     cost_function_params.mean_position_kernel_len_ = config.mean_position_kernel_len_;
     cost_function_params.mean_orientation_kernel_len_ = config.mean_orientation_kernel_len_;
 
@@ -51,29 +50,6 @@ setupPoseOptimizationParams(const file_io::RuntimeParamsConfig &config, const bo
 
     cost_function_params.default_obj_probability_input_variance_for_var_ =
             config.default_obj_probability_input_variance_for_var_;
-
-    if (kitti) {
-        LOG(INFO) << "Using kitti optimization parameters";
-        pose_opt_params.optimizer_params_.extra_extra_refinement_max_iter = 150;
-        pose_opt_params.optimizer_params_.extra_refinement_max_iter = 150;
-        pose_opt_params.optimizer_params_.normal_max_iter = 150;
-
-        pose_opt_params.optimizer_params_.extra_extra_refinement_function_tolerance = 1e-6;
-        pose_opt_params.optimizer_params_.extra_refinement_function_tolerance = 1e-6;
-        pose_opt_params.optimizer_params_.normal_function_tolerance = 1e-6;
-        pose_opt_params.optimizer_params_.allow_non_monotonic_steps = false;
-    } else {
-        LOG(INFO) << "Using parking lot optimization parameters";
-        pose_opt_params.optimizer_params_.extra_extra_refinement_max_iter = 1000;
-        pose_opt_params.optimizer_params_.extra_refinement_max_iter = 500;
-        pose_opt_params.optimizer_params_.normal_max_iter = 300;
-
-        pose_opt_params.optimizer_params_.extra_extra_refinement_function_tolerance = 1e-12;
-        pose_opt_params.optimizer_params_.extra_refinement_function_tolerance = 1e-9;
-        pose_opt_params.optimizer_params_.normal_function_tolerance = 1e-6;
-        // TODO may want to turn this off... havent actually tested it but seems like it would help
-        pose_opt_params.optimizer_params_.allow_non_monotonic_steps = true;
-    }
 
     pose_opt_params.cost_function_params_ = cost_function_params;
 
@@ -150,9 +126,8 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    std::shared_ptr<visualization::VisualizationManager> manager = std::make_shared<visualization::VisualizationManager>(
-            n, param_prefix);
-
+    std::shared_ptr<visualization::VisualizationManager> manager =
+            std::make_shared<visualization::VisualizationManager>(n, param_prefix);
 
     // Read samples
     std::vector<pose_graph::MapObjectObservation2d> samples;
@@ -198,11 +173,9 @@ int main(int argc, char **argv) {
     file_io::RuntimeParamsConfig runtime_params_config;
     file_io::readRuntimeParamsConfigFromFile(runtime_params_config_file_name, runtime_params_config);
 
-
-
-
     pose_optimization::PoseOptimizationParameters pose_opt_params = setupPoseOptimizationParams(runtime_params_config,
                                                                                                 false);
+
     std::shared_ptr<pose_graph::PoseGraph<gp_kernel::Pose2dKernel, 2, double, 3, 2, double, 3,
             pose_graph::MovableObservationSemanticPoints<2>>> pose_graph = pose_graph::utils::createFully2dPoseGraphSemanticPointDetectionsFromParams(
             pose_opt_params.cost_function_params_,

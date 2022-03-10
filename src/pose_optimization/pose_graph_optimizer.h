@@ -333,9 +333,6 @@ namespace pose_optimization {
                 options.max_num_iterations = opt_params.normal_max_iter;
             }
 
-            LOG(INFO) << "Max iter " << options.max_num_iterations;
-
-//            options.max_num_iterations = 0;
             options.minimizer_progress_to_stdout = true;
             if (extra_extra_refinement) {
                 options.function_tolerance = opt_params.extra_extra_refinement_function_tolerance;

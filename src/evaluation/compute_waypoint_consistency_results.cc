@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
             }
 
             while (waypoint_poses_for_traj.size() <= max_waypoint_id) {
-                waypoint_poses_for_traj.emplace_back((std::vector<pose::Pose2d>){});
+                waypoint_poses_for_traj.emplace_back((std::vector<pose::Pose2d>) {});
             }
 
             std::vector<pose::Pose2d> poses_for_waypoint = waypoint_poses_for_traj[waypoint];
@@ -206,7 +206,8 @@ int main(int argc, char **argv) {
 
     std::vector<file_io::WaypointConsistencyResult> consistency_results;
     for (uint64_t i = min_waypoint_id; i <= max_waypoint_id; i++) {
-        LOG(INFO) << "Waypoint: " << i << ", Transl Deviation: " << transl_deviation[i] << ", angle deviation " << mean_rotation_deviations[i];
+        LOG(INFO) << "Waypoint: " << i << ", Transl Deviation: " << transl_deviation[i] << ", angle deviation "
+                  << mean_rotation_deviations[i];
         file_io::WaypointConsistencyResult consistency_result;
         consistency_result.waypoint = i;
         consistency_result.transl_deviation_ = transl_deviation[i];

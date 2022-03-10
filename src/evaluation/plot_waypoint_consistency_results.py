@@ -169,7 +169,7 @@ def plotCDF(dataset_primary_approach, dataset_comparison_approaches, title, x_la
     plt.figure(fig_num)
     comparison_approach_summary_max = 0
 
-    alternate_line_styles=['dotted', 'dashdot', 'dashed']
+    alternate_line_styles=['dotted', 'dashdot', 'dashed', (0, (3, 1, 1, 1)), (0, (3, 1, 1, 1, 1, 1))]
     alternate_line_style_index = 0
     # getting data of the histogram
     for comparison_label, comparison_dataset in dataset_comparison_approaches.items():
@@ -188,7 +188,7 @@ def plotCDF(dataset_primary_approach, dataset_comparison_approaches, title, x_la
         # else:
         #     x_lim = min(primary_approach_max * kMaxXAxisBoundsMultiplier, comparison_approach_summary_max)
         plt.xlim(0, x_lim)
-        plt.legend()
+        plt.legend(prop={'size':'small'})
     plt.ylim(0, 1)
     plt.title(title)
     plt.xlabel(x_label)
